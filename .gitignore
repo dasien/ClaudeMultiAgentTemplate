@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+tasks.txt
+*.bak
+*.tmp
+
+# Agent logs
+.claude/logs/*.log
+enhancements/*/logs/
+
+# Queue system (keep structure, ignore logs)
+.claude/logs/queue_operations.log
+.claude/status/workflow_state.json
+
+# Keep template files
+!.claude/queues/task_queue.json
+!.claude/queues/workflow_templates.json
+!.claude/status/.gitkeep
+!.claude/logs/.gitkeep
