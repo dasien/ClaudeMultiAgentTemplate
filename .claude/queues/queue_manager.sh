@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Queue Manager for 6502 Kernel Multi-Agent System
+# Queue Manager for Multi-Agent Development System
 # Manages task queues, agent status, and workflow chains
+# Enhanced with GitHub/Atlassian integration support
 
 set -euo pipefail
 
@@ -83,7 +84,15 @@ add_task() {
             status: $status,
             started: null,
             completed: null,
-            result: null
+            result: null,
+            metadata: {
+                github_issue: null,
+                jira_ticket: null,
+                github_pr: null,
+                confluence_page: null,
+                parent_task_id: null,
+                workflow_status: null
+            }
         }')
 
     local temp_file=$(mktemp)
@@ -92,6 +101,104 @@ add_task() {
 
     log_operation "TASK_ADDED" "ID: $task_id, Agent: $agent, Title: $task_title"
     echo "$task_id"
+}
+
+# NEW: Function to add integration task
+add_integration_task() {
+    local workflow_status="$1"
+    local source_file="$2"
+    local previous_agent="$3"
+    local parent_task_id="${4:-}"
+
+    local title="Integrate: ${workflow_status}"
+    local description="Synchronize workflow state '${workflow_status}' with external systems (GitHub, Jira, Confluence)"
+
+    # Determine priority based on workflow status
+    local priority="normal"
+    case "$workflow_status" in
+        "READY_FOR_DEVELOPMENT"|"READY_FOR_TESTING")
+            priority="high"
+            ;;
+        "DOCUMENTATION_COMPLETE")
+            priority="low"
+            ;;
+    esac
+
+    local task_id=$(add_task \
+        "$title" \
+        "integration-coordinator" \
+        "$priority" \
+        "integration" \
+        "$source_file" \
+        "$description")
+
+    # Update task metadata with workflow context
+    local temp_file=$(mktemp)
+    jq --arg id "$task_id" \
+       --arg status "$workflow_status" \
+       --arg prev "$previous_agent" \
+       --arg parent "$parent_task_id" \
+       '(.pending_tasks[] | select(.id == $id) | .metadata) += {
+           workflow_status: $status,
+           previous_agent: $prev,
+           parent_task_id: $parent
+       }' "$QUEUE_FILE" > "$temp_file"
+    mv "$temp_file" "$QUEUE_FILE"
+
+    echo "🔗 Integration task created: $task_id"
+    return 0
+}
+
+# NEW: Function to update task metadata (for storing external IDs)
+update_metadata() {
+    local task_id="$1"
+    local key="$2"
+    local value="$3"
+
+    local temp_file=$(mktemp)
+
+    # Check which queue the task is in
+    local in_pending=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_active=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_completed=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+
+    if [ -n "$in_pending" ]; then
+        jq --arg id "$task_id" \
+           --arg k "$key" \
+           --arg v "$value" \
+           '(.pending_tasks[] | select(.id == $id) | .metadata[$k]) = $v' "$QUEUE_FILE" > "$temp_file"
+    elif [ -n "$in_active" ]; then
+        jq --arg id "$task_id" \
+           --arg k "$key" \
+           --arg v "$value" \
+           '(.active_workflows[] | select(.id == $id) | .metadata[$k]) = $v' "$QUEUE_FILE" > "$temp_file"
+    elif [ -n "$in_completed" ]; then
+        jq --arg id "$task_id" \
+           --arg k "$key" \
+           --arg v "$value" \
+           '(.completed_tasks[] | select(.id == $id) | .metadata[$k]) = $v' "$QUEUE_FILE" > "$temp_file"
+    else
+        echo "❌ Task not found: $task_id"
+        return 1
+    fi
+
+    mv "$temp_file" "$QUEUE_FILE"
+    log_operation "METADATA_UPDATE" "Task: $task_id, Key: $key, Value: $value"
+    echo "✅ Updated metadata for $task_id: $key = $value"
+}
+
+# NEW: Function to check if task needs integration
+needs_integration() {
+    local status="$1"
+
+    case "$status" in
+        *"READY_FOR_DEVELOPMENT"*|*"READY_FOR_IMPLEMENTATION"*|*"READY_FOR_TESTING"*|*"TESTING_COMPLETE"*|*"DOCUMENTATION_COMPLETE"*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 # Function to load task prompt template
@@ -118,6 +225,13 @@ load_task_template() {
             ;;
         "testing")
             template_content=$(awk '/^# TESTING_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            ;;
+        "integration")
+            # NEW: Integration template - use a simple default if not in file
+            template_content=$(awk '/^# INTEGRATION_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            if [ -z "$template_content" ]; then
+                template_content="You are the integration-coordinator agent. Process the task described in the source file and synchronize with external systems as appropriate."
+            fi
             ;;
         *)
             echo "Error: Unknown task type: $task_type" >&2
@@ -203,7 +317,7 @@ invoke_agent() {
     echo "Exit Code: $exit_code" | tee -a "$log_file"
 
     # Extract status from agent output and log it in standardized format
-    local status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*)" | head -1)
+    local status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" | head -1)
 
     if [ -n "$status" ]; then
         echo "Exit Status: $status" | tee -a "$log_file"
@@ -234,7 +348,6 @@ invoke_agent() {
         echo "Complete manually with:"
         echo "  ./queue_manager.sh complete $task_id '<STATUS>' --auto-chain"
     fi
-
 
     return $exit_code
 }
@@ -295,63 +408,19 @@ determine_next_agent() {
     local enhancement_name="$1"
     local status="$2"
 
-    # Look for enhancement file in directory structure
-    local enhancement_file=""
-    if [ -f "enhancements/${enhancement_name}/${enhancement_name}.md" ]; then
-        enhancement_file="enhancements/${enhancement_name}/${enhancement_name}.md"
-    elif [ -f "enhancements/${enhancement_name}.md" ]; then
-        # Fallback for old structure
-        enhancement_file="enhancements/${enhancement_name}.md"
-    elif [ -f "enhancements/${enhancement_name}_requirements_analysis.md" ]; then
-        # Extract base name from requirements file
-        local base_name=$(echo "$enhancement_name" | sed 's/_requirements_analysis$//')
-        if [ -f "enhancements/${base_name}/${base_name}.md" ]; then
-            enhancement_file="enhancements/${base_name}/${base_name}.md"
-        elif [ -f "enhancements/${base_name}.md" ]; then
-            enhancement_file="enhancements/${base_name}.md"
-        fi
-    fi
-
-    if [ -z "$enhancement_file" ]; then
-        echo "HUMAN_CHOICE_REQUIRED"
-        return
-    fi
-
-    # Analyze status to determine next phase
+    # Use standard agent workflow
     case "$status" in
         *"READY_FOR_DEVELOPMENT"*)
-            # Check enhancement file for agent guidance
-            if grep -qi "architecture.*cpp-developer\|cpp.*architect" "$enhancement_file" 2>/dev/null; then
-                echo "cpp-developer"
-            elif grep -qi "architecture.*assembly-developer\|assembly.*architect\|6502.*architect" "$enhancement_file" 2>/dev/null; then
-                echo "assembly-developer"
-            # Analyze content for technology hints
-            elif grep -qi "C++\|main\.cpp\|\.cpp\|\.h\|simulator\|emulator" "$enhancement_file" 2>/dev/null; then
-                echo "cpp-developer"
-            elif grep -qi "assembly\|kernel\.asm\|\.asm\|6502\|monitor\|hardware" "$enhancement_file" 2>/dev/null; then
-                echo "assembly-developer"
-            else
-                echo "HUMAN_CHOICE_REQUIRED"
-            fi
+            echo "architect"
             ;;
         *"READY_FOR_IMPLEMENTATION"*)
-            # Implementation usually stays with same agent as architecture
-            # But check if different agent specified
-            if grep -qi "implementation.*cpp-developer\|cpp.*implement" "$enhancement_file" 2>/dev/null; then
-                echo "cpp-developer"
-            elif grep -qi "implementation.*assembly-developer\|assembly.*implement\|6502.*implement" "$enhancement_file" 2>/dev/null; then
-                echo "assembly-developer"
-            # Default: analyze content
-            elif grep -qi "C++\|main\.cpp\|\.cpp\|\.h" "$enhancement_file" 2>/dev/null; then
-                echo "cpp-developer"
-            elif grep -qi "assembly\|kernel\.asm\|\.asm\|6502" "$enhancement_file" 2>/dev/null; then
-                echo "assembly-developer"
-            else
-                echo "HUMAN_CHOICE_REQUIRED"
-            fi
+            echo "implementer"
             ;;
-        *"READY_FOR_INTEGRATION"*|*"READY_FOR_TESTING"*)
-            echo "testing-agent"
+        *"READY_FOR_TESTING"*)
+            echo "tester"
+            ;;
+        *"TESTING_COMPLETE"*)
+            echo "documenter"
             ;;
         *)
             echo "HUMAN_CHOICE_REQUIRED"
@@ -364,6 +433,45 @@ suggest_next_task() {
     local task_id="$1"
     local result="$2"
 
+    # NEW: Check if this status needs integration
+    if needs_integration "$result"; then
+        # Get task info for integration
+        local source_file=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
+        local agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
+
+        # Check AUTO_INTEGRATE environment variable
+        local auto_integrate="${AUTO_INTEGRATE:-prompt}"
+        local should_integrate="false"
+
+        case "$auto_integrate" in
+            "always")
+                should_integrate="true"
+                echo "🔗 Auto-integration enabled (always mode)"
+                ;;
+            "never")
+                should_integrate="false"
+                echo "ℹ️  Auto-integration disabled (never mode)"
+                ;;
+            *)
+                echo ""
+                echo "🔗 This status may require integration with external systems:"
+                echo "   Status: $result"
+                echo "   This would create GitHub issues, Jira tickets, or update documentation."
+                echo ""
+                echo -n "Create integration task? [y/N]: "
+                read -r response
+                if [[ "$response" =~ ^[Yy]$ ]]; then
+                    should_integrate="true"
+                fi
+                ;;
+        esac
+
+        if [ "$should_integrate" = "true" ]; then
+            add_integration_task "$result" "$source_file" "$agent" "$task_id"
+        fi
+    fi
+
+    # Continue with normal workflow suggestion
     # Extract enhancement name from completed task title
     local task_title=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name=""
@@ -386,6 +494,12 @@ suggest_next_task() {
         enhancement_name=$(echo "$task_title" | sed -E 's/^(Test |Analyze |Validate |Architecture |Implementation |Testing )//' | sed -E 's/ (enhancement|completion|design|of .+)$//')
     fi
 
+    # Skip workflow suggestion for integration tasks
+    if [[ "$task_title" == "Integrate:"* ]]; then
+        echo "✅ Integration task completed"
+        return
+    fi
+
     if [ -z "$enhancement_name" ]; then
         echo "Note: Could not determine enhancement name from task title for auto-chaining"
         return
@@ -395,30 +509,9 @@ suggest_next_task() {
 
     if [ "$next_agent" = "HUMAN_CHOICE_REQUIRED" ]; then
         echo ""
-        echo "AUTO-CHAIN: Multiple agents could handle the next phase:"
-        case "$result" in
-            *"READY_FOR_DEVELOPMENT"*)
-                echo "  [1] cpp-developer (C++ architecture)"
-                echo "  [2] assembly-developer (6502 architecture)"
-                echo "  [3] Manual task creation"
-                ;;
-            *"READY_FOR_IMPLEMENTATION"*)
-                echo "  [1] cpp-developer (C++ implementation)"
-                echo "  [2] assembly-developer (6502 implementation)"
-                echo "  [3] Manual task creation"
-                ;;
-            *)
-                echo "  [1] Manual task creation (status analysis unclear)"
-                ;;
-        esac
-        echo -n "Choose assignment [1-3]: "
-        read -r choice
-
-        case "$choice" in
-            "1") next_agent="cpp-developer" ;;
-            "2") next_agent="assembly-developer" ;;
-            *) echo "Manual task creation selected"; return ;;
-        esac
+        echo "Cannot automatically determine next agent for status: $result"
+        echo "Please create the next task manually with queue_manager.sh"
+        return
     fi
 
     # Generate next task based on status
@@ -496,7 +589,6 @@ complete_task() {
 
     log_operation "TASK_COMPLETED" "ID: $task_id, Agent: $agent, Result: $result"
 
-
     # If auto-chain requested, suggest next task
     if [ "$auto_chain" = "true" ]; then
         suggest_next_task "$task_id" "$result"
@@ -534,7 +626,6 @@ fail_task() {
     update_agent_status "$agent" "idle" "null"
 
     log_operation "TASK_FAILED" "ID: $task_id, Agent: $agent, Error: $error"
-
 }
 
 # Function to cancel/remove task
@@ -579,9 +670,51 @@ cancel_task() {
     return 1
 }
 
+# NEW: Function to sync specific task to GitHub/Jira
+sync_external() {
+    local task_id="$1"
+
+    # Find the task and get its info
+    local task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+
+    if [ -z "$task" ]; then
+        echo "❌ Task not found or not completed: $task_id"
+        return 1
+    fi
+
+    local source_file=$(echo "$task" | jq -r '.source_file')
+    local result=$(echo "$task" | jq -r '.result')
+    local agent=$(echo "$task" | jq -r '.assigned_agent')
+
+    echo "🔗 Creating integration task for: $task_id"
+    add_integration_task "$result" "$source_file" "$agent" "$task_id"
+}
+
+# NEW: Function to sync all unsynced completed tasks
+sync_all() {
+    echo "🔍 Scanning for tasks requiring integration..."
+
+    local count=0
+    local task_ids=$(jq -r '.completed_tasks[] | select(.result != null and .result != "completed successfully") | select(.metadata.github_issue == null) | .id' "$QUEUE_FILE")
+
+    while IFS= read -r task_id; do
+        if [ -n "$task_id" ] && needs_integration "$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .result" "$QUEUE_FILE")"; then
+            local task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+            local result=$(echo "$task" | jq -r '.result')
+            local source_file=$(echo "$task" | jq -r '.source_file')
+            local agent=$(echo "$task" | jq -r '.assigned_agent')
+
+            add_integration_task "$result" "$source_file" "$agent" "$task_id"
+            ((count++))
+        fi
+    done <<< "$task_ids"
+
+    echo "✅ Created $count integration tasks"
+}
+
 # Function to show queue status
 show_status() {
-    echo "=== 6502 Kernel Multi-Agent Queue Status ==="
+    echo "=== Multi-Agent Queue Status ==="
     echo
 
     echo "📋 Agent Status:"
@@ -603,6 +736,16 @@ show_status() {
         jq -r '.active_workflows[] | "  • \(.title) → \(.assigned_agent) (Started: \(.started), ID: \(.id))"' "$QUEUE_FILE"
     else
         echo "  No active workflows"
+    fi
+    echo
+
+    # NEW: Show integration tasks
+    echo "🔗 Integration Tasks:"
+    local integration_count=$(jq '[.pending_tasks[], .active_workflows[]] | map(select(.assigned_agent == "integration-coordinator")) | length' "$QUEUE_FILE")
+    if [ "$integration_count" -gt 0 ]; then
+        jq -r '[.pending_tasks[], .active_workflows[]] | .[] | select(.assigned_agent == "integration-coordinator") | "  • \(.title) (Status: \(.status), ID: \(.id))"' "$QUEUE_FILE"
+    else
+        echo "  No integration tasks"
     fi
     echo
 
@@ -643,10 +786,19 @@ case "${1:-status}" in
     "add")
         if [ $# -lt 7 ]; then
             echo "Usage: $0 add <title> <agent> <priority> <task_type> <source_file> <description>"
-            echo "Task types: analysis, technical_analysis, implementation, testing"
+            echo "Task types: analysis, technical_analysis, implementation, testing, integration"
             exit 1
         fi
         add_task "$2" "$3" "$4" "$5" "$6" "$7"
+        ;;
+
+    "add-integration")
+        # NEW: Directly add integration task
+        if [ $# -lt 4 ]; then
+            echo "Usage: $0 add-integration <workflow_status> <source_file> <previous_agent> [parent_task_id]"
+            exit 1
+        fi
+        add_integration_task "$2" "$3" "$4" "${5:-}"
         ;;
 
     "start")
@@ -721,6 +873,29 @@ case "${1:-status}" in
         done
 
         echo "✅ Cancelled $pending_count pending and $active_count active tasks"
+        ;;
+
+    "update-metadata")
+        # NEW: Update task metadata
+        if [ $# -lt 4 ]; then
+            echo "Usage: $0 update-metadata <task_id> <key> <value>"
+            exit 1
+        fi
+        update_metadata "$2" "$3" "$4"
+        ;;
+
+    "sync-github"|"sync-jira"|"sync-external")
+        # NEW: Sync specific task to external systems
+        if [ $# -lt 2 ]; then
+            echo "Usage: $0 sync-external <task_id>"
+            exit 1
+        fi
+        sync_external "$2"
+        ;;
+
+    "sync-all")
+        # NEW: Sync all unsynced tasks
+        sync_all
         ;;
 
     "workflow")

@@ -260,6 +260,299 @@ When complete, output your status as one of:
 
 Task ID: ${task_id}
 
+# INTEGRATION_TEMPLATE
+
+You are acting as the ${agent} agent performing integration with external systems.
+
+Read your role definition from: ${agent_config}
+
+Process this source file: ${source_file}
+
+## INTEGRATION OBJECTIVES:
+- Synchronize internal workflow state with external tracking systems
+- Create or update GitHub issues, pull requests, and labels
+- Create or update Jira tickets with appropriate status
+- Publish documentation to Confluence when appropriate
+- Maintain bidirectional links between internal tasks and external items
+- Store external IDs for future reference and updates
+
+## SPECIFIC TASK:
+${task_description}
+
+## INTEGRATION METHODOLOGY:
+1. **Context Analysis**: Review the source file to understand what was accomplished
+2. **Determine Actions**: Based on workflow status, decide what external updates are needed
+3. **GitHub Operations**: Create issues, PRs, or update labels as appropriate
+4. **Jira Operations**: Create or update tickets, transition status
+5. **Confluence Operations**: Publish documentation pages when needed
+6. **Metadata Storage**: Store all external IDs for future reference
+7. **Cross-Linking**: Ensure all platforms link to each other appropriately
+
+## AVAILABLE MCP TOOLS:
+You have access to the following MCP servers through tool calls:
+- **github-mcp**: For GitHub operations (issues, PRs, labels, comments)
+- **atlassian-mcp**: For Jira and Confluence operations
+
+## WORKFLOW STATUS MAPPING:
+
+### READY_FOR_DEVELOPMENT
+**Actions:**
+- Create GitHub issue with feature description and acceptance criteria
+- Add labels: `enhancement`, `ready-for-dev`
+- Create Jira ticket (Story or Task) with summary and description
+- Link GitHub issue to Jira ticket
+- Store issue/ticket IDs in task metadata
+
+**Example GitHub Issue:**
+```
+Title: [Feature] Add JSON Export Functionality
+Body: 
+## Description
+[Summary from requirements]
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Related
+Jira: PROJECT-123
+```
+
+### READY_FOR_IMPLEMENTATION
+**Actions:**
+- Update GitHub issue: add label `architecture-complete`
+- Comment on issue with architecture summary
+- Update Jira ticket status to "In Progress"
+- Add comment with technical approach
+
+### READY_FOR_TESTING
+**Actions:**
+- Create GitHub Pull Request
+- Reference original issue: "Closes #123"
+- Add PR description with implementation summary
+- Add label `ready-for-review`
+- Update Jira ticket with PR link
+- Transition Jira to "In Review"
+
+**Example PR:**
+```
+Title: Implement JSON export feature
+Body:
+## Summary
+[Implementation summary]
+
+## Changes
+- Added JSONExporter class
+- Updated CLI interface
+- Added export tests
+
+## Testing
+- Unit tests: ✓
+- Integration tests: ✓
+
+Closes #123
+Related Jira: PROJECT-456
+```
+
+### TESTING_COMPLETE
+**Actions:**
+- Comment on PR with test results
+- Add label `tests-passing` to PR
+- Update Jira ticket with test summary
+- Transition Jira to "Testing" status
+
+### DOCUMENTATION_COMPLETE
+**Actions:**
+- Publish documentation to Confluence
+- Update README if needed
+- Merge PR (if appropriate)
+- Close GitHub issue
+- Transition Jira ticket to "Done"
+- Add final comments with links to documentation
+
+## ERROR HANDLING:
+
+If an MCP operation fails:
+1. Log the specific error clearly
+2. Determine if the operation is retryable
+3. Continue with other operations if possible
+4. Report partial success with details
+
+**Output format for errors:**
+```
+INTEGRATION_FAILED
+
+Error: GitHub API rate limit exceeded (resets in 15 minutes)
+
+Partial Success:
+- Jira ticket created: PROJECT-456
+- GitHub operations pending (will retry)
+
+Manual Steps:
+1. Wait 15 minutes for rate limit reset
+2. Retry: queue_manager.sh retry ${task_id}
+```
+
+## METADATA TRACKING:
+
+After successful operations, you should work with the queue manager to store external IDs.
+The queue manager has an `update-metadata` command for this purpose.
+
+**Important IDs to track:**
+- `github_issue`: GitHub issue number (e.g., "145")
+- `github_issue_url`: Full URL to issue
+- `jira_ticket`: Jira ticket key (e.g., "PROJECT-892")
+- `jira_ticket_url`: Full URL to ticket
+- `github_pr`: PR number (when created)
+- `github_pr_url`: Full URL to PR
+- `confluence_page`: Confluence page ID
+- `confluence_url`: Full URL to page
+
+## REQUIRED OUTPUT FORMAT:
+
+Create a summary document in your agent subdirectory documenting what was integrated.
+
+**Output Directory**: `<source_file_directory>/${agent}/`
+
+**Primary Output Document**: Create `integration_summary.md` in your agent subdirectory with:
+- What external items were created/updated
+- All external IDs and URLs
+- Cross-references between systems
+- Any errors or partial failures
+- Manual steps required (if any)
+
+## CROSS-PLATFORM LINKING:
+
+Always maintain bidirectional links:
+- GitHub issues → Jira tickets (in issue description)
+- Jira tickets → GitHub issues (as web link)
+- PRs → Both GitHub issues and Jira tickets
+- Confluence pages → Both GitHub and Jira
+
+**Linking format:**
+- GitHub: "Related Jira: PROJECT-123" or "Jira: [PROJECT-123](url)"
+- Jira: Use Web Links feature or comments with "GitHub Issue: #123"
+- Confluence: Use macro or links section
+
+## IMPORTANT NOTES:
+
+- **Never duplicate**: Check if issue/ticket already exists before creating
+- **Update, don't recreate**: Use stored IDs to update existing items
+- **Be idempotent**: Safe to run multiple times without creating duplicates
+- **Handle rate limits**: GitHub and Jira have API rate limits
+- **Store everything**: All external IDs must be tracked for future operations
+- **Cross-link**: Every external item should link to related items in other systems
+
+## CONFIGURATION REQUIREMENTS:
+
+Ensure these are available (check MCP server configs):
+- GitHub token with repo scope
+- Jira credentials (email + API token)
+- Repository owner and name
+- Jira project key
+- Confluence space key (for documentation)
+
+If configuration is missing, output:
+```
+INTEGRATION_FAILED
+
+Configuration Error: Missing GitHub repository configuration
+
+Required: GITHUB_REPO in MCP config
+Example: "owner/repo-name"
+
+Cannot proceed until configuration is provided.
+```
+
+## SUCCESS OUTPUT:
+
+When complete, output your status as:
+
+**`INTEGRATION_COMPLETE`**
+
+Include a clear summary:
+```
+INTEGRATION_COMPLETE
+
+GitHub Issue: #145
+https://github.com/owner/repo/issues/145
+
+Jira Ticket: PROJECT-892
+https://company.atlassian.net/browse/PROJECT-892
+
+Summary:
+- Created GitHub issue with 3 labels
+- Created linked Jira ticket in Sprint 12
+- Both platforms linked bidirectionally
+
+Next Steps:
+- Issue ready for development
+- Ticket assigned to current sprint
+```
+
+Task ID: ${task_id}
+
+---
+
+## Integration Example Scenarios
+
+### Scenario 1: Requirements Complete
+**Input**: READY_FOR_DEVELOPMENT status, requirements document
+**Actions**:
+1. Read requirements document
+2. Extract title and acceptance criteria
+3. Create GitHub issue
+4. Create Jira ticket
+5. Link them together
+6. Store both IDs in task metadata
+
+### Scenario 2: Implementation Complete  
+**Input**: READY_FOR_TESTING status, implementation plan
+**Actions**:
+1. Get GitHub issue ID from task metadata
+2. Create PR that references issue
+3. Get Jira ticket ID from task metadata
+4. Update Jira ticket status
+5. Add PR link to Jira
+6. Store PR ID in task metadata
+
+### Scenario 3: Testing Complete
+**Input**: TESTING_COMPLETE status, test summary
+**Actions**:
+1. Get PR ID from task metadata
+2. Post test results as PR comment
+3. Add "tests-passing" label
+4. Get Jira ticket ID from task metadata
+5. Update Jira with test summary
+6. Transition to appropriate status
+
+---
+
+## Troubleshooting Common Issues
+
+### Rate Limits
+- GitHub: 5000 requests/hour for authenticated users
+- Jira: Varies by plan, typically 10 requests/second
+- **Solution**: Wait and retry, implement exponential backoff
+
+### Authentication Failures
+- Check token/credentials are correct
+- Verify token has required scopes/permissions
+- Check token hasn't expired
+
+### Item Not Found
+- Verify IDs stored in metadata are correct
+- Check item wasn't deleted externally
+- Fall back to creating new item if appropriate
+
+### Network Issues
+- Implement retries with backoff
+- Mark as INTEGRATION_FAILED with clear error
+- Provide manual recovery steps
+
+---
+
+IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 ---
 
 # DOCUMENTATION_TEMPLATE
