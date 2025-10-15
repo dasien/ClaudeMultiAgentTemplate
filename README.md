@@ -58,6 +58,52 @@ Edit agent files in `.claude/agents/` to customize for your project:
 
 See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
 
+## ⚠️ SECURITY WARNING
+
+**CRITICAL: Never commit API credentials to version control!**
+
+The MCP configuration files in `.claude/mcp-servers/` are templates that use environment variables for credentials:
+
+```json
+{
+  "env": {
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}",
+    "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+  }
+}
+```
+
+**❌ DO NOT:**
+- Replace `${GITHUB_TOKEN}` with actual token values in config files
+- Commit config files with hardcoded credentials
+- Share config files containing real API keys
+
+**✅ ALWAYS:**
+- Use a secrets manager (recommended) or environment variables
+- Keep the `${VAR_NAME}` syntax in config files
+- Add actual credential files to `.gitignore`
+- Review all files before committing: `git diff --staged`
+
+**Credential Storage Options:**
+
+*Option 1: Secrets Manager (Recommended)*
+- Use a secrets management solution for enhanced security
+- Provides automatic rotation, audit logs, and team access control
+- Secrets never stored in plain text on disk
+
+*Option 2: Environment Variables (Simpler)*
+```bash
+# Add to your shell profile (~/.bashrc, ~/.zshrc)
+export GITHUB_TOKEN="ghp_your_token_here"
+export JIRA_API_TOKEN="your_jira_token_here"
+export JIRA_EMAIL="your-email@company.com"
+
+# Reload shell
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+See [.claude/mcp-servers/MCP_CONFIGURATION_GUIDE.md](.claude/mcp-servers/MCP_CONFIGURATION_GUIDE.md) for detailed security best practices.
+
 ### 4. Start Building
 
 **Step 1: Add task to queue**
