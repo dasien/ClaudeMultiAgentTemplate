@@ -89,9 +89,6 @@ add_task() {
             started: null,
             completed: null,
             result: null,
-            start_datetime: null,
-            end_datetime: null,
-            runtime_seconds: null,
             auto_complete: $auto_complete,
             auto_chain: $auto_chain,
             metadata: {
@@ -426,11 +423,9 @@ start_task() {
     fi
 
     local temp_file=$(mktemp)
-    local start_datetime=$(date +%s)
 
     # Move task from pending to active and update timestamps
-    jq --argjson start_dt "$start_datetime" \
-        "(.pending_tasks[] | select(.id == \"$task_id\")) |= (.status = \"active\" | .started = \"$timestamp\" | .start_datetime = \$start_dt) |
+    jq "(.pending_tasks[] | select(.id == \"$task_id\")) |= (.status = \"active\" | .started = \"$timestamp\") |
         .active_workflows += [.pending_tasks[] | select(.id == \"$task_id\")] |
         .pending_tasks = [.pending_tasks[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
 
@@ -617,19 +612,9 @@ complete_task() {
     fi
 
     local temp_file=$(mktemp)
-    local end_datetime=$(date +%s)
-
-    # Get start_datetime to calculate runtime
-    local start_datetime=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .start_datetime // null" "$QUEUE_FILE")
-    local runtime_seconds=null
-    if [ "$start_datetime" != "null" ] && [ -n "$start_datetime" ]; then
-        runtime_seconds=$((end_datetime - start_datetime))
-    fi
 
     # Move task from active to completed
-    jq --argjson end_dt "$end_datetime" \
-       --argjson runtime "$runtime_seconds" \
-        "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"completed\" | .completed = \"$timestamp\" | .result = \"$result\" | .end_datetime = \$end_dt | .runtime_seconds = \$runtime) |
+    jq "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"completed\" | .completed = \"$timestamp\" | .result = \"$result\") |
         .completed_tasks += [.active_workflows[] | select(.id == \"$task_id\")] |
         .active_workflows = [.active_workflows[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
 
@@ -667,19 +652,9 @@ fail_task() {
     fi
 
     local temp_file=$(mktemp)
-    local end_datetime=$(date +%s)
-
-    # Get start_datetime to calculate runtime
-    local start_datetime=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .start_datetime // null" "$QUEUE_FILE")
-    local runtime_seconds=null
-    if [ "$start_datetime" != "null" ] && [ -n "$start_datetime" ]; then
-        runtime_seconds=$((end_datetime - start_datetime))
-    fi
 
     # Move task from active to failed
-    jq --argjson end_dt "$end_datetime" \
-       --argjson runtime "$runtime_seconds" \
-        "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"failed\" | .completed = \"$timestamp\" | .result = \"$error\" | .end_datetime = \$end_dt | .runtime_seconds = \$runtime) |
+    jq "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"failed\" | .completed = \"$timestamp\" | .result = \"$error\") |
         .failed_tasks += [.active_workflows[] | select(.id == \"$task_id\")] |
         .active_workflows = [.active_workflows[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
 
@@ -971,6 +946,71 @@ case "${1:-status}" in
             exit 1
         fi
         start_workflow "$2" "${3:-Workflow execution}"
+        ;;
+
+    "list_tasks")
+        # List tasks in JSON format for programmatic consumption
+        if [ $# -lt 2 ]; then
+            echo "Usage: $0 list_tasks <queue> [format]"
+            echo "Queues: pending, active, completed, failed, all"
+            echo "Formats: json (default), compact"
+            exit 1
+        fi
+
+        queue_type="$2"
+        format="${3:-json}"
+
+        # JQ filter to calculate runtime_seconds on-demand
+        runtime_filter='
+            if (.started != null and .completed != null) then
+                . + {runtime_seconds: ((.completed | fromdateiso8601) - (.started | fromdateiso8601))}
+            else
+                . + {runtime_seconds: null}
+            end
+        '
+
+        case "$queue_type" in
+            "pending")
+                if [ "$format" = "compact" ]; then
+                    jq -c ".pending_tasks[] | $runtime_filter" "$QUEUE_FILE"
+                else
+                    jq ".pending_tasks | map($runtime_filter)" "$QUEUE_FILE"
+                fi
+                ;;
+            "active")
+                if [ "$format" = "compact" ]; then
+                    jq -c ".active_workflows[] | $runtime_filter" "$QUEUE_FILE"
+                else
+                    jq ".active_workflows | map($runtime_filter)" "$QUEUE_FILE"
+                fi
+                ;;
+            "completed")
+                if [ "$format" = "compact" ]; then
+                    jq -c ".completed_tasks[] | $runtime_filter" "$QUEUE_FILE"
+                else
+                    jq ".completed_tasks | map($runtime_filter)" "$QUEUE_FILE"
+                fi
+                ;;
+            "failed")
+                if [ "$format" = "compact" ]; then
+                    jq -c ".failed_tasks[] | $runtime_filter" "$QUEUE_FILE"
+                else
+                    jq ".failed_tasks | map($runtime_filter)" "$QUEUE_FILE"
+                fi
+                ;;
+            "all")
+                if [ "$format" = "compact" ]; then
+                    jq -c "{pending: (.pending_tasks | map($runtime_filter)), active: (.active_workflows | map($runtime_filter)), completed: (.completed_tasks | map($runtime_filter)), failed: (.failed_tasks | map($runtime_filter))}" "$QUEUE_FILE"
+                else
+                    jq "{pending: (.pending_tasks | map($runtime_filter)), active: (.active_workflows | map($runtime_filter)), completed: (.completed_tasks | map($runtime_filter)), failed: (.failed_tasks | map($runtime_filter))}" "$QUEUE_FILE"
+                fi
+                ;;
+            *)
+                echo "Error: Unknown queue type: $queue_type"
+                echo "Valid types: pending, active, completed, failed, all"
+                exit 1
+                ;;
+        esac
         ;;
 
     "status"|*)
