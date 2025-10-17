@@ -58,6 +58,8 @@ add_task() {
     local task_type="${4:-}"  # Task type (analysis, technical_analysis, implementation, testing)
     local source_file="${5:-}"  # Source document to process
     local description="${6:-No description}"  # Prompt/instructions for agent
+    local auto_complete="${7:-false}"  # Auto-complete without prompting
+    local auto_chain="${8:-false}"  # Auto-chain to next task
 
     local task_id="task_$(date +%s)_$$"
     local timestamp=$(get_timestamp)
@@ -72,6 +74,8 @@ add_task() {
         --arg source_file "$source_file" \
         --arg created "$timestamp" \
         --arg status "pending" \
+        --argjson auto_complete "$auto_complete" \
+        --argjson auto_chain "$auto_chain" \
         '{
             id: $id,
             title: $title,
@@ -85,6 +89,8 @@ add_task() {
             started: null,
             completed: null,
             result: null,
+            auto_complete: $auto_complete,
+            auto_chain: $auto_chain,
             metadata: {
                 github_issue: null,
                 jira_ticket: null,
@@ -256,6 +262,8 @@ invoke_agent() {
     local log_base_dir="$4"  # Base directory for log files
     local task_type="$5"  # Task type for template lookup
     local task_description="$6"  # Task instructions
+    local auto_complete="${7:-false}"  # Auto-complete without prompting
+    local auto_chain="${8:-false}"  # Auto-chain to next task
 
     # Get agent configuration file
     local agent_config=".claude/agents/${agent}.md"
@@ -310,37 +318,60 @@ invoke_agent() {
     local end_timestamp=$(date +%s)
     local duration=$((end_timestamp - start_timestamp))
 
-    echo "" | tee -a "$log_file"
-    echo "=== Agent Execution Complete ===" | tee -a "$log_file"
-    echo "End Time: $end_time" | tee -a "$log_file"
-    echo "Duration: ${duration}s" | tee -a "$log_file"
-    echo "Exit Code: $exit_code" | tee -a "$log_file"
+    # Write end marker directly to log file (not through tee/pipe)
+    # This ensures it gets written even when called from Python subprocess
+    {
+        echo ""
+        echo "=== Agent Execution Complete ==="
+        echo "End Time: $end_time"
+        echo "Duration: ${duration}s"
+        echo "Exit Code: $exit_code"
+    } >> "$log_file"
+
+    # Also output to stdout for terminal users
+    echo ""
+    echo "=== Agent Execution Complete ==="
+    echo "End Time: $end_time"
+    echo "Duration: ${duration}s"
+    echo "Exit Code: $exit_code"
 
     # Extract status from agent output and log it in standardized format
     local status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" | head -1)
 
     if [ -n "$status" ]; then
-        echo "Exit Status: $status" | tee -a "$log_file"
+        echo "Exit Status: $status" >> "$log_file"
+        echo "Exit Status: $status"
     else
-        echo "Exit Status: UNKNOWN" | tee -a "$log_file"
+        echo "Exit Status: UNKNOWN" >> "$log_file"
+        echo "Exit Status: UNKNOWN"
     fi
-    echo "" | tee -a "$log_file"
+    echo "" >> "$log_file"
+    echo ""
 
     # Now extract the standardized status for processing
     local status=$(tail -10 "$log_file" | grep "^Exit Status:" | cut -d' ' -f3-)
 
     if [ -n "$status" ]; then
-        echo "Detected Status: $status" | tee -a "$log_file"
-        echo ""
-        echo "Auto-completing task with status: $status"
-        echo -n "Proceed? [Y/n]: "
-        read -r proceed
+        # Log to file only (not tee) to avoid issues when stdout is redirected to DEVNULL
+        echo "Detected Status: $status" >> "$log_file"
+        echo "" >> "$log_file"
 
-        if [[ ! "$proceed" =~ ^[Nn]$ ]]; then
-            complete_task "$task_id" "$status" "true"
+        if [ "$auto_complete" = "true" ]; then
+            # Non-interactive mode (launched from UI or with --auto-complete flag)
+            echo "Auto-completing task (non-interactive mode)" >> "$log_file"
+            complete_task "$task_id" "$status" "$auto_chain"
         else
-            echo "Task completion cancelled. Complete manually with:"
-            echo "  ./queue_manager.sh complete $task_id '$status' --auto-chain"
+            # Interactive mode (launched from terminal)
+            echo "Auto-completing task with status: $status"
+            echo -n "Proceed? [Y/n]: "
+            read -r proceed
+
+            if [[ ! "$proceed" =~ ^[Nn]$ ]]; then
+                complete_task "$task_id" "$status" "$auto_chain"
+            else
+                echo "Task completion cancelled. Complete manually with:"
+                echo "  ./queue_manager.sh complete $task_id '$status' --auto-chain"
+            fi
         fi
     else
         echo "Warning: Could not extract completion status from agent output"
@@ -365,12 +396,20 @@ start_task() {
         return 1
     fi
 
-    # Extract task info
+    # Extract task info including auto flags BEFORE moving to active
     local task_title=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local task_type=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .task_type" "$QUEUE_FILE")
     local task_description=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .description" "$QUEUE_FILE")
     local agent=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
     local source_file=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
+
+    # Read auto_complete and auto_chain from task BEFORE moving to active
+    local auto_complete=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_complete // false" "$QUEUE_FILE")
+    local auto_chain=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_chain // false" "$QUEUE_FILE")
+
+    # Debug output
+    echo "Task auto_complete: $auto_complete"
+    echo "Task auto_chain: $auto_chain"
 
     # Validate source file exists
     if [ -z "$source_file" ] || [ "$source_file" = "null" ]; then
@@ -400,7 +439,7 @@ start_task() {
     # Invoke the agent via Claude Code
     # Extract directory name from source file for logging
     local log_base_dir=$(dirname "$source_file")
-    invoke_agent "$agent" "$task_id" "$source_file" "$log_base_dir" "$task_type" "$task_description"
+    invoke_agent "$agent" "$task_id" "$source_file" "$log_base_dir" "$task_type" "$task_description" "$auto_complete" "$auto_chain"
 }
 
 # Function to analyze enhancement and determine next agent
@@ -785,11 +824,13 @@ start_workflow() {
 case "${1:-status}" in
     "add")
         if [ $# -lt 7 ]; then
-            echo "Usage: $0 add <title> <agent> <priority> <task_type> <source_file> <description>"
+            echo "Usage: $0 add <title> <agent> <priority> <task_type> <source_file> <description> [auto_complete] [auto_chain]"
             echo "Task types: analysis, technical_analysis, implementation, testing, integration"
+            echo "auto_complete: true/false (default: false) - Auto-complete without prompting"
+            echo "auto_chain: true/false (default: false) - Auto-chain to next task"
             exit 1
         fi
-        add_task "$2" "$3" "$4" "$5" "$6" "$7"
+        add_task "$2" "$3" "$4" "$5" "$6" "$7" "${8:-false}" "${9:-false}"
         ;;
 
     "add-integration")
@@ -806,6 +847,7 @@ case "${1:-status}" in
             echo "Usage: $0 start <task_id>"
             exit 1
         fi
+
         start_task "$2"
         ;;
 
