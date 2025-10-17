@@ -89,6 +89,9 @@ add_task() {
             started: null,
             completed: null,
             result: null,
+            start_datetime: null,
+            end_datetime: null,
+            runtime_seconds: null,
             auto_complete: $auto_complete,
             auto_chain: $auto_chain,
             metadata: {
@@ -423,9 +426,11 @@ start_task() {
     fi
 
     local temp_file=$(mktemp)
+    local start_datetime=$(date +%s)
 
     # Move task from pending to active and update timestamps
-    jq "(.pending_tasks[] | select(.id == \"$task_id\")) |= (.status = \"active\" | .started = \"$timestamp\") |
+    jq --argjson start_dt "$start_datetime" \
+        "(.pending_tasks[] | select(.id == \"$task_id\")) |= (.status = \"active\" | .started = \"$timestamp\" | .start_datetime = \$start_dt) |
         .active_workflows += [.pending_tasks[] | select(.id == \"$task_id\")] |
         .pending_tasks = [.pending_tasks[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
 
@@ -612,9 +617,19 @@ complete_task() {
     fi
 
     local temp_file=$(mktemp)
+    local end_datetime=$(date +%s)
+
+    # Get start_datetime to calculate runtime
+    local start_datetime=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .start_datetime // null" "$QUEUE_FILE")
+    local runtime_seconds=null
+    if [ "$start_datetime" != "null" ] && [ -n "$start_datetime" ]; then
+        runtime_seconds=$((end_datetime - start_datetime))
+    fi
 
     # Move task from active to completed
-    jq "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"completed\" | .completed = \"$timestamp\" | .result = \"$result\") |
+    jq --argjson end_dt "$end_datetime" \
+       --argjson runtime "$runtime_seconds" \
+        "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"completed\" | .completed = \"$timestamp\" | .result = \"$result\" | .end_datetime = \$end_dt | .runtime_seconds = \$runtime) |
         .completed_tasks += [.active_workflows[] | select(.id == \"$task_id\")] |
         .active_workflows = [.active_workflows[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
 
@@ -652,9 +667,19 @@ fail_task() {
     fi
 
     local temp_file=$(mktemp)
+    local end_datetime=$(date +%s)
+
+    # Get start_datetime to calculate runtime
+    local start_datetime=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .start_datetime // null" "$QUEUE_FILE")
+    local runtime_seconds=null
+    if [ "$start_datetime" != "null" ] && [ -n "$start_datetime" ]; then
+        runtime_seconds=$((end_datetime - start_datetime))
+    fi
 
     # Move task from active to failed
-    jq "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"failed\" | .completed = \"$timestamp\" | .result = \"$error\") |
+    jq --argjson end_dt "$end_datetime" \
+       --argjson runtime "$runtime_seconds" \
+        "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"failed\" | .completed = \"$timestamp\" | .result = \"$error\" | .end_datetime = \$end_dt | .runtime_seconds = \$runtime) |
         .failed_tasks += [.active_workflows[] | select(.id == \"$task_id\")] |
         .active_workflows = [.active_workflows[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
 
