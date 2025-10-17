@@ -1,39 +1,50 @@
-{
-  "agents": [
-    {
-      "name": "Requirements Analyst",
-      "description": "Analyzes project requirements, creates implementation plans, and manages project scope",
-      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
-    },
-    {
-      "name": "Architect",
-      "description": "Designs system architecture, creates technical specifications, and makes high-level design decisions",
-      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"]
-    },
-    {
-      "name": "Implementer",
-      "description": "Implements features based on architectural specifications, writes production-quality code",
-      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
-    },
-    {
-      "name": "Tester",
-      "description": "Designs and implements comprehensive test suites, validates functionality and quality",
-      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
-    },
-    {
-      "name": "Documenter",
-      "description": "Creates and maintains comprehensive project documentation, user guides, and API references",
-      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"]
-    },
-    {
-      "name": "GitHub Integration Coordinator",
-      "description": "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub",
-      "tools": ["Read", "Write", "Bash", "github-mcp"]
-    },
-    {
-      "name": "Atlassian Integration Coordinator",
-      "description": "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms",
-      "tools": ["Read", "Write", "Bash", "atlassian-mcp"]
-    }
-  ]
-}
+{"agents":[
+  {
+    "name": "Architect",
+    "agent-file": "architect",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"],
+    "description": "Designs system architecture, creates technical specifications, and makes high-level design decisions"
+  }
+,
+  {
+    "name": "Atlassian Integrator",
+    "agent-file": "atlassian-integration-coordinator",
+    "tools": [],
+    "description": "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms"
+  }
+,
+  {
+    "name": "Documenter",
+    "agent-file": "documenter",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"],
+    "description": "Creates and maintains comprehensive project documentation, user guides, and API references"
+  }
+,
+  {
+    "name": "Github Integrator",
+    "agent-file": "github-integration-coordinator",
+    "tools": [],
+    "description": "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub"
+  }
+,
+  {
+    "name": "Implementer",
+    "agent-file": "implementer",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
+    "description": "Implements features based on architectural specifications, writes production-quality code"
+  }
+,
+  {
+    "name": "Requirements Analyst",
+    "agent-file": "requirements-analyst",
+    "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
+    "description": "Analyzes project requirements, creates implementation plans, and manages project scope"
+  }
+,
+  {
+    "name": "Tester",
+    "agent-file": "tester",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
+    "description": "Designs and implements comprehensive test suites, validates functionality and quality"
+  }
+]}
