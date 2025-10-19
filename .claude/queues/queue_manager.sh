@@ -1,25 +1,189 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Queue Manager for Multi-Agent Development System
-# Manages task queues, agent status, and workflow chains
-# Enhanced with GitHub/Atlassian integration support
+################################################################################
+# Script Name: queue_manager.sh
+# Description: Queue Manager for Multi-Agent Development System
+#              Manages task queues, agent status, and workflow chains with
+#              GitHub/Atlassian integration support
+# Author: Brian Gentry
+# Created: 2025
+# Version: 1.0.2
+#
+# Usage: ./queue_manager.sh COMMAND [OPTIONS]
+#
+# Commands:
+#   add <title> <agent> <priority> <task_type> <source_file> <description> [auto_complete] [auto_chain]
+#       Add a new task to the queue
+#   add-integration <workflow_status> <source_file> <previous_agent> [parent_task_id]
+#       Add an integration task for external system sync
+#   start <task_id>
+#       Start execution of a pending task
+#   complete <task_id> [result] [--auto-chain]
+#       Mark a task as completed
+#   fail <task_id> [error]
+#       Mark a task as failed
+#   cancel <task_id> [reason]
+#       Cancel a pending or active task
+#   cancel-all [reason]
+#       Cancel all pending and active tasks
+#   update-metadata <task_id> <key> <value>
+#       Update metadata for a task
+#   sync-external <task_id>
+#       Create integration task for specific completed task
+#   sync-all
+#       Create integration tasks for all unsynced completed tasks
+#   workflow <workflow_name> [description]
+#       Start a predefined workflow chain
+#   list_tasks <queue> [format]
+#       List tasks in JSON format (queues: pending, active, completed, failed, all)
+#   status
+#       Show current queue status (default command)
+#   version
+#       Show version and dependency information
+#
+# Examples:
+#   ./queue_manager.sh version
+#   ./queue_manager.sh add "Analyze feature" analyst high analysis doc.md "Review requirements"
+#   ./queue_manager.sh start task_1234567890_12345
+#   ./queue_manager.sh complete task_1234567890_12345 "READY_FOR_DEVELOPMENT" --auto-chain
+#   ./queue_manager.sh status
+#
+# Dependencies:
+#   - jq (JSON processor)
+#   - claude (Claude Code CLI)
+#   - Standard Unix tools (date, grep, awk, sed)
+#
+# Environment Variables:
+#   AUTO_INTEGRATE - Control integration task creation (always|never|prompt)
+#                    Default: prompt
+#
+# Exit Codes:
+#   0 - Success
+#   1 - General error or task not found
+#
+# File Structure:
+#   .claude/queues/task_queue.json - Main queue database
+#   .claude/logs/ - Operation logs
+#   .claude/status/ - Agent status files
+#   .claude/agents/ - Agent configuration files
+################################################################################
 
 set -euo pipefail
 
-QUEUE_DIR=".claude/queues"
-LOGS_DIR=".claude/logs"
-STATUS_DIR=".claude/status"
-QUEUE_FILE="$QUEUE_DIR/task_queue.json"
+#############################################################################
+# GLOBAL VARIABLES
+#############################################################################
+
+readonly VERSION="1.0.2"
+readonly QUEUE_DIR=".claude/queues"
+readonly LOGS_DIR=".claude/logs"
+readonly STATUS_DIR=".claude/status"
+readonly QUEUE_FILE="$QUEUE_DIR/task_queue.json"
 
 # Ensure required directories exist
 mkdir -p "$QUEUE_DIR" "$LOGS_DIR" "$STATUS_DIR"
 
-# Function to get current timestamp
+
+################################################################################
+# Display version information and check dependencies
+# Globals:
+#   VERSION
+#   QUEUE_FILE
+#   LOGS_DIR
+#   STATUS_DIR
+# Arguments:
+#   None
+# Outputs:
+#   Writes version and dependency information to stdout
+# Returns:
+#   0 if all dependencies met, 1 if any are missing or outdated
+################################################################################
+show_version() {
+    echo "Queue Manager v${VERSION}"
+    echo "Multi-Agent Development System"
+    echo ""
+    echo "Dependencies:"
+    
+    local all_deps_ok=0
+    
+    # Check jq
+    if command -v jq &> /dev/null; then
+        local jq_version
+        jq_version=$(jq --version 2>&1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+        echo "  ✓ jq v$jq_version"
+    else
+        echo "  ✗ jq - NOT FOUND (required)"
+        all_deps_ok=1
+    fi
+    
+    # Check claude
+    if command -v claude &> /dev/null; then
+        local claude_version
+        claude_version=$(claude --version 2>&1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+        if [ -n "$claude_version" ]; then
+            echo "  ✓ claude v$claude_version"
+        else
+            echo "  ✓ claude (version unknown)"
+        fi
+    else
+        echo "  ✗ claude - NOT FOUND (required)"
+        all_deps_ok=1
+    fi
+    
+    # Check bash version
+    echo "  ✓ bash v${BASH_VERSION}"
+    
+    # Check optional tools
+    if command -v git &> /dev/null; then
+        local git_version
+        git_version=$(git --version 2>&1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+        echo "  ○ git v$git_version (optional)"
+    fi
+    
+    echo ""
+    echo "Environment:"
+    echo "  Queue File: $QUEUE_FILE"
+    echo "  Logs Dir: $LOGS_DIR"
+    echo "  Status Dir: $STATUS_DIR"
+    
+    if [ -f "$QUEUE_FILE" ]; then
+        local pending_count
+        pending_count=$(jq '.pending_tasks | length' "$QUEUE_FILE" 2>/dev/null || echo "0")
+        local active_count
+        active_count=$(jq '.active_workflows | length' "$QUEUE_FILE" 2>/dev/null || echo "0")
+        local completed_count
+        completed_count=$(jq '.completed_tasks | length' "$QUEUE_FILE" 2>/dev/null || echo "0")
+        echo "  Tasks: $pending_count pending, $active_count active, $completed_count completed"
+    else
+        echo "  Queue: Not initialized"
+    fi
+    
+    return $all_deps_ok
+}
+
+################################################################################
+# Get current UTC timestamp in ISO 8601 format
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes timestamp to stdout (format: YYYY-MM-DDTHH:MM:SSZ)
+################################################################################
 get_timestamp() {
     date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
-# Function to log queue operations
+################################################################################
+# Log queue operation to operations log file
+# Globals:
+#   LOGS_DIR
+# Arguments:
+#   $1 - Operation type (e.g., TASK_ADDED, TASK_STARTED)
+#   $2 - Operation details
+# Outputs:
+#   Appends log entry to queue_operations.log
+################################################################################
 log_operation() {
     local operation="$1"
     local details="$2"
@@ -28,7 +192,18 @@ log_operation() {
     echo "[$timestamp] $operation: $details" >> "$LOGS_DIR/queue_operations.log"
 }
 
-# Function to update agent status
+################################################################################
+# Update agent status in queue database
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Agent name
+#   $2 - Status (active, idle)
+#   $3 - Task ID (optional, use "null" for none)
+# Outputs:
+#   Updates QUEUE_FILE with new agent status
+#   Logs operation to queue_operations.log
+################################################################################
 update_agent_status() {
     local agent="$1"
     local status="$2"
@@ -41,7 +216,6 @@ update_agent_status() {
         return
     fi
 
-    # Create temporary file for jq processing
     local temp_file
     temp_file=$(mktemp)
 
@@ -53,16 +227,33 @@ update_agent_status() {
     log_operation "AGENT_STATUS_UPDATE" "Agent: $agent, Status: $status, Task: $task_id"
 }
 
-# Function to add task to queue
+################################################################################
+# Add a new task to the pending queue
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task title
+#   $2 - Assigned agent name
+#   $3 - Priority (low, normal, high)
+#   $4 - Task type (analysis, technical_analysis, implementation, testing, integration)
+#   $5 - Source file path to process
+#   $6 - Description/instructions for the agent
+#   $7 - Auto-complete flag (true/false, default: false)
+#   $8 - Auto-chain flag (true/false, default: false)
+# Outputs:
+#   Writes task ID to stdout
+#   Updates QUEUE_FILE with new task
+#   Logs operation
+################################################################################
 add_task() {
     local task_title="$1"
     local agent="$2"
     local priority="${3:-normal}"
-    local task_type="${4:-}"  # Task type (analysis, technical_analysis, implementation, testing)
-    local source_file="${5:-}"  # Source document to process
-    local description="${6:-No description}"  # Prompt/instructions for agent
-    local auto_complete="${7:-false}"  # Auto-complete without prompting
-    local auto_chain="${8:-false}"  # Auto-chain to next task
+    local task_type="${4:-}"
+    local source_file="${5:-}"
+    local description="${6:-No description}"
+    local auto_complete="${7:-false}"
+    local auto_chain="${8:-false}"
 
     local task_id
     task_id="task_$(date +%s)_$$"
@@ -116,7 +307,21 @@ add_task() {
     echo "$task_id"
 }
 
-# NEW: Function to add integration task
+################################################################################
+# Add an integration task for external system synchronization
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Workflow status (e.g., READY_FOR_DEVELOPMENT, TESTING_COMPLETE)
+#   $2 - Source file path
+#   $3 - Previous agent name
+#   $4 - Parent task ID (optional)
+# Outputs:
+#   Writes confirmation message to stdout
+#   Creates integration task via add_task function
+# Returns:
+#   0 on success
+################################################################################
 add_integration_task() {
     local workflow_status="$1"
     local source_file="$2"
@@ -164,7 +369,20 @@ add_integration_task() {
     return 0
 }
 
-# NEW: Function to update task metadata (for storing external IDs)
+################################################################################
+# Update metadata fields for a task
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task ID
+#   $2 - Metadata key
+#   $3 - Metadata value
+# Outputs:
+#   Writes confirmation or error message to stdout
+#   Updates QUEUE_FILE with new metadata
+# Returns:
+#   0 on success, 1 if task not found
+################################################################################
 update_metadata() {
     local task_id="$1"
     local key="$2"
@@ -206,7 +424,15 @@ update_metadata() {
     echo "✅ Updated metadata for $task_id: $key = $value"
 }
 
-# NEW: Function to check if task needs integration
+################################################################################
+# Check if a workflow status requires external integration
+# Globals:
+#   None
+# Arguments:
+#   $1 - Status string to check
+# Returns:
+#   0 if integration needed, 1 otherwise
+################################################################################
 needs_integration() {
     local status="$1"
 
@@ -220,7 +446,17 @@ needs_integration() {
     esac
 }
 
-# Function to load task prompt template
+################################################################################
+# Load task prompt template from file
+# Globals:
+#   None
+# Arguments:
+#   $1 - Task type (analysis, technical_analysis, implementation, testing, integration)
+# Outputs:
+#   Writes template content to stdout
+# Returns:
+#   0 on success, 1 if template not found
+################################################################################
 load_task_template() {
     local task_type="$1"
     local template_file=".claude/TASK_PROMPT_DEFAULTS.md"
@@ -246,7 +482,6 @@ load_task_template() {
             template_content=$(awk '/^# TESTING_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
             ;;
         "integration")
-            # NEW: Integration template - use a simple default if not in file
             template_content=$(awk '/^# INTEGRATION_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
             if [ -z "$template_content" ]; then
                 template_content="You are the integration-coordinator agent. Process the task described in the source file and synchronize with external systems as appropriate."
@@ -267,37 +502,55 @@ load_task_template() {
     return 0
 }
 
-# Function to invoke Claude Code with agent and task
+################################################################################
+# Invoke Claude Code agent to execute a task
+# Globals:
+#   None
+# Arguments:
+#   $1 - Agent name
+#   $2 - Task ID
+#   $3 - Source file path
+#   $4 - Log base directory
+#   $5 - Task type
+#   $6 - Task description
+#   $7 - Auto-complete flag (true/false)
+#   $8 - Auto-chain flag (true/false)
+# Outputs:
+#   Writes execution log to file
+#   Writes progress to stdout
+# Returns:
+#   Claude Code exit code
+################################################################################
 invoke_agent() {
     local agent="$1"
     local task_id="$2"
     local source_file="$3"
-    local log_base_dir="$4"  # Base directory for log files
-    local task_type="$5"  # Task type for template lookup
-    local task_description="$6"  # Task instructions
-    local auto_complete="${7:-false}"  # Auto-complete without prompting
-    local auto_chain="${8:-false}"  # Auto-chain to next task
+    local log_base_dir="$4"
+    local task_type="$5"
+    local task_description="$6"
+    local auto_complete="${7:-false}"
+    local auto_chain="${8:-false}"
 
-    # Get agent configuration file
+    # Validate agent configuration exists
     local agent_config=".claude/agents/${agent}.md"
-
     if [ ! -f "$agent_config" ]; then
         echo "Error: Agent config not found: $agent_config"
         return 1
     fi
 
+    # Validate source file exists
     if [ ! -f "$source_file" ]; then
         echo "Error: Source file not found: $source_file"
         return 1
     fi
 
-    # Create log file path based on source file location
+    # Create log file path
     local log_dir="${log_base_dir}/logs"
     mkdir -p "$log_dir"
     local log_file
     log_file="${log_dir}/${agent}_${task_id}_$(date +%Y%m%d_%H%M%S).log"
 
-    # Load task template
+    # Load and prepare task template
     local template
     template=$(load_task_template "$task_type")
     if [ $? -ne 0 ]; then
@@ -305,8 +558,7 @@ invoke_agent() {
         return 1
     fi
 
-    # Build the Claude Code prompt by substituting variables in template
-    # Use a more robust method to handle special characters and newlines
+    # Substitute variables in template
     local prompt="$template"
     prompt="${prompt//\$\{agent\}/$agent}"
     prompt="${prompt//\$\{agent_config\}/$agent_config}"
@@ -319,6 +571,7 @@ invoke_agent() {
     local start_timestamp
     start_timestamp=$(date +%s)
 
+    # Log execution start
     echo "=== Starting Agent Execution ===" | tee "$log_file"
     echo "Start Time: $start_time" | tee -a "$log_file"
     echo "Agent: $agent" | tee -a "$log_file"
@@ -327,7 +580,7 @@ invoke_agent() {
     echo "Log: $log_file" | tee -a "$log_file"
     echo "" | tee -a "$log_file"
 
-    # Invoke Claude Code with bypassPermissions and capture output
+    # Invoke Claude Code with bypass permissions
     claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
 
     local exit_code=${PIPESTATUS[0]}
@@ -337,8 +590,7 @@ invoke_agent() {
     end_timestamp=$(date +%s)
     local duration=$((end_timestamp - start_timestamp))
 
-    # Write end marker directly to log file (not through tee/pipe)
-    # This ensures it gets written even when called from Python subprocess
+    # Write completion markers
     {
         echo ""
         echo "=== Agent Execution Complete ==="
@@ -347,14 +599,13 @@ invoke_agent() {
         echo "Exit Code: $exit_code"
     } >> "$log_file"
 
-    # Also output to stdout for terminal users
     echo ""
     echo "=== Agent Execution Complete ==="
     echo "End Time: $end_time"
     echo "Duration: ${duration}s"
     echo "Exit Code: $exit_code"
 
-    # Extract status from agent output and log it in standardized format
+    # Extract and log exit status
     local status
     status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" | head -1)
 
@@ -368,20 +619,19 @@ invoke_agent() {
     echo "" >> "$log_file"
     echo ""
 
-    # Now extract the standardized status for processing
+    # Extract standardized status for auto-completion
     status=$(tail -10 "$log_file" | grep "^Exit Status:" | cut -d' ' -f3-)
 
     if [ -n "$status" ]; then
-        # Log to file only (not tee) to avoid issues when stdout is redirected to DEVNULL
         echo "Detected Status: $status" >> "$log_file"
         echo "" >> "$log_file"
 
         if [ "$auto_complete" = "true" ]; then
-            # Non-interactive mode (launched from UI or with --auto-complete flag)
+            # Non-interactive mode
             echo "Auto-completing task (non-interactive mode)" >> "$log_file"
             complete_task "$task_id" "$status" "$auto_chain"
         else
-            # Interactive mode (launched from terminal)
+            # Interactive mode - prompt user
             echo "Auto-completing task with status: $status"
             echo -n "Proceed? [Y/n]: "
             read -r proceed
@@ -403,7 +653,19 @@ invoke_agent() {
     return $exit_code
 }
 
-# Function to start specific task
+################################################################################
+# Start execution of a pending task
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task ID
+# Outputs:
+#   Writes task ID to stdout
+#   Updates QUEUE_FILE moving task to active queue
+#   Invokes agent via invoke_agent function
+# Returns:
+#   0 on success, 1 if task not found or validation fails
+################################################################################
 start_task() {
     local task_id="$1"
     local timestamp
@@ -418,7 +680,7 @@ start_task() {
         return 1
     fi
 
-    # Extract task info including auto flags BEFORE moving to active
+    # Extract task information before moving to active
     local task_title
     task_title=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local task_type
@@ -429,18 +691,15 @@ start_task() {
     agent=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
     local source_file
     source_file=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
-
-    # Read auto_complete and auto_chain from task BEFORE moving to active
     local auto_complete
     auto_complete=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_complete // false" "$QUEUE_FILE")
     local auto_chain
     auto_chain=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_chain // false" "$QUEUE_FILE")
 
-    # Debug output
     echo "Task auto_complete: $auto_complete"
     echo "Task auto_chain: $auto_chain"
 
-    # Validate source file exists
+    # Validate source file
     if [ -z "$source_file" ] || [ "$source_file" = "null" ]; then
         echo "Error: No source file specified for task $task_id"
         return 1
@@ -454,7 +713,7 @@ start_task() {
     local temp_file
     temp_file=$(mktemp)
 
-    # Move task from pending to active and update timestamps
+    # Move task from pending to active
     jq "(.pending_tasks[] | select(.id == \"$task_id\")) |= (.status = \"active\" | .started = \"$timestamp\") |
         .active_workflows += [.pending_tasks[] | select(.id == \"$task_id\")] |
         .pending_tasks = [.pending_tasks[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
@@ -466,19 +725,26 @@ start_task() {
 
     echo "$task_id"
 
-    # Invoke the agent via Claude Code
-    # Extract directory name from source file for logging
+    # Invoke the agent
     local log_base_dir
     log_base_dir=$(dirname "$source_file")
     invoke_agent "$agent" "$task_id" "$source_file" "$log_base_dir" "$task_type" "$task_description" "$auto_complete" "$auto_chain"
 }
 
-# Function to analyze enhancement and determine next agent
+################################################################################
+# Determine next agent based on workflow status
+# Globals:
+#   None
+# Arguments:
+#   $1 - Enhancement name (unused but kept for compatibility)
+#   $2 - Workflow status
+# Outputs:
+#   Writes next agent name or "HUMAN_CHOICE_REQUIRED" to stdout
+################################################################################
 determine_next_agent() {
     local enhancement_name="$1"
     local status="$2"
 
-    # Use standard agent workflow
     case "$status" in
         *"READY_FOR_DEVELOPMENT"*)
             echo "architect"
@@ -498,20 +764,30 @@ determine_next_agent() {
     esac
 }
 
-# Function to suggest next task based on status
+################################################################################
+# Suggest and optionally create next task in workflow chain
+# Globals:
+#   QUEUE_FILE
+#   AUTO_INTEGRATE (environment variable)
+# Arguments:
+#   $1 - Completed task ID
+#   $2 - Task result/status
+# Outputs:
+#   Writes suggestions and prompts to stdout
+#   May create integration task if needed
+#   May create next workflow task if user confirms
+################################################################################
 suggest_next_task() {
     local task_id="$1"
     local result="$2"
 
-    # NEW: Check if this status needs integration
+    # Check if integration is needed
     if needs_integration "$result"; then
-        # Get task info for integration
         local source_file
         source_file=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
         local agent
         agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
 
-        # Check AUTO_INTEGRATE environment variable
         local auto_integrate="${AUTO_INTEGRATE:-prompt}"
         local should_integrate="false"
 
@@ -543,13 +819,12 @@ suggest_next_task() {
         fi
     fi
 
-    # Continue with normal workflow suggestion
-    # Extract enhancement name from completed task title
+    # Extract enhancement name for workflow continuation
     local task_title
     task_title=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name=""
 
-    # Try to extract enhancement name from various title patterns
+    # Try to extract enhancement name from title patterns
     if [[ "$task_title" =~ ^.*"for "(.+)$ ]]; then
         enhancement_name="${BASH_REMATCH[1]}"
     elif [[ "$task_title" =~ ^.*"of "(.+)$ ]]; then
@@ -563,7 +838,6 @@ suggest_next_task() {
     elif [[ "$task_title" =~ ^(.+)" enhancement"$ ]]; then
         enhancement_name="${BASH_REMATCH[1]}"
     elif [[ "$task_title" =~ ^(.+)$ ]]; then
-        # For simple titles, try to extract likely enhancement name
         enhancement_name=$(echo "$task_title" | sed -E 's/^(Test |Analyze |Validate |Architecture |Implementation |Testing )//' | sed -E 's/ (enhancement|completion|design|of .+)$//')
     fi
 
@@ -588,7 +862,7 @@ suggest_next_task() {
         return
     fi
 
-    # Generate next task based on status
+    # Generate next task details based on status
     local next_title=""
     local next_description=""
 
@@ -629,7 +903,19 @@ suggest_next_task() {
     fi
 }
 
-# Function to complete task
+################################################################################
+# Mark task as completed and move to completed queue
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task ID
+#   $2 - Result message (default: "completed successfully")
+#   $3 - Auto-chain flag (true/false, default: false)
+# Outputs:
+#   Updates QUEUE_FILE
+#   Logs operation
+#   May trigger suggest_next_task if auto_chain is true
+################################################################################
 complete_task() {
     local task_id="$1"
     local result="${2:-completed successfully}"
@@ -637,10 +923,11 @@ complete_task() {
     local timestamp
     timestamp=$(get_timestamp)
 
-    # Get task info before moving it
+    # Extract enhancement name from task title
     local task_title
     task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name="unknown"
+    
     if [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
         enhancement_name="${BASH_REMATCH[1]}"
     elif [[ "$task_title" =~ ^.*"for "(.+)$ ]]; then
@@ -659,7 +946,7 @@ complete_task() {
 
     mv "$temp_file" "$QUEUE_FILE"
 
-    # Get agent for this task and update status
+    # Update agent status to idle
     local agent
     agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
     if [ -n "$agent" ] && [ "$agent" != "null" ]; then
@@ -668,23 +955,34 @@ complete_task() {
 
     log_operation "TASK_COMPLETED" "ID: $task_id, Agent: $agent, Result: $result"
 
-    # If auto-chain requested, suggest next task
+    # Suggest next task if auto-chain requested
     if [ "$auto_chain" = "true" ]; then
         suggest_next_task "$task_id" "$result"
     fi
 }
 
-# Function to fail task
+################################################################################
+# Mark task as failed and move to failed queue
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task ID
+#   $2 - Error message (default: "task failed")
+# Outputs:
+#   Updates QUEUE_FILE
+#   Logs operation
+################################################################################
 fail_task() {
     local task_id="$1"
     local error="${2:-task failed}"
     local timestamp
     timestamp=$(get_timestamp)
 
-    # Get task info before moving it
+    # Extract enhancement name from task title
     local task_title
     task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name="unknown"
+    
     if [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
         enhancement_name="${BASH_REMATCH[1]}"
     elif [[ "$task_title" =~ ^.*"for "(.+)$ ]]; then
@@ -703,7 +1001,7 @@ fail_task() {
 
     mv "$temp_file" "$QUEUE_FILE"
 
-    # Get agent for this task and update status
+    # Update agent status to idle
     local agent
     agent=$(jq -r ".failed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
     update_agent_status "$agent" "idle" "null"
@@ -711,7 +1009,20 @@ fail_task() {
     log_operation "TASK_FAILED" "ID: $task_id, Agent: $agent, Error: $error"
 }
 
-# Function to cancel/remove task
+################################################################################
+# Cancel a pending or active task
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task ID
+#   $2 - Cancellation reason (default: "task cancelled")
+# Outputs:
+#   Writes confirmation message to stdout
+#   Updates QUEUE_FILE
+#   Logs operation
+# Returns:
+#   0 on success, 1 if task not found
+################################################################################
 cancel_task() {
     local task_id="$1"
     local reason="${2:-task cancelled}"
@@ -723,7 +1034,6 @@ cancel_task() {
     local in_pending
     in_pending=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
     if [ -n "$in_pending" ]; then
-        # Remove from pending tasks
         jq ".pending_tasks = [.pending_tasks[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
         mv "$temp_file" "$QUEUE_FILE"
         log_operation "TASK_CANCELLED" "ID: $task_id, Status: pending, Reason: $reason"
@@ -735,15 +1045,12 @@ cancel_task() {
     local in_active
     in_active=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
     if [ -n "$in_active" ]; then
-        # Get agent for this task and update status
         local agent
         agent=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
 
-        # Remove from active workflows
         jq ".active_workflows = [.active_workflows[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
         mv "$temp_file" "$QUEUE_FILE"
 
-        # Update agent status to idle
         if [ -n "$agent" ] && [ "$agent" != "null" ]; then
             update_agent_status "$agent" "idle" "null"
         fi
@@ -757,11 +1064,20 @@ cancel_task() {
     return 1
 }
 
-# NEW: Function to sync specific task to GitHub/Jira
+################################################################################
+# Create integration task for specific completed task
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Task ID
+# Outputs:
+#   Creates integration task via add_integration_task
+# Returns:
+#   0 on success, 1 if task not found or not completed
+################################################################################
 sync_external() {
     local task_id="$1"
 
-    # Find the task and get its info
     local task
     task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
 
@@ -781,7 +1097,14 @@ sync_external() {
     add_integration_task "$result" "$source_file" "$agent" "$task_id"
 }
 
-# NEW: Function to sync all unsynced completed tasks
+################################################################################
+# Create integration tasks for all unsynced completed tasks
+# Globals:
+#   QUEUE_FILE
+# Outputs:
+#   Writes progress messages to stdout
+#   Creates integration tasks for eligible completed tasks
+################################################################################
 sync_all() {
     echo "🔍 Scanning for tasks requiring integration..."
 
@@ -808,7 +1131,17 @@ sync_all() {
     echo "✅ Created $count integration tasks"
 }
 
-# Function to show queue status
+#############################################################################
+# STATUS AND DISPLAY FUNCTIONS
+#############################################################################
+
+################################################################################
+# Display current queue status
+# Globals:
+#   QUEUE_FILE
+# Outputs:
+#   Writes formatted status report to stdout
+################################################################################
 show_status() {
     echo "=== Multi-Agent Queue Status ==="
     echo
@@ -837,7 +1170,6 @@ show_status() {
     fi
     echo
 
-    # NEW: Show integration tasks
     echo "🔗 Integration Tasks:"
     local integration_count
     integration_count=$(jq '[.pending_tasks[], .active_workflows[]] | map(select(.assigned_agent == "integration-coordinator")) | length' "$QUEUE_FILE")
@@ -852,7 +1184,19 @@ show_status() {
     jq -r '.completed_tasks[-3:] | reverse | .[] | "  • \(.title) → \(.assigned_agent) (\(.completed))"' "$QUEUE_FILE" 2>/dev/null || echo "  No completed tasks"
 }
 
-# Function to start workflow chain
+################################################################################
+# Start a predefined workflow chain
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Workflow name
+#   $2 - Task description (default: "Workflow execution")
+# Outputs:
+#   Writes progress messages to stdout
+#   Creates tasks for workflow via add_task
+# Returns:
+#   0 on success, 1 if workflow not found
+################################################################################
 start_workflow() {
     local workflow_name="$1"
     local task_description="${2:-Workflow execution}"
@@ -871,19 +1215,27 @@ start_workflow() {
     first_step=$(jq -r ".workflow_chains[\"$workflow_name\"].steps[0]" "$QUEUE_FILE")
 
     if [[ $first_step == \[* ]]; then
-        # Parallel execution - multiple agents
+        # Parallel execution
         echo "Parallel execution detected"
         jq -r ".workflow_chains[\"$workflow_name\"].steps[0][]" "$QUEUE_FILE" | while read -r agent; do
             add_task "Workflow: $workflow_name" "$agent" "high" "" "$task_description"
         done
     else
-        # Sequential execution - single agent
+        # Sequential execution
         add_task "Workflow: $workflow_name" "$first_step" "high" "" "$task_description"
     fi
 }
 
-# Main command processing
+#############################################################################
+# MAIN COMMAND PROCESSOR
+#############################################################################
+
 case "${1:-status}" in
+    "version")
+        show_version
+        exit $?
+        ;;
+
     "add")
         if [ $# -lt 7 ]; then
             echo "Usage: $0 add <title> <agent> <priority> <task_type> <source_file> <description> [auto_complete] [auto_chain]"
@@ -896,7 +1248,6 @@ case "${1:-status}" in
         ;;
 
     "add-integration")
-        # NEW: Directly add integration task
         if [ $# -lt 4 ]; then
             echo "Usage: $0 add-integration <workflow_status> <source_file> <previous_agent> [parent_task_id]"
             exit 1
@@ -909,7 +1260,6 @@ case "${1:-status}" in
             echo "Usage: $0 start <task_id>"
             exit 1
         fi
-
         start_task "$2"
         ;;
 
@@ -919,13 +1269,13 @@ case "${1:-status}" in
             exit 1
         fi
 
-        # Check for --auto-chain flag in any position
+        # Check for --auto-chain flag
         auto_chain="false"
         if [[ "$*" == *"--auto-chain"* ]]; then
             auto_chain="true"
         fi
 
-        # Extract result message (everything except --auto-chain)
+        # Extract result message
         result_message="${3:-completed successfully}"
         if [ $# -ge 3 ] && [[ "$3" == "--auto-chain" ]]; then
             result_message="completed successfully"
@@ -980,7 +1330,6 @@ case "${1:-status}" in
         ;;
 
     "update-metadata")
-        # NEW: Update task metadata
         if [ $# -lt 4 ]; then
             echo "Usage: $0 update-metadata <task_id> <key> <value>"
             exit 1
@@ -989,7 +1338,6 @@ case "${1:-status}" in
         ;;
 
     "sync-github"|"sync-jira"|"sync-external")
-        # NEW: Sync specific task to external systems
         if [ $# -lt 2 ]; then
             echo "Usage: $0 sync-external <task_id>"
             exit 1
@@ -998,7 +1346,6 @@ case "${1:-status}" in
         ;;
 
     "sync-all")
-        # NEW: Sync all unsynced tasks
         sync_all
         ;;
 
@@ -1011,7 +1358,6 @@ case "${1:-status}" in
         ;;
 
     "list_tasks")
-        # List tasks in JSON format for programmatic consumption
         if [ $# -lt 2 ]; then
             echo "Usage: $0 list_tasks <queue> [format]"
             echo "Queues: pending, active, completed, failed, all"
@@ -1022,7 +1368,7 @@ case "${1:-status}" in
         queue_type="$2"
         format="${3:-json}"
 
-        # JQ filter to calculate runtime_seconds on-demand
+        # JQ filter to calculate runtime on-demand
         runtime_filter='
             if (.started != null and .completed != null) then
                 . + {runtime_seconds: ((.completed | fromdateiso8601) - (.started | fromdateiso8601))}
