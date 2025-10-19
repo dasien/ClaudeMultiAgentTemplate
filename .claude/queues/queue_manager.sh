@@ -23,7 +23,8 @@ get_timestamp() {
 log_operation() {
     local operation="$1"
     local details="$2"
-    local timestamp=$(get_timestamp)
+    local timestamp
+    timestamp=$(get_timestamp)
     echo "[$timestamp] $operation: $details" >> "$LOGS_DIR/queue_operations.log"
 }
 
@@ -32,7 +33,8 @@ update_agent_status() {
     local agent="$1"
     local status="$2"
     local task_id="${3:-null}"
-    local timestamp=$(get_timestamp)
+    local timestamp
+    timestamp=$(get_timestamp)
 
     # Skip if agent name is empty or null
     if [ -z "$agent" ] || [ "$agent" = "null" ]; then
@@ -40,7 +42,8 @@ update_agent_status() {
     fi
 
     # Create temporary file for jq processing
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
 
     jq ".agent_status[\"$agent\"].status = \"$status\" |
         .agent_status[\"$agent\"].last_activity = \"$timestamp\" |
@@ -61,10 +64,13 @@ add_task() {
     local auto_complete="${7:-false}"  # Auto-complete without prompting
     local auto_chain="${8:-false}"  # Auto-chain to next task
 
-    local task_id="task_$(date +%s)_$$"
-    local timestamp=$(get_timestamp)
+    local task_id
+    task_id="task_$(date +%s)_$$"
+    local timestamp
+    timestamp=$(get_timestamp)
 
-    local task_object=$(jq -n \
+    local task_object
+    task_object=$(jq -n \
         --arg id "$task_id" \
         --arg title "$task_title" \
         --arg agent "$agent" \
@@ -101,7 +107,8 @@ add_task() {
             }
         }')
 
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
     jq ".pending_tasks += [$task_object]" "$QUEUE_FILE" > "$temp_file"
     mv "$temp_file" "$QUEUE_FILE"
 
@@ -130,7 +137,8 @@ add_integration_task() {
             ;;
     esac
 
-    local task_id=$(add_task \
+    local task_id
+    task_id=$(add_task \
         "$title" \
         "integration-coordinator" \
         "$priority" \
@@ -139,7 +147,8 @@ add_integration_task() {
         "$description")
 
     # Update task metadata with workflow context
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
     jq --arg id "$task_id" \
        --arg status "$workflow_status" \
        --arg prev "$previous_agent" \
@@ -161,12 +170,16 @@ update_metadata() {
     local key="$2"
     local value="$3"
 
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
 
     # Check which queue the task is in
-    local in_pending=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
-    local in_active=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
-    local in_completed=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_pending
+    in_pending=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_active
+    in_active=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_completed
+    in_completed=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
 
     if [ -n "$in_pending" ]; then
         jq --arg id "$task_id" \
@@ -281,10 +294,12 @@ invoke_agent() {
     # Create log file path based on source file location
     local log_dir="${log_base_dir}/logs"
     mkdir -p "$log_dir"
-    local log_file="${log_dir}/${agent}_${task_id}_$(date +%Y%m%d_%H%M%S).log"
+    local log_file
+    log_file="${log_dir}/${agent}_${task_id}_$(date +%Y%m%d_%H%M%S).log"
 
     # Load task template
-    local template=$(load_task_template "$task_type")
+    local template
+    template=$(load_task_template "$task_type")
     if [ $? -ne 0 ]; then
         echo "Failed to load task template for type: $task_type"
         return 1
@@ -299,8 +314,10 @@ invoke_agent() {
     prompt="${prompt//\$\{task_description\}/$task_description}"
     prompt="${prompt//\$\{task_id\}/$task_id}"
 
-    local start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    local start_timestamp=$(date +%s)
+    local start_time
+    start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local start_timestamp
+    start_timestamp=$(date +%s)
 
     echo "=== Starting Agent Execution ===" | tee "$log_file"
     echo "Start Time: $start_time" | tee -a "$log_file"
@@ -314,8 +331,10 @@ invoke_agent() {
     claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
 
     local exit_code=${PIPESTATUS[0]}
-    local end_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    local end_timestamp=$(date +%s)
+    local end_time
+    end_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local end_timestamp
+    end_timestamp=$(date +%s)
     local duration=$((end_timestamp - start_timestamp))
 
     # Write end marker directly to log file (not through tee/pipe)
@@ -336,7 +355,8 @@ invoke_agent() {
     echo "Exit Code: $exit_code"
 
     # Extract status from agent output and log it in standardized format
-    local status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" | head -1)
+    local status
+    status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" | head -1)
 
     if [ -n "$status" ]; then
         echo "Exit Status: $status" >> "$log_file"
@@ -349,7 +369,7 @@ invoke_agent() {
     echo ""
 
     # Now extract the standardized status for processing
-    local status=$(tail -10 "$log_file" | grep "^Exit Status:" | cut -d' ' -f3-)
+    status=$(tail -10 "$log_file" | grep "^Exit Status:" | cut -d' ' -f3-)
 
     if [ -n "$status" ]; then
         # Log to file only (not tee) to avoid issues when stdout is redirected to DEVNULL
@@ -386,10 +406,12 @@ invoke_agent() {
 # Function to start specific task
 start_task() {
     local task_id="$1"
-    local timestamp=$(get_timestamp)
+    local timestamp
+    timestamp=$(get_timestamp)
 
     # Check if task exists in pending queue
-    local task_exists=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local task_exists
+    task_exists=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
 
     if [ -z "$task_exists" ]; then
         echo "Task $task_id not found in pending queue"
@@ -397,15 +419,22 @@ start_task() {
     fi
 
     # Extract task info including auto flags BEFORE moving to active
-    local task_title=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
-    local task_type=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .task_type" "$QUEUE_FILE")
-    local task_description=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .description" "$QUEUE_FILE")
-    local agent=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
-    local source_file=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
+    local task_title
+    task_title=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
+    local task_type
+    task_type=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .task_type" "$QUEUE_FILE")
+    local task_description
+    task_description=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .description" "$QUEUE_FILE")
+    local agent
+    agent=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
+    local source_file
+    source_file=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
 
     # Read auto_complete and auto_chain from task BEFORE moving to active
-    local auto_complete=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_complete // false" "$QUEUE_FILE")
-    local auto_chain=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_chain // false" "$QUEUE_FILE")
+    local auto_complete
+    auto_complete=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_complete // false" "$QUEUE_FILE")
+    local auto_chain
+    auto_chain=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .auto_chain // false" "$QUEUE_FILE")
 
     # Debug output
     echo "Task auto_complete: $auto_complete"
@@ -422,7 +451,8 @@ start_task() {
         return 1
     fi
 
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
 
     # Move task from pending to active and update timestamps
     jq "(.pending_tasks[] | select(.id == \"$task_id\")) |= (.status = \"active\" | .started = \"$timestamp\") |
@@ -438,7 +468,8 @@ start_task() {
 
     # Invoke the agent via Claude Code
     # Extract directory name from source file for logging
-    local log_base_dir=$(dirname "$source_file")
+    local log_base_dir
+    log_base_dir=$(dirname "$source_file")
     invoke_agent "$agent" "$task_id" "$source_file" "$log_base_dir" "$task_type" "$task_description" "$auto_complete" "$auto_chain"
 }
 
@@ -475,8 +506,10 @@ suggest_next_task() {
     # NEW: Check if this status needs integration
     if needs_integration "$result"; then
         # Get task info for integration
-        local source_file=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
-        local agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
+        local source_file
+        source_file=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
+        local agent
+        agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
 
         # Check AUTO_INTEGRATE environment variable
         local auto_integrate="${AUTO_INTEGRATE:-prompt}"
@@ -512,7 +545,8 @@ suggest_next_task() {
 
     # Continue with normal workflow suggestion
     # Extract enhancement name from completed task title
-    local task_title=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
+    local task_title
+    task_title=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name=""
 
     # Try to extract enhancement name from various title patterns
@@ -544,7 +578,8 @@ suggest_next_task() {
         return
     fi
 
-    local next_agent=$(determine_next_agent "$enhancement_name" "$result")
+    local next_agent
+    next_agent=$(determine_next_agent "$enhancement_name" "$result")
 
     if [ "$next_agent" = "HUMAN_CHOICE_REQUIRED" ]; then
         echo ""
@@ -586,7 +621,8 @@ suggest_next_task() {
     read -r create_task
 
     if [[ "$create_task" =~ ^[Yy]$ ]]; then
-        local new_task_id=$(add_task "$next_title" "$next_agent" "high" "$enhancement_name" "$next_description")
+        local new_task_id
+        new_task_id=$(add_task "$next_title" "$next_agent" "high" "$enhancement_name" "$next_description")
         echo "✅ Created task: $new_task_id"
     else
         echo "Auto-chain cancelled - create next task manually"
@@ -598,10 +634,12 @@ complete_task() {
     local task_id="$1"
     local result="${2:-completed successfully}"
     local auto_chain="${3:-false}"
-    local timestamp=$(get_timestamp)
+    local timestamp
+    timestamp=$(get_timestamp)
 
     # Get task info before moving it
-    local task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
+    local task_title
+    task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name="unknown"
     if [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
         enhancement_name="${BASH_REMATCH[1]}"
@@ -611,7 +649,8 @@ complete_task() {
         enhancement_name="${BASH_REMATCH[1]}"
     fi
 
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
 
     # Move task from active to completed
     jq "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"completed\" | .completed = \"$timestamp\" | .result = \"$result\") |
@@ -621,7 +660,8 @@ complete_task() {
     mv "$temp_file" "$QUEUE_FILE"
 
     # Get agent for this task and update status
-    local agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
+    local agent
+    agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
     if [ -n "$agent" ] && [ "$agent" != "null" ]; then
         update_agent_status "$agent" "idle" "null"
     fi
@@ -638,10 +678,12 @@ complete_task() {
 fail_task() {
     local task_id="$1"
     local error="${2:-task failed}"
-    local timestamp=$(get_timestamp)
+    local timestamp
+    timestamp=$(get_timestamp)
 
     # Get task info before moving it
-    local task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
+    local task_title
+    task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
     local enhancement_name="unknown"
     if [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
         enhancement_name="${BASH_REMATCH[1]}"
@@ -651,7 +693,8 @@ fail_task() {
         enhancement_name="${BASH_REMATCH[1]}"
     fi
 
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
 
     # Move task from active to failed
     jq "(.active_workflows[] | select(.id == \"$task_id\")) |= (.status = \"failed\" | .completed = \"$timestamp\" | .result = \"$error\") |
@@ -661,7 +704,8 @@ fail_task() {
     mv "$temp_file" "$QUEUE_FILE"
 
     # Get agent for this task and update status
-    local agent=$(jq -r ".failed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
+    local agent
+    agent=$(jq -r ".failed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
     update_agent_status "$agent" "idle" "null"
 
     log_operation "TASK_FAILED" "ID: $task_id, Agent: $agent, Error: $error"
@@ -672,10 +716,12 @@ cancel_task() {
     local task_id="$1"
     local reason="${2:-task cancelled}"
 
-    local temp_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
 
     # Check if task is in pending_tasks
-    local in_pending=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_pending
+    in_pending=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
     if [ -n "$in_pending" ]; then
         # Remove from pending tasks
         jq ".pending_tasks = [.pending_tasks[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
@@ -686,10 +732,12 @@ cancel_task() {
     fi
 
     # Check if task is in active_workflows
-    local in_active=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+    local in_active
+    in_active=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
     if [ -n "$in_active" ]; then
         # Get agent for this task and update status
-        local agent=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
+        local agent
+        agent=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
 
         # Remove from active workflows
         jq ".active_workflows = [.active_workflows[] | select(.id != \"$task_id\")]" "$QUEUE_FILE" > "$temp_file"
@@ -714,16 +762,20 @@ sync_external() {
     local task_id="$1"
 
     # Find the task and get its info
-    local task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+    local task
+    task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
 
     if [ -z "$task" ]; then
         echo "❌ Task not found or not completed: $task_id"
         return 1
     fi
 
-    local source_file=$(echo "$task" | jq -r '.source_file')
-    local result=$(echo "$task" | jq -r '.result')
-    local agent=$(echo "$task" | jq -r '.assigned_agent')
+    local source_file
+    source_file=$(echo "$task" | jq -r '.source_file')
+    local result
+    result=$(echo "$task" | jq -r '.result')
+    local agent
+    agent=$(echo "$task" | jq -r '.assigned_agent')
 
     echo "🔗 Creating integration task for: $task_id"
     add_integration_task "$result" "$source_file" "$agent" "$task_id"
@@ -734,14 +786,19 @@ sync_all() {
     echo "🔍 Scanning for tasks requiring integration..."
 
     local count=0
-    local task_ids=$(jq -r '.completed_tasks[] | select(.result != null and .result != "completed successfully") | select(.metadata.github_issue == null) | .id' "$QUEUE_FILE")
+    local task_ids
+    task_ids=$(jq -r '.completed_tasks[] | select(.result != null and .result != "completed successfully") | select(.metadata.github_issue == null) | .id' "$QUEUE_FILE")
 
     while IFS= read -r task_id; do
         if [ -n "$task_id" ] && needs_integration "$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .result" "$QUEUE_FILE")"; then
-            local task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
-            local result=$(echo "$task" | jq -r '.result')
-            local source_file=$(echo "$task" | jq -r '.source_file')
-            local agent=$(echo "$task" | jq -r '.assigned_agent')
+            local task
+            task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+            local result
+            result=$(echo "$task" | jq -r '.result')
+            local source_file
+            source_file=$(echo "$task" | jq -r '.source_file')
+            local agent
+            agent=$(echo "$task" | jq -r '.assigned_agent')
 
             add_integration_task "$result" "$source_file" "$agent" "$task_id"
             ((count++))
@@ -761,7 +818,8 @@ show_status() {
     echo
 
     echo "⏳ Pending Tasks:"
-    local pending_count=$(jq '.pending_tasks | length' "$QUEUE_FILE")
+    local pending_count
+    pending_count=$(jq '.pending_tasks | length' "$QUEUE_FILE")
     if [ "$pending_count" -gt 0 ]; then
         jq -r '.pending_tasks[] | "  • [\(.priority)] \(.title) → \(.assigned_agent) (ID: \(.id))"' "$QUEUE_FILE"
     else
@@ -770,7 +828,8 @@ show_status() {
     echo
 
     echo "🔄 Active Workflows:"
-    local active_count=$(jq '.active_workflows | length' "$QUEUE_FILE")
+    local active_count
+    active_count=$(jq '.active_workflows | length' "$QUEUE_FILE")
     if [ "$active_count" -gt 0 ]; then
         jq -r '.active_workflows[] | "  • \(.title) → \(.assigned_agent) (Started: \(.started), ID: \(.id))"' "$QUEUE_FILE"
     else
@@ -780,7 +839,8 @@ show_status() {
 
     # NEW: Show integration tasks
     echo "🔗 Integration Tasks:"
-    local integration_count=$(jq '[.pending_tasks[], .active_workflows[]] | map(select(.assigned_agent == "integration-coordinator")) | length' "$QUEUE_FILE")
+    local integration_count
+    integration_count=$(jq '[.pending_tasks[], .active_workflows[]] | map(select(.assigned_agent == "integration-coordinator")) | length' "$QUEUE_FILE")
     if [ "$integration_count" -gt 0 ]; then
         jq -r '[.pending_tasks[], .active_workflows[]] | .[] | select(.assigned_agent == "integration-coordinator") | "  • \(.title) (Status: \(.status), ID: \(.id))"' "$QUEUE_FILE"
     else
@@ -797,7 +857,8 @@ start_workflow() {
     local workflow_name="$1"
     local task_description="${2:-Workflow execution}"
 
-    local workflow_exists=$(jq -r ".workflow_chains | has(\"$workflow_name\")" "$QUEUE_FILE")
+    local workflow_exists
+    workflow_exists=$(jq -r ".workflow_chains | has(\"$workflow_name\")" "$QUEUE_FILE")
     if [ "$workflow_exists" != "true" ]; then
         echo "Error: Workflow '$workflow_name' not found"
         return 1
@@ -806,7 +867,8 @@ start_workflow() {
     echo "Starting workflow: $workflow_name"
 
     # Get first step(s) of workflow
-    local first_step=$(jq -r ".workflow_chains[\"$workflow_name\"].steps[0]" "$QUEUE_FILE")
+    local first_step
+    first_step=$(jq -r ".workflow_chains[\"$workflow_name\"].steps[0]" "$QUEUE_FILE")
 
     if [[ $first_step == \[* ]]; then
         # Parallel execution - multiple agents
