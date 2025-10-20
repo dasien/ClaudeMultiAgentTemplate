@@ -1,0 +1,86 @@
+{
+  "claude_code_tools": [
+    {
+      "name": "Read",
+      "display_name": "Read Files",
+      "description": "Read file contents from filesystem"
+    },
+    {
+      "name": "Write",
+      "display_name": "Write Files",
+      "description": "Create or overwrite files"
+    },
+    {
+      "name": "Glob",
+      "display_name": "Pattern Match Files",
+      "description": "Find files matching patterns (e.g., '**/*.js')"
+    },
+    {
+      "name": "Grep",
+      "display_name": "Search File Contents",
+      "description": "Search for text patterns within files"
+    },
+    {
+      "name": "WebSearch",
+      "display_name": "Web Search",
+      "description": "Search the web for current information"
+    },
+    {
+      "name": "WebFetch",
+      "display_name": "Fetch Web Page",
+      "description": "Retrieve full content from URLs"
+    },
+    {
+      "name": "Bash",
+      "display_name": "Execute Shell Commands",
+      "description": "Execute shell commands and scripts"
+    },
+    {
+      "name": "Edit",
+      "display_name": "Edit Files",
+      "description": "Make targeted edits to existing files"
+    }
+  ],
+  "agent_personas": {
+    "analyst": {
+      "display_name": "Analyst",
+      "description": "Analyzes code, finds patterns, and researches information",
+      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
+    },
+    "architect": {
+      "display_name": "Architect",
+      "description": "Designs system architecture and reviews code structure",
+      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
+    },
+    "code_implementer": {
+      "display_name": "Code Implementer",
+      "description": "Writes and implements new code features",
+      "tools": ["Read", "Write", "Glob", "Grep", "Edit", "Bash"]
+    },
+    "tester": {
+      "display_name": "Tester",
+      "description": "Creates and runs tests, validates functionality",
+      "tools": ["Read", "Write", "Glob", "Grep", "Bash"]
+    },
+    "document_writer": {
+      "display_name": "Document Writer",
+      "description": "Creates and maintains documentation",
+      "tools": ["Read", "Write", "Glob", "WebSearch", "WebFetch"]
+    },
+    "debugger": {
+      "display_name": "Debugger",
+      "description": "Identifies and fixes bugs in existing code",
+      "tools": ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
+    },
+    "devops": {
+      "display_name": "DevOps Engineer",
+      "description": "Manages deployment, CI/CD, and infrastructure",
+      "tools": ["Read", "Write", "Bash", "Glob", "Grep"]
+    },
+    "full_stack": {
+      "display_name": "Full Stack Developer",
+      "description": "Complete development with all available tools",
+      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch", "Bash", "Edit"]
+    }
+  }
+}
