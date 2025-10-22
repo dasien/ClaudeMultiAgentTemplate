@@ -5,6 +5,7 @@ Unit tests for Task Manager CLI
 
 import unittest
 import os
+import subprocess
 import tempfile
 from src.task_manager import Task, TaskManager
 
@@ -134,6 +135,16 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(len(manager2.tasks), 2)
         self.assertEqual(manager2.tasks[0].title, "Task 1")
         self.assertEqual(manager2.tasks[1].title, "Task 2")
+
+    def test_hello_command(self):
+        """Test the hello command output."""
+        result = subprocess.run(
+            ["python", "src/task_manager.py", "hello"],
+            capture_output=True,
+            text=True
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "Hello, World!")
 
 
 if __name__ == "__main__":

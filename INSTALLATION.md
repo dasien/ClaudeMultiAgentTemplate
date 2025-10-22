@@ -48,8 +48,7 @@ Create or update `.claude/settings.local.json`:
 ```json
 {
   "hooks": {
-    "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh",
-    "on_stop": ".claude/hooks/on-stop.sh"
+    "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh"
   }
 }
 ```
@@ -277,7 +276,6 @@ Add to `settings.local.json`:
 {
   "hooks": {
     "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh",
-    "on_stop": ".claude/hooks/on-stop.sh",
     "on_commit": ".claude/hooks/on-commit.sh"
   }
 }

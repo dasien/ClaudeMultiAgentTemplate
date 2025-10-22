@@ -11,7 +11,11 @@ The following variables are automatically substituted in templates when launchin
 - `${source_file}` - The source document to process (enhancement file, analysis doc, etc.)
 - `${task_description}` - Specific task instructions provided when creating the task
 - `${task_id}` - Unique identifier for this task
-- `${task_type}` - Type of task (ANALYSIS, TECHNICAL_ANALYSIS, IMPLEMENTATION, TESTING, DOCUMENTATION)
+- `${task_type}` - Type of task (analysis, technical_analysis, implementation, testing, documentation, integration)
+- `${root_document}` - Required output filename from agent contract (e.g., "analysis_summary.md")
+- `${output_directory}` - Agent's output subdirectory from contract (e.g., "requirements-analyst")
+- `${enhancement_name}` - Enhancement name extracted from source file
+- `${enhancement_dir}` - Full enhancement directory path
 
 ## How This Works
 
@@ -22,15 +26,17 @@ When you use queue_manager.sh to create a task:
   "Analyze feature X" \
   "requirements-analyst" \
   "high" \
-  "Process the requirements in enhancements/feature-x/feature.md" \
-  --source-file="enhancements/feature-x/feature.md" \
-  --task-type="ANALYSIS"
+  "analysis" \
+  "enhancements/feature-x/feature-x.md" \
+  "Process the requirements in enhancements/feature-x/feature-x.md"
 ```
 
 The queue manager will:
-1. Look up the ANALYSIS_TEMPLATE below
-2. Substitute all ${variables} with actual values
-3. Pass the complete prompt to Claude Code when you start the task
+1. Look up the agent contract from AGENT_CONTRACTS.json
+2. Extract root_document, output_directory, and other contract details
+3. Load the appropriate template below (based on task_type)
+4. Substitute all ${variables} with actual values
+5. Pass the complete prompt to Claude Code when you start the task
 
 ---
 
@@ -63,26 +69,40 @@ ${task_description}
 Document your analysis process, decisions, and reasoning as you work through the requirements.
 
 ## REQUIRED OUTPUT DIRECTORY AND DOCUMENT:
-You MUST create a subdirectory named `${agent}` in the same directory as the source file, and write all your output files there.
 
-**Output Directory**: `<source_file_directory>/${agent}/`
+You MUST create a subdirectory named `${output_directory}` in the same directory as the source file, and write all your output files there.
 
-Example: If source file is `enhancements/add-json-export/add-json-export.md`, create directory `enhancements/add-json-export/requirements-analyst/`
+**Output Directory**: `${enhancement_dir}/${output_directory}/`
 
-**Primary Output Document**: Create `analysis_summary.md` in your agent subdirectory. This serves as the primary handoff document to the next phase. This file should:
+**Primary Output Document**: `${root_document}`
+
+Create `${root_document}` in your agent subdirectory. This serves as the primary handoff document to the next phase. This file should:
+- Include a mandatory metadata header (see below)
 - Summarize all key findings and requirements identified
 - Reference any additional documents you created during analysis (also in your subdirectory)
 - Provide clear next steps for the architecture/design phase
 - Include any constraints, dependencies, or risks identified
 
-The `<source_file_directory>/requirements-analyst/analysis_summary.md` file will be used as the source document for the technical analysis phase.
+The `${enhancement_dir}/${output_directory}/${root_document}` file will be used as the source document for the next workflow phase.
 
-IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+## MANDATORY METADATA HEADER:
 
-When complete, output your status as one of:
-- READY_FOR_DEVELOPMENT (requirements are clear and complete)
-- COMPLETED (analysis is finished with recommendations)
-- BLOCKED: <reason> (cannot proceed due to missing information or other issues)
+Every output document MUST include this YAML frontmatter header at the very beginning:
+
+```markdown
+---
+enhancement: ${enhancement_name}
+agent: ${agent}
+task_id: ${task_id}
+timestamp: <current-ISO-8601-timestamp>
+status: <your-completion-status>
+---
+```
+
+Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 8601 format (e.g., "2025-10-21T14:30:00Z").
+Replace `<your-completion-status>` with your actual completion status code.
+
+**IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
 Task ID: ${task_id}
 
@@ -119,28 +139,41 @@ Focus on creating implementable, maintainable solutions that meet the analyzed r
 Document your technical decisions, trade-offs, and reasoning as you design the system.
 
 ## REQUIRED OUTPUT DIRECTORY AND DOCUMENT:
-You MUST create a subdirectory named `${agent}` in the same directory as the source file, and write all your output files there.
 
-**Output Directory**: `<source_file_directory>/${agent}/`
+You MUST create a subdirectory named `${output_directory}` in the same directory as the source file, and write all your output files there.
 
-Example: If source file is `enhancements/add-json-export/requirements-analyst/analysis_summary.md`, create directory `enhancements/add-json-export/architect/`
+**Output Directory**: `${enhancement_dir}/${output_directory}/`
 
-**Primary Output Document**: Create `implementation_plan.md` in your agent subdirectory. This serves as the primary handoff document to the implementation phase. This file should:
+**Primary Output Document**: `${root_document}`
+
+Create `${root_document}` in your agent subdirectory. This serves as the primary handoff document to the implementation phase. This file should:
+- Include a mandatory metadata header (see below)
 - Provide detailed, step-by-step implementation instructions
 - Specify exact files to modify and what changes to make
 - Include code snippets, API specifications, and technical details
 - Reference any additional technical documents you created (also in your subdirectory)
 - Define acceptance criteria and validation steps
 
-The `<source_file_directory>/architect/implementation_plan.md` file will be used as the source document for the implementation phase.
+The `${enhancement_dir}/${output_directory}/${root_document}` file will be used as the source document for the implementation phase.
 
-IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+## MANDATORY METADATA HEADER:
 
-When complete, output your status as one of:
-- READY_FOR_IMPLEMENTATION (design is complete and implementable)
-- READY_FOR_TESTING (technical analysis complete, needs validation)
-- COMPLETED (technical analysis finished with recommendations)
-- BLOCKED: <reason> (cannot proceed due to technical constraints or missing information)
+Every output document MUST include this YAML frontmatter header at the very beginning:
+
+```markdown
+---
+enhancement: ${enhancement_name}
+agent: ${agent}
+task_id: ${task_id}
+timestamp: <current-ISO-8601-timestamp>
+status: <your-completion-status>
+---
+```
+
+Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 8601 format.
+Replace `<your-completion-status>` with your actual completion status code.
+
+**IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
 Task ID: ${task_id}
 
@@ -177,28 +210,41 @@ Focus on creating working, maintainable code that fulfills the technical specifi
 Document your implementation decisions and any issues encountered during development.
 
 ## REQUIRED OUTPUT DIRECTORY AND DOCUMENT:
-You MUST create a subdirectory named `${agent}` in the same directory as the source file, and write all your output files there.
 
-**Output Directory**: `<source_file_directory>/${agent}/`
+You MUST create a subdirectory named `${output_directory}` in the same directory as the source file, and write all your output files there.
 
-Example: If source file is `enhancements/add-json-export/architect/implementation_plan.md`, create directory `enhancements/add-json-export/implementer/`
+**Output Directory**: `${enhancement_dir}/${output_directory}/`
 
-**Primary Output Document**: Create `test_plan.md` in your agent subdirectory. This serves as the primary handoff document to the testing phase. This file should:
+**Primary Output Document**: `${root_document}`
+
+Create `${root_document}` in your agent subdirectory. This serves as the primary handoff document to the testing phase. This file should:
+- Include a mandatory metadata header (see below)
 - Document what was implemented and how it works
 - Provide comprehensive test scenarios and test cases
 - Include specific testing instructions and expected results
 - Reference all code changes and files modified
 - List any known issues, limitations, or areas requiring special attention
 
-The `<source_file_directory>/implementer/test_plan.md` file will be used as the source document for the testing phase.
+The `${enhancement_dir}/${output_directory}/${root_document}` file will be used as the source document for the testing phase.
 
-IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+## MANDATORY METADATA HEADER:
 
-When complete, output your status as one of:
-- READY_FOR_TESTING (implementation complete, needs comprehensive testing)
-- READY_FOR_INTEGRATION (implementation complete, needs integration)
-- IMPLEMENTATION_COMPLETE (implementation finished and verified)
-- BLOCKED: <reason> (cannot proceed due to technical issues or missing dependencies)
+Every output document MUST include this YAML frontmatter header at the very beginning:
+
+```markdown
+---
+enhancement: ${enhancement_name}
+agent: ${agent}
+task_id: ${task_id}
+timestamp: <current-ISO-8601-timestamp>
+status: <your-completion-status>
+---
+```
+
+Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 8601 format.
+Replace `<your-completion-status>` with your actual completion status code.
+
+**IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
 Task ID: ${task_id}
 
@@ -235,13 +281,15 @@ Focus on thorough validation to ensure high-quality, reliable implementations.
 Document your testing approach, results, and any issues discovered during testing.
 
 ## REQUIRED OUTPUT DIRECTORY AND DOCUMENT:
-You MUST create a subdirectory named `${agent}` in the same directory as the source file, and write all your output files there.
 
-**Output Directory**: `<source_file_directory>/${agent}/`
+You MUST create a subdirectory named `${output_directory}` in the same directory as the source file, and write all your output files there.
 
-Example: If source file is `enhancements/add-json-export/implementer/test_plan.md`, create directory `enhancements/add-json-export/tester/`
+**Output Directory**: `${enhancement_dir}/${output_directory}/`
 
-**Primary Output Document**: Create `test_summary.md` in your agent subdirectory. This serves as the final deliverable document for the completed feature. This file should:
+**Primary Output Document**: `${root_document}`
+
+Create `${root_document}` in your agent subdirectory. This serves as the final deliverable document for the completed feature. This file should:
+- Include a mandatory metadata header (see below)
 - Summarize all test results and validation outcomes
 - Document any issues found and their resolution status
 - Provide final acceptance criteria verification
@@ -249,16 +297,99 @@ Example: If source file is `enhancements/add-json-export/implementer/test_plan.m
 - Reference all test artifacts and test code created (also in your subdirectory)
 - Provide final recommendations or next steps
 
-The `<source_file_directory>/tester/test_summary.md` file serves as the final completion record for the entire workflow.
+The `${enhancement_dir}/${output_directory}/${root_document}` file serves as the final completion record for the entire workflow.
 
-IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+## MANDATORY METADATA HEADER:
 
-When complete, output your status as one of:
-- TESTING_COMPLETE (testing complete, implementation validated)
-- READY_FOR_INTEGRATION (testing complete, ready for broader integration)
-- BLOCKED: <reason> (cannot proceed due to test failures or missing test dependencies)
+Every output document MUST include this YAML frontmatter header at the very beginning:
+
+```markdown
+---
+enhancement: ${enhancement_name}
+agent: ${agent}
+task_id: ${task_id}
+timestamp: <current-ISO-8601-timestamp>
+status: <your-completion-status>
+---
+```
+
+Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 8601 format.
+Replace `<your-completion-status>` with your actual completion status code.
+
+**IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
 Task ID: ${task_id}
+
+---
+
+# DOCUMENTATION_TEMPLATE
+
+You are acting as the ${agent} agent performing documentation creation and maintenance.
+
+Read your role definition from: ${agent_config}
+
+Process this source file: ${source_file}
+
+## DOCUMENTATION OBJECTIVES:
+- Create comprehensive user and developer documentation
+- Update existing documentation to reflect changes
+- Write clear, accessible documentation for the target audience
+- Provide usage examples and code samples
+- Ensure documentation accuracy and completeness
+
+## SPECIFIC TASK:
+${task_description}
+
+## DOCUMENTATION METHODOLOGY:
+1. **Content Review**: Understand what needs to be documented
+2. **Audience Analysis**: Identify target audience (users, developers, both)
+3. **Writing**: Create clear, well-organized documentation
+4. **Examples**: Provide practical usage examples and code samples
+5. **Validation**: Verify accuracy of all documentation and examples
+6. **Organization**: Ensure logical structure and easy navigation
+
+Focus on creating documentation that helps users understand and use the features effectively.
+
+Document your documentation approach and any clarifications needed.
+
+## REQUIRED OUTPUT DIRECTORY AND DOCUMENT:
+
+You MUST create a subdirectory named `${output_directory}` in the same directory as the source file, and write all your output files there.
+
+**Output Directory**: `${enhancement_dir}/${output_directory}/`
+
+**Primary Output Document**: `${root_document}`
+
+Create `${root_document}` in your agent subdirectory. This should:
+- Include a mandatory metadata header (see below)
+- List all documentation files created or updated
+- Summarize the documentation changes made
+- Note any areas requiring additional documentation
+- Provide links to all created/updated documentation
+- Include any recommendations for future documentation work
+
+## MANDATORY METADATA HEADER:
+
+Every output document MUST include this YAML frontmatter header at the very beginning:
+
+```markdown
+---
+enhancement: ${enhancement_name}
+agent: ${agent}
+task_id: ${task_id}
+timestamp: <current-ISO-8601-timestamp>
+status: <your-completion-status>
+---
+```
+
+Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 8601 format.
+Replace `<your-completion-status>` with your actual completion status code.
+
+**IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+
+Task ID: ${task_id}
+
+---
 
 # INTEGRATION_TEMPLATE
 
@@ -410,16 +541,18 @@ The queue manager has an `update-metadata` command for this purpose.
 
 ## REQUIRED OUTPUT FORMAT:
 
-Create a summary document in your agent subdirectory documenting what was integrated.
+Create a summary document in your agent subdirectory or logs directory documenting what was integrated.
 
-**Output Directory**: `<source_file_directory>/${agent}/`
+**Output Directory**: `${enhancement_dir}/logs/` or `${enhancement_dir}/${output_directory}/`
 
-**Primary Output Document**: Create `integration_summary.md` in your agent subdirectory with:
+**Primary Output Document**: Create `integration_summary.md` with:
 - What external items were created/updated
 - All external IDs and URLs
 - Cross-references between systems
 - Any errors or partial failures
 - Manual steps required (if any)
+
+**Note**: Integration agents do NOT require metadata headers in their output documents (metadata_required: false in contract), but they DO update task metadata with external IDs.
 
 ## CROSS-PLATFORM LINKING:
 
@@ -466,11 +599,9 @@ Cannot proceed until configuration is provided.
 
 ## SUCCESS OUTPUT:
 
-When complete, output your status as:
+When complete, output your status clearly.
 
-**`INTEGRATION_COMPLETE`**
-
-Include a clear summary:
+Include a summary:
 ```
 INTEGRATION_COMPLETE
 
@@ -552,64 +683,6 @@ Task ID: ${task_id}
 
 ---
 
-IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
----
-
-# DOCUMENTATION_TEMPLATE
-
-You are acting as the ${agent} agent performing documentation creation and maintenance.
-
-Read your role definition from: ${agent_config}
-
-Process this source file: ${source_file}
-
-## DOCUMENTATION OBJECTIVES:
-- Create comprehensive user and developer documentation
-- Update existing documentation to reflect changes
-- Write clear, accessible documentation for the target audience
-- Provide usage examples and code samples
-- Ensure documentation accuracy and completeness
-
-## SPECIFIC TASK:
-${task_description}
-
-## DOCUMENTATION METHODOLOGY:
-1. **Content Review**: Understand what needs to be documented
-2. **Audience Analysis**: Identify target audience (users, developers, both)
-3. **Writing**: Create clear, well-organized documentation
-4. **Examples**: Provide practical usage examples and code samples
-5. **Validation**: Verify accuracy of all documentation and examples
-6. **Organization**: Ensure logical structure and easy navigation
-
-Focus on creating documentation that helps users understand and use the features effectively.
-
-Document your documentation approach and any clarifications needed.
-
-## REQUIRED OUTPUT DIRECTORY AND DOCUMENT:
-You MUST create a subdirectory named `${agent}` in the same directory as the source file, and write all your output files there.
-
-**Output Directory**: `<source_file_directory>/${agent}/`
-
-Example: If source file is `enhancements/add-json-export/tester/test_summary.md`, create directory `enhancements/add-json-export/documenter/`
-
-**Primary Output Document**: Create or update the relevant documentation files. At minimum, create a `documentation_summary.md` file in your agent subdirectory. This should:
-- List all documentation files created or updated
-- Summarize the documentation changes made
-- Note any areas requiring additional documentation
-- Provide links to all created/updated documentation
-- Include any recommendations for future documentation work
-
-IMPORTANT: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
-
-When complete, output your status as one of:
-- DOCUMENTATION_COMPLETE (documentation finished and comprehensive)
-- COMPLETED (documentation work finished with recommendations)
-- BLOCKED: <reason> (cannot proceed due to missing information)
-
-Task ID: ${task_id}
-
----
-
 ## Template Usage Examples
 
 ### Example 1: Launch Requirements Analysis
@@ -630,6 +703,10 @@ Task ID: ${task_id}
 # ${task_description} = "Extract and clarify requirements for JSON export functionality"
 # ${task_id} = "task_1234567890_12345"
 # ${task_type} = "analysis"
+# ${root_document} = "analysis_summary.md" (from contract)
+# ${output_directory} = "requirements-analyst" (from contract)
+# ${enhancement_name} = "add-json-export" (extracted from source_file)
+# ${enhancement_dir} = "enhancements/add-json-export" (constructed)
 ```
 
 ### Example 2: Launch Architecture Design

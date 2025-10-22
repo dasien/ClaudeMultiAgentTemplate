@@ -1,0 +1,262 @@
+{
+  "version": "1.0.0",
+  "description": "Workflow state machine defining valid states, transitions, and agent permissions",
+  "states": {
+    "INITIAL": {
+      "description": "Enhancement specification created, ready to begin workflow",
+      "valid_agents": ["requirements-analyst"],
+      "next_states": ["READY_FOR_DEVELOPMENT", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": false
+    },
+    "READY_FOR_DEVELOPMENT": {
+      "description": "Requirements analyzed, ready for architecture design",
+      "valid_agents": ["architect"],
+      "next_states": ["READY_FOR_IMPLEMENTATION", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": false,
+      "integration_trigger": true
+    },
+    "READY_FOR_IMPLEMENTATION": {
+      "description": "Architecture complete, ready to write code",
+      "valid_agents": ["implementer"],
+      "next_states": ["READY_FOR_TESTING", "READY_FOR_INTEGRATION", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": false,
+      "integration_trigger": true,
+      "supports_parallel": true
+    },
+    "READY_FOR_TESTING": {
+      "description": "Implementation complete, needs testing",
+      "valid_agents": ["tester"],
+      "next_states": ["TESTING_COMPLETE", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": false,
+      "integration_trigger": true
+    },
+    "READY_FOR_INTEGRATION": {
+      "description": "Implementation complete, needs integration testing",
+      "valid_agents": ["tester"],
+      "next_states": ["TESTING_COMPLETE", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": false,
+      "integration_trigger": true
+    },
+    "TESTING_COMPLETE": {
+      "description": "Testing complete, ready for documentation (optional)",
+      "valid_agents": ["documenter"],
+      "next_states": ["DOCUMENTATION_COMPLETE", "COMPLETE", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": false,
+      "integration_trigger": true,
+      "documentation_optional": true
+    },
+    "DOCUMENTATION_COMPLETE": {
+      "description": "Enhancement fully complete, all phases finished",
+      "valid_agents": [],
+      "next_states": [],
+      "is_terminal": true,
+      "requires_manual_transition": false,
+      "integration_trigger": true
+    },
+    "COMPLETE": {
+      "description": "Enhancement complete without documentation phase",
+      "valid_agents": [],
+      "next_states": [],
+      "is_terminal": true,
+      "requires_manual_transition": false
+    },
+    "BLOCKED": {
+      "description": "Workflow blocked, requires manual intervention to resolve",
+      "valid_agents": [
+        "requirements-analyst",
+        "architect",
+        "implementer",
+        "tester",
+        "documenter"
+      ],
+      "next_states": [
+        "READY_FOR_DEVELOPMENT",
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE",
+        "DOCUMENTATION_COMPLETE"
+      ],
+      "is_terminal": false,
+      "requires_manual_transition": true,
+      "notes": "Any agent can restart workflow from appropriate state after blocker is resolved"
+    },
+    "INTEGRATION_COMPLETE": {
+      "description": "External system integration successful (GitHub/Jira/Confluence)",
+      "valid_agents": [],
+      "next_states": [],
+      "is_terminal": true,
+      "requires_manual_transition": false,
+      "notes": "Integration agents complete here, main workflow continues independently"
+    },
+    "INTEGRATION_FAILED": {
+      "description": "External system integration failed, manual intervention needed",
+      "valid_agents": [
+        "github-integration-coordinator",
+        "atlassian-integration-coordinator"
+      ],
+      "next_states": ["INTEGRATION_COMPLETE", "BLOCKED"],
+      "is_terminal": false,
+      "requires_manual_transition": true,
+      "notes": "Can retry integration or mark as blocked"
+    }
+  },
+  "branching_workflows": {
+    "parallel_development": {
+      "name": "Parallel Development Workflow",
+      "description": "Multiple implementers work on independent components simultaneously",
+      "trigger_state": "READY_FOR_IMPLEMENTATION",
+      "parallel_agents": [
+        "cpp-developer",
+        "assembly-developer"
+      ],
+      "convergence_state": "READY_FOR_INTEGRATION",
+      "convergence_requirement": "all",
+      "next_agent": "tester",
+      "notes": "All parallel agents must complete and output READY_FOR_INTEGRATION before tester begins"
+    }
+  },
+  "state_attributes": {
+    "is_terminal": {
+      "description": "State has no valid next states, workflow ends here",
+      "examples": ["DOCUMENTATION_COMPLETE", "COMPLETE", "INTEGRATION_COMPLETE"]
+    },
+    "requires_manual_transition": {
+      "description": "State requires human intervention to proceed, no automatic transitions",
+      "examples": ["BLOCKED", "INTEGRATION_FAILED"]
+    },
+    "integration_trigger": {
+      "description": "State triggers external integration tasks (GitHub/Jira/Confluence)",
+      "examples": ["READY_FOR_DEVELOPMENT", "TESTING_COMPLETE"]
+    },
+    "documentation_optional": {
+      "description": "State allows skipping to COMPLETE instead of requiring documentation",
+      "examples": ["TESTING_COMPLETE"]
+    },
+    "supports_parallel": {
+      "description": "State can spawn multiple parallel agents",
+      "examples": ["READY_FOR_IMPLEMENTATION"]
+    }
+  },
+  "transition_rules": {
+    "validation": {
+      "require_valid_source": true,
+      "require_valid_target": true,
+      "require_valid_agent": true,
+      "validate_outputs_before_transition": true
+    },
+    "auto_transition": {
+      "enabled_by_default": false,
+      "requires_validation": true,
+      "respects_auto_chain_flag": true
+    }
+  },
+  "state_transitions_map": {
+    "requirements-analyst": {
+      "expected_input_state": "INITIAL",
+      "expected_output_states": ["READY_FOR_DEVELOPMENT", "BLOCKED"]
+    },
+    "architect": {
+      "expected_input_state": "READY_FOR_DEVELOPMENT",
+      "expected_output_states": ["READY_FOR_IMPLEMENTATION", "BLOCKED"]
+    },
+    "implementer": {
+      "expected_input_state": "READY_FOR_IMPLEMENTATION",
+      "expected_output_states": [
+        "READY_FOR_TESTING",
+        "READY_FOR_INTEGRATION",
+        "BLOCKED"
+      ]
+    },
+    "tester": {
+      "expected_input_states": [
+        "READY_FOR_TESTING",
+        "READY_FOR_INTEGRATION"
+      ],
+      "expected_output_states": ["TESTING_COMPLETE", "BLOCKED"]
+    },
+    "documenter": {
+      "expected_input_state": "TESTING_COMPLETE",
+      "expected_output_states": ["DOCUMENTATION_COMPLETE", "BLOCKED"]
+    },
+    "github-integration-coordinator": {
+      "expected_input_states": [
+        "READY_FOR_DEVELOPMENT",
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE",
+        "DOCUMENTATION_COMPLETE"
+      ],
+      "expected_output_states": ["INTEGRATION_COMPLETE", "INTEGRATION_FAILED"]
+    },
+    "atlassian-integration-coordinator": {
+      "expected_input_states": [
+        "READY_FOR_DEVELOPMENT",
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE",
+        "DOCUMENTATION_COMPLETE"
+      ],
+      "expected_output_states": ["INTEGRATION_COMPLETE", "INTEGRATION_FAILED"]
+    }
+  },
+  "workflow_patterns": {
+    "standard_feature": {
+      "name": "Standard Feature Development",
+      "states": [
+        "INITIAL",
+        "READY_FOR_DEVELOPMENT",
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE",
+        "DOCUMENTATION_COMPLETE"
+      ]
+    },
+    "bug_fix": {
+      "name": "Bug Fix Workflow",
+      "states": [
+        "INITIAL",
+        "READY_FOR_DEVELOPMENT",
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE"
+      ],
+      "notes": "Documentation typically skipped for bug fixes"
+    },
+    "hotfix": {
+      "name": "Emergency Hotfix",
+      "states": [
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE"
+      ],
+      "notes": "Requirements and architecture skipped for speed"
+    },
+    "refactoring": {
+      "name": "Code Refactoring",
+      "states": [
+        "READY_FOR_DEVELOPMENT",
+        "READY_FOR_IMPLEMENTATION",
+        "READY_FOR_TESTING",
+        "TESTING_COMPLETE",
+        "DOCUMENTATION_COMPLETE"
+      ],
+      "notes": "Requirements analysis skipped, starts with architecture"
+    },
+    "documentation_only": {
+      "name": "Documentation Update",
+      "states": [
+        "INITIAL",
+        "READY_FOR_DEVELOPMENT",
+        "DOCUMENTATION_COMPLETE",
+        "TESTING_COMPLETE"
+      ],
+      "notes": "Architecture and implementation skipped, tester validates examples"
+    }
+  }
+}

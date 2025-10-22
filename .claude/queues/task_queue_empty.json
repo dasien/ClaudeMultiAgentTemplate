@@ -1,0 +1,97 @@
+{
+  "queue_metadata": {
+    "created": "2025-10-21T00:00:00Z",
+    "version": "2.0.0",
+    "description": "Task queue for multi-agent development system with contract-based validation"
+  },
+  "active_workflows": [],
+  "pending_tasks": [],
+  "completed_tasks": [],
+  "failed_tasks": [],
+  "agent_status": {
+    "requirements-analyst": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "architect": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "implementer": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "tester": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "documenter": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "github-integration-coordinator": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "atlassian-integration-coordinator": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    }
+  },
+  "workflow_chains": {
+    "sequential_development": {
+      "name": "Sequential Development Flow",
+      "description": "Standard feature development workflow",
+      "steps": [
+        "requirements-analyst",
+        "architect",
+        "implementer",
+        "tester",
+        "documenter"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    },
+    "bug_fix": {
+      "name": "Bug Fix Flow",
+      "description": "Workflow for fixing bugs",
+      "steps": [
+        "requirements-analyst",
+        "architect",
+        "implementer",
+        "tester"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    },
+    "hotfix_flow": {
+      "name": "Hotfix Flow",
+      "description": "Emergency fix workflow (skip requirements and architecture)",
+      "steps": [
+        "implementer",
+        "tester"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    },
+    "refactoring": {
+      "name": "Refactoring Flow",
+      "description": "Code refactoring workflow (skip requirements)",
+      "steps": [
+        "architect",
+        "implementer",
+        "tester",
+        "documenter"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    }
+  }
+}

@@ -4,10 +4,10 @@
 # Script Name: queue_manager.sh
 # Description: Queue Manager for Multi-Agent Development System
 #              Manages task queues, agent status, and workflow chains with
-#              GitHub/Atlassian integration support
+#              contract-based validation and GitHub/Atlassian integration
 # Author: Brian Gentry
 # Created: 2025
-# Version: 1.0.2
+# Version: 2.0.0
 #
 # Usage: ./queue_manager.sh COMMAND [OPTIONS]
 #
@@ -28,6 +28,14 @@
 #       Cancel all pending and active tasks
 #   update-metadata <task_id> <key> <value>
 #       Update metadata for a task
+#   validate_agent_outputs <agent> <enhancement_dir>
+#       Validate agent outputs against contract (NEW)
+#   determine_next_agent_from_contract <agent> <status>
+#       Determine next agent based on contract (NEW)
+#   build_next_source_path <enhancement_name> <next_agent> <current_agent>
+#       Build source file path for next agent (NEW)
+#   auto_chain_validated <task_id> <status>
+#       Auto-chain to next agent with validation (NEW)
 #   sync-external <task_id>
 #       Create integration task for specific completed task
 #   sync-all
@@ -41,13 +49,6 @@
 #   version
 #       Show version and dependency information
 #
-# Examples:
-#   ./queue_manager.sh version
-#   ./queue_manager.sh add "Analyze feature" analyst high analysis doc.md "Review requirements"
-#   ./queue_manager.sh start task_1234567890_12345
-#   ./queue_manager.sh complete task_1234567890_12345 "READY_FOR_DEVELOPMENT" --auto-chain
-#   ./queue_manager.sh status
-#
 # Dependencies:
 #   - jq (JSON processor)
 #   - claude (Claude Code CLI)
@@ -60,12 +61,6 @@
 # Exit Codes:
 #   0 - Success
 #   1 - General error or task not found
-#
-# File Structure:
-#   .claude/queues/task_queue.json - Main queue database
-#   .claude/logs/ - Operation logs
-#   .claude/status/ - Agent status files
-#   .claude/agents/ - Agent configuration files
 ################################################################################
 
 set -euo pipefail
@@ -74,15 +69,377 @@ set -euo pipefail
 # GLOBAL VARIABLES
 #############################################################################
 
-readonly VERSION="1.0.2"
+readonly VERSION="2.0.0"
 readonly QUEUE_DIR=".claude/queues"
 readonly LOGS_DIR=".claude/logs"
 readonly STATUS_DIR=".claude/status"
 readonly QUEUE_FILE="$QUEUE_DIR/task_queue.json"
+readonly CONTRACTS_FILE=".claude/AGENT_CONTRACTS.json"
 
 # Ensure required directories exist
 mkdir -p "$QUEUE_DIR" "$LOGS_DIR" "$STATUS_DIR"
 
+#############################################################################
+# CONTRACT-BASED FUNCTIONS (NEW)
+#############################################################################
+
+################################################################################
+# Get agent contract information from AGENT_CONTRACTS.json
+# Globals:
+#   CONTRACTS_FILE
+# Arguments:
+#   $1 - Agent name
+# Outputs:
+#   Writes agent contract JSON to stdout
+# Returns:
+#   0 on success, 1 if agent not found or file missing
+################################################################################
+get_agent_contract() {
+    local agent="$1"
+
+    if [ ! -f "$CONTRACTS_FILE" ]; then
+        echo "Error: Agent contracts file not found: $CONTRACTS_FILE" >&2
+        return 1
+    fi
+
+    local contract
+    contract=$(jq -r ".agents[\"$agent\"]" "$CONTRACTS_FILE" 2>/dev/null)
+
+    if [ "$contract" = "null" ] || [ -z "$contract" ]; then
+        echo "Error: Agent not found in contracts: $agent" >&2
+        return 1
+    fi
+
+    echo "$contract"
+    return 0
+}
+
+################################################################################
+# Validate agent outputs exist and meet contract requirements
+# Globals:
+#   None
+# Arguments:
+#   $1 - Agent name
+#   $2 - Enhancement directory path
+# Outputs:
+#   Writes validation messages to stdout
+# Returns:
+#   0 on success, 1 if validation fails
+################################################################################
+validate_agent_outputs() {
+    local agent="$1"
+    local enhancement_dir="$2"
+
+    local contract
+    contract=$(get_agent_contract "$agent")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    local output_dir
+    output_dir=$(echo "$contract" | jq -r '.outputs.output_directory')
+    local root_doc
+    root_doc=$(echo "$contract" | jq -r '.outputs.root_document')
+
+    # Check root document (critical for workflow handoff)
+    local root_path="$enhancement_dir/$output_dir/$root_doc"
+    if [ ! -f "$root_path" ]; then
+        echo "❌ Required root document missing: $root_path"
+        return 1
+    fi
+
+    # Check additional required files
+    local additional_files
+    additional_files=$(echo "$contract" | jq -r '.outputs.additional_required[]' 2>/dev/null)
+    if [ -n "$additional_files" ]; then
+        while IFS= read -r file; do
+            if [ -n "$file" ]; then
+                local file_path="$enhancement_dir/$output_dir/$file"
+                if [ ! -f "$file_path" ]; then
+                    echo "❌ Required file missing: $file_path"
+                    return 1
+                fi
+            fi
+        done <<< "$additional_files"
+    fi
+
+    # Validate metadata header if required
+    if [ "$(echo "$contract" | jq -r '.metadata_required')" = "true" ]; then
+        # Check for YAML frontmatter delimiters
+        if ! grep -q "^---$" "$root_path"; then
+            echo "❌ Missing required metadata header in $root_path"
+            return 1
+        fi
+
+        # Check for required fields
+        local missing_fields=()
+
+        if ! grep -q "^enhancement:" "$root_path"; then
+            missing_fields+=("enhancement")
+        fi
+
+        if ! grep -q "^agent:" "$root_path"; then
+            missing_fields+=("agent")
+        fi
+
+        if ! grep -q "^task_id:" "$root_path"; then
+            missing_fields+=("task_id")
+        fi
+
+        if ! grep -q "^timestamp:" "$root_path"; then
+            missing_fields+=("timestamp")
+        fi
+
+        if ! grep -q "^status:" "$root_path"; then
+            missing_fields+=("status")
+        fi
+
+        if [ ${#missing_fields[@]} -gt 0 ]; then
+            echo "❌ Metadata missing required fields in $root_path: ${missing_fields[*]}"
+            return 1
+        fi
+    fi
+
+    echo "✅ Output validation passed: $root_path"
+    return 0
+}
+
+################################################################################
+# Determine next agent based on status and agent contract
+# Globals:
+#   None
+# Arguments:
+#   $1 - Current agent name
+#   $2 - Completion status
+# Outputs:
+#   Writes next agent name to stdout, or "UNKNOWN" if none found
+# Returns:
+#   0 if next agent found, 1 otherwise
+################################################################################
+determine_next_agent_from_contract() {
+    local current_agent="$1"
+    local status="$2"
+
+    local contract
+    contract=$(get_agent_contract "$current_agent")
+    if [ $? -ne 0 ]; then
+        echo "UNKNOWN"
+        return 1
+    fi
+
+    # Check success statuses
+    local next_agents
+    next_agents=$(echo "$contract" | \
+        jq -r ".statuses.success[] | select(.code == \"$status\") | .next_agents[]" 2>/dev/null)
+
+    if [ -n "$next_agents" ]; then
+        echo "$next_agents" | head -1
+        return 0
+    fi
+
+    echo "UNKNOWN"
+    return 1
+}
+
+################################################################################
+# Build source file path for next agent based on current agent's output
+# Globals:
+#   None
+# Arguments:
+#   $1 - Enhancement name
+#   $2 - Next agent name
+#   $3 - Current agent name
+# Outputs:
+#   Writes source file path to stdout
+# Returns:
+#   0 on success, 1 on error
+################################################################################
+build_next_source_path() {
+    local enhancement_name="$1"
+    local next_agent="$2"
+    local current_agent="$3"
+
+    local current_contract
+    current_contract=$(get_agent_contract "$current_agent")
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    local output_dir
+    output_dir=$(echo "$current_contract" | jq -r '.outputs.output_directory')
+    local root_doc
+    root_doc=$(echo "$current_contract" | jq -r '.outputs.root_document')
+
+    echo "enhancements/$enhancement_name/$output_dir/$root_doc"
+    return 0
+}
+
+################################################################################
+# Get task type for agent based on role
+# Globals:
+#   None
+# Arguments:
+#   $1 - Agent name
+# Outputs:
+#   Writes task type to stdout
+# Returns:
+#   0 on success
+################################################################################
+get_task_type_for_agent() {
+    local agent="$1"
+
+    local contract
+    contract=$(get_agent_contract "$agent")
+    if [ $? -ne 0 ]; then
+        echo "unknown"
+        return 0
+    fi
+
+    local role
+    role=$(echo "$contract" | jq -r '.role')
+
+    case "$role" in
+        "analysis")
+            echo "analysis"
+            ;;
+        "technical_design")
+            echo "technical_analysis"
+            ;;
+        "implementation")
+            echo "implementation"
+            ;;
+        "testing")
+            echo "testing"
+            ;;
+        "documentation")
+            echo "documentation"
+            ;;
+        "integration")
+            echo "integration"
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+
+    return 0
+}
+
+################################################################################
+# Extract enhancement name from any source file path
+# Globals:
+#   None
+# Arguments:
+#   $1 - Source file path
+# Outputs:
+#   Writes enhancement name to stdout
+################################################################################
+extract_enhancement_name() {
+    local source_file="$1"
+    echo "$source_file" | sed -E 's|^enhancements/([^/]+)/.*|\1|'
+}
+
+################################################################################
+# Auto-chain to next agent with full validation
+# Globals:
+#   QUEUE_FILE
+# Arguments:
+#   $1 - Completed task ID
+#   $2 - Completion status
+# Outputs:
+#   Writes progress and result messages to stdout
+#   Creates next task if validation passes
+# Returns:
+#   0 on success, 1 if validation or chaining fails
+################################################################################
+auto_chain_validated() {
+    local task_id="$1"
+    local status="$2"
+
+    # Get task details
+    local task
+    task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+
+    if [ -z "$task" ] || [ "$task" = "null" ]; then
+        echo "❌ Task not found in completed tasks: $task_id"
+        return 1
+    fi
+
+    local agent
+    agent=$(echo "$task" | jq -r '.assigned_agent')
+    local source_file
+    source_file=$(echo "$task" | jq -r '.source_file')
+
+    # Get parent task's automation settings to inherit them
+    local parent_auto_complete
+    parent_auto_complete=$(echo "$task" | jq -r '.auto_complete // false')
+    local parent_auto_chain
+    parent_auto_chain=$(echo "$task" | jq -r '.auto_chain // false')
+
+    # Extract enhancement name from source file
+    local enhancement_name
+    enhancement_name=$(extract_enhancement_name "$source_file")
+    local enhancement_dir="enhancements/$enhancement_name"
+
+    # Validate current agent outputs
+    echo "🔍 Validating outputs from $agent..."
+    if ! validate_agent_outputs "$agent" "$enhancement_dir"; then
+        echo "❌ Cannot chain: Required outputs missing"
+        return 1
+    fi
+
+    # Determine next agent
+    local next_agent
+    next_agent=$(determine_next_agent_from_contract "$agent" "$status")
+
+    if [ "$next_agent" = "UNKNOWN" ]; then
+        echo "ℹ️  No automatic next agent for status: $status"
+        return 0
+    fi
+
+    # Build next source file path
+    local next_source
+    next_source=$(build_next_source_path "$enhancement_name" "$next_agent" "$agent")
+
+    # Verify next source exists
+    if [ ! -f "$next_source" ]; then
+        echo "❌ Cannot chain: Next source file missing: $next_source"
+        return 1
+    fi
+
+    # Build next task description
+    local next_title="Process $enhancement_name with $next_agent"
+    local next_desc="Continue workflow for $enhancement_name following $agent completion"
+    local task_type
+    task_type=$(get_task_type_for_agent "$next_agent")
+
+    # Create next task - inherit automation settings from parent
+    local new_task_id
+    new_task_id=$(add_task \
+        "$next_title" \
+        "$next_agent" \
+        "high" \
+        "$task_type" \
+        "$next_source" \
+        "$next_desc" \
+        "$parent_auto_complete" \
+        "$parent_auto_chain")
+
+    echo "✅ Auto-chained to $next_agent: $new_task_id"
+    echo "   Source: $next_source"
+    echo "   Inherited automation: auto_complete=$parent_auto_complete, auto_chain=$parent_auto_chain"
+    echo ""
+    echo "🚀 Auto-starting next task..."
+
+    # Automatically start the newly created task
+    start_task "$new_task_id"
+
+    return $?
+}
+
+#############################################################################
+# UTILITY FUNCTIONS
+#############################################################################
 
 ################################################################################
 # Display version information and check dependencies
@@ -91,8 +448,7 @@ mkdir -p "$QUEUE_DIR" "$LOGS_DIR" "$STATUS_DIR"
 #   QUEUE_FILE
 #   LOGS_DIR
 #   STATUS_DIR
-# Arguments:
-#   None
+#   CONTRACTS_FILE
 # Outputs:
 #   Writes version and dependency information to stdout
 # Returns:
@@ -103,9 +459,9 @@ show_version() {
     echo "Multi-Agent Development System"
     echo ""
     echo "Dependencies:"
-    
+
     local all_deps_ok=0
-    
+
     # Check jq
     if command -v jq &> /dev/null; then
         local jq_version
@@ -115,7 +471,7 @@ show_version() {
         echo "  ✗ jq - NOT FOUND (required)"
         all_deps_ok=1
     fi
-    
+
     # Check claude
     if command -v claude &> /dev/null; then
         local claude_version
@@ -129,23 +485,24 @@ show_version() {
         echo "  ✗ claude - NOT FOUND (required)"
         all_deps_ok=1
     fi
-    
+
     # Check bash version
     echo "  ✓ bash v${BASH_VERSION}"
-    
+
     # Check optional tools
     if command -v git &> /dev/null; then
         local git_version
         git_version=$(git --version 2>&1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
         echo "  ○ git v$git_version (optional)"
     fi
-    
+
     echo ""
     echo "Environment:"
     echo "  Queue File: $QUEUE_FILE"
+    echo "  Contracts File: $CONTRACTS_FILE"
     echo "  Logs Dir: $LOGS_DIR"
     echo "  Status Dir: $STATUS_DIR"
-    
+
     if [ -f "$QUEUE_FILE" ]; then
         local pending_count
         pending_count=$(jq '.pending_tasks | length' "$QUEUE_FILE" 2>/dev/null || echo "0")
@@ -157,7 +514,15 @@ show_version() {
     else
         echo "  Queue: Not initialized"
     fi
-    
+
+    if [ -f "$CONTRACTS_FILE" ]; then
+        local agent_count
+        agent_count=$(jq '.agents | length' "$CONTRACTS_FILE" 2>/dev/null || echo "0")
+        echo "  Agents: $agent_count defined in contracts"
+    else
+        echo "  Contracts: Not found (⚠️ required for v2.0+)"
+    fi
+
     return $all_deps_ok
 }
 
@@ -227,6 +592,10 @@ update_agent_status() {
     log_operation "AGENT_STATUS_UPDATE" "Agent: $agent, Status: $status, Task: $task_id"
 }
 
+#############################################################################
+# TASK MANAGEMENT FUNCTIONS
+#############################################################################
+
 ################################################################################
 # Add a new task to the pending queue
 # Globals:
@@ -271,8 +640,8 @@ add_task() {
         --arg source_file "$source_file" \
         --arg created "$timestamp" \
         --arg status "pending" \
-        --argjson auto_complete "$auto_complete" \
-        --argjson auto_chain "$auto_chain" \
+        --arg auto_complete "$auto_complete" \
+        --arg auto_chain "$auto_chain" \
         '{
             id: $id,
             title: $title,
@@ -286,8 +655,8 @@ add_task() {
             started: null,
             completed: null,
             result: null,
-            auto_complete: $auto_complete,
-            auto_chain: $auto_chain,
+            auto_complete: ($auto_complete == "true"),
+            auto_chain: ($auto_chain == "true"),
             metadata: {
                 github_issue: null,
                 jira_ticket: null,
@@ -487,6 +856,9 @@ load_task_template() {
                 template_content="You are the integration-coordinator agent. Process the task described in the source file and synchronize with external systems as appropriate."
             fi
             ;;
+        "documentation")
+            template_content=$(awk '/^# DOCUMENTATION_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            ;;
         *)
             echo "Error: Unknown task type: $task_type" >&2
             return 1
@@ -538,6 +910,24 @@ invoke_agent() {
         return 1
     fi
 
+    # Get agent contract information
+    local agent_contract
+    agent_contract=$(get_agent_contract "$agent")
+    if [ $? -ne 0 ]; then
+        echo "Warning: Agent contract not found, using defaults"
+        agent_contract="{}"
+    fi
+
+    local root_document
+    root_document=$(echo "$agent_contract" | jq -r '.outputs.root_document // "output.md"')
+    local output_directory
+    output_directory=$(echo "$agent_contract" | jq -r '.outputs.output_directory // "output"')
+
+    # Extract enhancement name from source file
+    local enhancement_name
+    enhancement_name=$(extract_enhancement_name "$source_file")
+    local enhancement_dir="enhancements/$enhancement_name"
+
     # Validate source file exists
     if [ ! -f "$source_file" ]; then
         echo "Error: Source file not found: $source_file"
@@ -565,6 +955,11 @@ invoke_agent() {
     prompt="${prompt//\$\{source_file\}/$source_file}"
     prompt="${prompt//\$\{task_description\}/$task_description}"
     prompt="${prompt//\$\{task_id\}/$task_id}"
+    prompt="${prompt//\$\{task_type\}/$task_type}"
+    prompt="${prompt//\$\{root_document\}/$root_document}"
+    prompt="${prompt//\$\{output_directory\}/$output_directory}"
+    prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
+    prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
 
     local start_time
     start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -577,6 +972,9 @@ invoke_agent() {
     echo "Agent: $agent" | tee -a "$log_file"
     echo "Task ID: $task_id" | tee -a "$log_file"
     echo "Source File: $source_file" | tee -a "$log_file"
+    echo "Enhancement: $enhancement_name" | tee -a "$log_file"
+    echo "Output Directory: $output_directory" | tee -a "$log_file"
+    echo "Root Document: $root_document" | tee -a "$log_file"
     echo "Log: $log_file" | tee -a "$log_file"
     echo "" | tee -a "$log_file"
 
@@ -725,43 +1123,12 @@ start_task() {
 
     echo "$task_id"
 
-    # Invoke the agent
-    local log_base_dir
-    log_base_dir=$(dirname "$source_file")
+    # Invoke the agent - use enhancement directory for logs
+    local enhancement_name
+    enhancement_name=$(extract_enhancement_name "$source_file")
+    local log_base_dir="enhancements/$enhancement_name"
+
     invoke_agent "$agent" "$task_id" "$source_file" "$log_base_dir" "$task_type" "$task_description" "$auto_complete" "$auto_chain"
-}
-
-################################################################################
-# Determine next agent based on workflow status
-# Globals:
-#   None
-# Arguments:
-#   $1 - Enhancement name (unused but kept for compatibility)
-#   $2 - Workflow status
-# Outputs:
-#   Writes next agent name or "HUMAN_CHOICE_REQUIRED" to stdout
-################################################################################
-determine_next_agent() {
-    local enhancement_name="$1"
-    local status="$2"
-
-    case "$status" in
-        *"READY_FOR_DEVELOPMENT"*)
-            echo "architect"
-            ;;
-        *"READY_FOR_IMPLEMENTATION"*)
-            echo "implementer"
-            ;;
-        *"READY_FOR_TESTING"*)
-            echo "tester"
-            ;;
-        *"TESTING_COMPLETE"*)
-            echo "documenter"
-            ;;
-        *)
-            echo "HUMAN_CHOICE_REQUIRED"
-            ;;
-    esac
 }
 
 ################################################################################
@@ -819,87 +1186,58 @@ suggest_next_task() {
         fi
     fi
 
-    # Extract enhancement name for workflow continuation
+    # Skip workflow suggestion for integration tasks
     local task_title
     task_title=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
-    local enhancement_name=""
 
-    # Try to extract enhancement name from title patterns
-    if [[ "$task_title" =~ ^.*"for "(.+)$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^.*"of "(.+)$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^"Validate "(.+)" completion"$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^"Test "(.+)" enhancement"$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^(.+)" enhancement"$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^(.+)$ ]]; then
-        enhancement_name=$(echo "$task_title" | sed -E 's/^(Test |Analyze |Validate |Architecture |Implementation |Testing )//' | sed -E 's/ (enhancement|completion|design|of .+)$//')
-    fi
-
-    # Skip workflow suggestion for integration tasks
     if [[ "$task_title" == "Integrate:"* ]]; then
         echo "✅ Integration task completed"
         return
     fi
 
-    if [ -z "$enhancement_name" ]; then
-        echo "Note: Could not determine enhancement name from task title for auto-chaining"
-        return
-    fi
+    # Use contract-based chaining for workflow tasks
+    local agent
+    agent=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
 
+    # Determine next agent from contract
     local next_agent
-    next_agent=$(determine_next_agent "$enhancement_name" "$result")
+    next_agent=$(determine_next_agent_from_contract "$agent" "$result")
 
-    if [ "$next_agent" = "HUMAN_CHOICE_REQUIRED" ]; then
+    if [ "$next_agent" = "UNKNOWN" ]; then
         echo ""
-        echo "Cannot automatically determine next agent for status: $result"
-        echo "Please create the next task manually with queue_manager.sh"
+        echo "ℹ️  No automatic next agent for status: $result"
+        echo "Workflow may be complete or require manual decision"
         return
     fi
 
-    # Generate next task details based on status
-    local next_title=""
-    local next_description=""
+    # Get source file and extract enhancement name
+    local source_file
+    source_file=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .source_file" "$QUEUE_FILE")
+    local enhancement_name
+    enhancement_name=$(extract_enhancement_name "$source_file")
 
-    case "$result" in
-        *"READY_FOR_DEVELOPMENT"*)
-            next_title="Architecture design for $enhancement_name"
-            next_description="Design architecture and system structure for $enhancement_name enhancement"
-            ;;
-        *"READY_FOR_IMPLEMENTATION"*)
-            next_title="Implementation of $enhancement_name"
-            next_description="Implement $enhancement_name following architectural design"
-            ;;
-        *"READY_FOR_INTEGRATION"*|*"READY_FOR_TESTING"*)
-            next_title="Validate $enhancement_name completion"
-            next_description="Test and validate $enhancement_name implementation"
-            ;;
-        *)
-            echo "Note: Status '$result' not recognized for auto-chaining"
-            return
-            ;;
-    esac
+    # Build next source path
+    local next_source
+    next_source=$(build_next_source_path "$enhancement_name" "$next_agent" "$agent")
+
+    # Generate next task details
+    local next_title="Process $enhancement_name with $next_agent"
+    local next_description="Continue workflow for $enhancement_name following $agent completion"
 
     echo ""
     echo "AUTO-CHAIN SUGGESTION:"
     echo "  Title: $next_title"
     echo "  Agent: $next_agent"
+    echo "  Source: $next_source"
     echo "  Description: $next_description"
     echo ""
     echo -n "Create this task? [y/N]: "
     read -r create_task
 
     if [[ "$create_task" =~ ^[Yy]$ ]]; then
-        local new_task_id
-        new_task_id=$(add_task "$next_title" "$next_agent" "high" "$enhancement_name" "$next_description")
-        echo "✅ Created task: $new_task_id"
+        auto_chain_validated "$task_id" "$result"
     else
-        echo "Auto-chain cancelled - create next task manually"
+        echo "Auto-chain cancelled - create next task manually if needed"
     fi
 }
 
@@ -923,19 +1261,6 @@ complete_task() {
     local timestamp
     timestamp=$(get_timestamp)
 
-    # Extract enhancement name from task title
-    local task_title
-    task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
-    local enhancement_name="unknown"
-    
-    if [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^.*"for "(.+)$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^.*"of "(.+)$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    fi
-
     local temp_file
     temp_file=$(mktemp)
 
@@ -955,10 +1280,12 @@ complete_task() {
 
     log_operation "TASK_COMPLETED" "ID: $task_id, Agent: $agent, Result: $result"
 
-    # Suggest next task if auto-chain requested
+    # Handle auto-chaining based on flag
     if [ "$auto_chain" = "true" ]; then
-        suggest_next_task "$task_id" "$result"
+        # Auto-chain mode - validate and create next task automatically
+        auto_chain_validated "$task_id" "$result"
     fi
+    # Note: suggest_next_task is no longer used - replaced by auto_chain_validated
 }
 
 ################################################################################
@@ -978,19 +1305,6 @@ fail_task() {
     local timestamp
     timestamp=$(get_timestamp)
 
-    # Extract enhancement name from task title
-    local task_title
-    task_title=$(jq -r ".active_workflows[] | select(.id == \"$task_id\") | .title" "$QUEUE_FILE")
-    local enhancement_name="unknown"
-    
-    if [[ "$task_title" =~ ^"Analyze "(.+)" enhancement"$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^.*"for "(.+)$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    elif [[ "$task_title" =~ ^.*"of "(.+)$ ]]; then
-        enhancement_name="${BASH_REMATCH[1]}"
-    fi
-
     local temp_file
     temp_file=$(mktemp)
 
@@ -1004,7 +1318,9 @@ fail_task() {
     # Update agent status to idle
     local agent
     agent=$(jq -r ".failed_tasks[] | select(.id == \"$task_id\") | .assigned_agent" "$QUEUE_FILE")
-    update_agent_status "$agent" "idle" "null"
+    if [ -n "$agent" ] && [ "$agent" != "null" ]; then
+        update_agent_status "$agent" "idle" "null"
+    fi
 
     log_operation "TASK_FAILED" "ID: $task_id, Agent: $agent, Error: $error"
 }
@@ -1172,9 +1488,9 @@ show_status() {
 
     echo "🔗 Integration Tasks:"
     local integration_count
-    integration_count=$(jq '[.pending_tasks[], .active_workflows[]] | map(select(.assigned_agent == "integration-coordinator")) | length' "$QUEUE_FILE")
+    integration_count=$(jq '[.pending_tasks[], .active_workflows[]] | map(select(.assigned_agent | contains("integration"))) | length' "$QUEUE_FILE")
     if [ "$integration_count" -gt 0 ]; then
-        jq -r '[.pending_tasks[], .active_workflows[]] | .[] | select(.assigned_agent == "integration-coordinator") | "  • \(.title) (Status: \(.status), ID: \(.id))"' "$QUEUE_FILE"
+        jq -r '[.pending_tasks[], .active_workflows[]] | .[] | select(.assigned_agent | contains("integration")) | "  • \(.title) (Status: \(.status), ID: \(.id))"' "$QUEUE_FILE"
     else
         echo "  No integration tasks"
     fi
@@ -1218,11 +1534,11 @@ start_workflow() {
         # Parallel execution
         echo "Parallel execution detected"
         jq -r ".workflow_chains[\"$workflow_name\"].steps[0][]" "$QUEUE_FILE" | while read -r agent; do
-            add_task "Workflow: $workflow_name" "$agent" "high" "" "$task_description"
+            add_task "Workflow: $workflow_name" "$agent" "high" "" "" "$task_description"
         done
     else
         # Sequential execution
-        add_task "Workflow: $workflow_name" "$first_step" "high" "" "$task_description"
+        add_task "Workflow: $workflow_name" "$first_step" "high" "" "" "$task_description"
     fi
 }
 
@@ -1239,7 +1555,7 @@ case "${1:-status}" in
     "add")
         if [ $# -lt 7 ]; then
             echo "Usage: $0 add <title> <agent> <priority> <task_type> <source_file> <description> [auto_complete] [auto_chain]"
-            echo "Task types: analysis, technical_analysis, implementation, testing, integration"
+            echo "Task types: analysis, technical_analysis, implementation, testing, integration, documentation"
             echo "auto_complete: true/false (default: false) - Auto-complete without prompting"
             echo "auto_chain: true/false (default: false) - Auto-chain to next task"
             exit 1
@@ -1335,6 +1651,38 @@ case "${1:-status}" in
             exit 1
         fi
         update_metadata "$2" "$3" "$4"
+        ;;
+
+    "validate_agent_outputs")
+        if [ $# -lt 3 ]; then
+            echo "Usage: $0 validate_agent_outputs <agent> <enhancement_dir>"
+            exit 1
+        fi
+        validate_agent_outputs "$2" "$3"
+        ;;
+
+    "determine_next_agent_from_contract")
+        if [ $# -lt 3 ]; then
+            echo "Usage: $0 determine_next_agent_from_contract <agent> <status>"
+            exit 1
+        fi
+        determine_next_agent_from_contract "$2" "$3"
+        ;;
+
+    "build_next_source_path")
+        if [ $# -lt 4 ]; then
+            echo "Usage: $0 build_next_source_path <enhancement_name> <next_agent> <current_agent>"
+            exit 1
+        fi
+        build_next_source_path "$2" "$3" "$4"
+        ;;
+
+    "auto_chain_validated")
+        if [ $# -lt 3 ]; then
+            echo "Usage: $0 auto_chain_validated <task_id> <status>"
+            exit 1
+        fi
+        auto_chain_validated "$2" "$3"
         ;;
 
     "sync-github"|"sync-jira"|"sync-external")

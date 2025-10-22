@@ -1,0 +1,309 @@
+{
+  "version": "1.0.0",
+  "description": "Agent contracts defining inputs, outputs, and workflow transitions for the multi-agent development system",
+  "agents": {
+    "requirements-analyst": {
+      "role": "analysis",
+      "description": "Analyzes project requirements, creates implementation plans, and manages project scope",
+      "inputs": {
+        "required": [
+          {
+            "name": "enhancement_spec",
+            "pattern": "enhancements/{enhancement_name}/{enhancement_name}.md",
+            "description": "Initial enhancement specification"
+          }
+        ]
+      },
+      "outputs": {
+        "root_document": "analysis_summary.md",
+        "output_directory": "requirements-analyst",
+        "additional_required": []
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "READY_FOR_DEVELOPMENT",
+            "description": "Requirements complete, ready for architecture",
+            "next_agents": ["architect"]
+          }
+        ],
+        "failure": [
+          {
+            "code": "BLOCKED",
+            "pattern": "BLOCKED: {reason}",
+            "description": "Cannot proceed due to missing information"
+          }
+        ]
+      },
+      "metadata_required": true
+    },
+    "architect": {
+      "role": "technical_design",
+      "description": "Designs system architecture, creates technical specifications, and makes high-level design decisions",
+      "inputs": {
+        "required": [
+          {
+            "name": "analysis_summary",
+            "pattern": "enhancements/{enhancement_name}/requirements-analyst/analysis_summary.md",
+            "description": "Requirements analysis output"
+          }
+        ]
+      },
+      "outputs": {
+        "root_document": "implementation_plan.md",
+        "output_directory": "architect",
+        "additional_required": []
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "READY_FOR_IMPLEMENTATION",
+            "description": "Architecture complete, ready for coding",
+            "next_agents": ["implementer"]
+          }
+        ],
+        "failure": [
+          {
+            "code": "BLOCKED",
+            "pattern": "BLOCKED: {reason}",
+            "description": "Cannot proceed due to technical constraints"
+          }
+        ]
+      },
+      "metadata_required": true
+    },
+    "implementer": {
+      "role": "implementation",
+      "description": "Implements features based on architectural specifications, writes production-quality code",
+      "inputs": {
+        "required": [
+          {
+            "name": "implementation_plan",
+            "pattern": "enhancements/{enhancement_name}/architect/implementation_plan.md",
+            "description": "Architecture and implementation plan"
+          }
+        ]
+      },
+      "outputs": {
+        "root_document": "test_plan.md",
+        "output_directory": "implementer",
+        "additional_required": []
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "READY_FOR_TESTING",
+            "description": "Implementation complete, needs testing",
+            "next_agents": ["tester"]
+          },
+          {
+            "code": "READY_FOR_INTEGRATION",
+            "description": "Implementation complete, needs integration testing",
+            "next_agents": ["tester"]
+          }
+        ],
+        "failure": [
+          {
+            "code": "BLOCKED",
+            "pattern": "BLOCKED: {reason}",
+            "description": "Cannot proceed due to technical issues"
+          }
+        ]
+      },
+      "metadata_required": true
+    },
+    "tester": {
+      "role": "testing",
+      "description": "Designs and implements comprehensive test suites, validates functionality and quality",
+      "inputs": {
+        "required": [
+          {
+            "name": "test_plan",
+            "pattern": "enhancements/{enhancement_name}/implementer/test_plan.md",
+            "description": "Implementation summary and test guidance"
+          }
+        ]
+      },
+      "outputs": {
+        "root_document": "test_summary.md",
+        "output_directory": "tester",
+        "additional_required": []
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "TESTING_COMPLETE",
+            "description": "All tests passed, ready for documentation",
+            "next_agents": ["documenter"]
+          }
+        ],
+        "failure": [
+          {
+            "code": "BLOCKED",
+            "pattern": "BLOCKED: {reason}",
+            "description": "Tests failed or cannot proceed"
+          }
+        ]
+      },
+      "metadata_required": true
+    },
+    "documenter": {
+      "role": "documentation",
+      "description": "Creates and maintains comprehensive project documentation, user guides, and API references",
+      "inputs": {
+        "required": [
+          {
+            "name": "test_summary",
+            "pattern": "enhancements/{enhancement_name}/tester/test_summary.md",
+            "description": "Test results and validation"
+          }
+        ]
+      },
+      "outputs": {
+        "root_document": "documentation_summary.md",
+        "output_directory": "documenter",
+        "additional_required": []
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "DOCUMENTATION_COMPLETE",
+            "description": "Documentation finished, enhancement complete",
+            "next_agents": []
+          }
+        ],
+        "failure": [
+          {
+            "code": "BLOCKED",
+            "pattern": "BLOCKED: {reason}",
+            "description": "Cannot complete documentation"
+          }
+        ]
+      },
+      "metadata_required": true
+    },
+    "github-integration-coordinator": {
+      "role": "integration",
+      "description": "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub",
+      "inputs": {
+        "required": [
+          {
+            "name": "workflow_phase_output",
+            "pattern": "enhancements/{enhancement_name}/{previous_agent}/{root_document}.md",
+            "description": "Output from previous workflow phase"
+          }
+        ],
+        "metadata_required": [
+          "workflow_status",
+          "previous_agent",
+          "parent_task_id"
+        ]
+      },
+      "outputs": {
+        "root_document": "integration_summary.md",
+        "output_directory": "logs",
+        "additional_required": [],
+        "notes": "Integration agents write both their summary and log to the enhancement's logs/ directory"
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "INTEGRATION_COMPLETE",
+            "description": "Successfully synced with GitHub",
+            "next_agents": []
+          }
+        ],
+        "failure": [
+          {
+            "code": "INTEGRATION_FAILED",
+            "pattern": "INTEGRATION_FAILED",
+            "description": "GitHub integration failed, manual intervention needed"
+          }
+        ]
+      },
+      "metadata_required": false,
+      "metadata_updates": [
+        "github_issue",
+        "github_issue_url",
+        "github_pr",
+        "github_pr_url",
+        "github_synced_at"
+      ]
+    },
+    "atlassian-integration-coordinator": {
+      "role": "integration",
+      "description": "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms",
+      "inputs": {
+        "required": [
+          {
+            "name": "workflow_phase_output",
+            "pattern": "enhancements/{enhancement_name}/{previous_agent}/{root_document}.md",
+            "description": "Output from previous workflow phase"
+          }
+        ],
+        "metadata_required": [
+          "workflow_status",
+          "previous_agent",
+          "parent_task_id"
+        ]
+      },
+      "outputs": {
+        "root_document": "integration_summary.md",
+        "output_directory": "logs",
+        "additional_required": []
+      },
+      "statuses": {
+        "success": [
+          {
+            "code": "INTEGRATION_COMPLETE",
+            "description": "Successfully synced with Jira/Confluence",
+            "next_agents": []
+          }
+        ],
+        "failure": [
+          {
+            "code": "INTEGRATION_FAILED",
+            "pattern": "INTEGRATION_FAILED",
+            "description": "Atlassian integration failed, manual intervention needed"
+          }
+        ]
+      },
+      "metadata_required": false,
+      "metadata_updates": [
+        "jira_ticket",
+        "jira_ticket_url",
+        "confluence_page",
+        "confluence_url",
+        "atlassian_synced_at"
+      ]
+    }
+  },
+  "metadata_fields": {
+    "enhancement": {
+      "type": "string",
+      "description": "Enhancement name",
+      "required": true
+    },
+    "agent": {
+      "type": "string",
+      "description": "Agent that created the document",
+      "required": true
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Task queue ID that produced this document",
+      "required": true
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "ISO-8601",
+      "description": "When the document was created",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "description": "Completion status output by the agent",
+      "required": true
+    }
+  }
+}

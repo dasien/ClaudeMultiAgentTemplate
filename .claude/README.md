@@ -1,273 +1,654 @@
-# Claude Multi-Agent Development System
+# Claude Multi-Agent Development Template
 
-This directory contains a comprehensive multi-agent system for managing software development projects using Claude Code. The system implements specialized agents with automated workflow transitions through hooks.
+A contract-based multi-agent development workflow system using Claude Code. This template provides specialized AI agents with formal contracts, automated validation, and intelligent workflow chaining.
 
-## Architecture Overview
+**Version**: 2.0.0 - Contract-based validation and automated workflow chains
 
-The multi-agent system follows the single-responsibility principle with five specialized agents:
+## 🎯 What Is This?
 
-1. **Requirements Analyst** - Requirements analysis and implementation planning
-2. **Architect** - System architecture and technical design
-3. **Implementer** - Production code implementation
-4. **Tester** - Comprehensive testing and validation
-5. **Documenter** - Documentation creation and maintenance
+This template provides a multi-agent system that breaks down software development into specialized roles, each handled by a dedicated Claude agent with formal contracts defining inputs, outputs, and workflow transitions:
 
-## Agent Specifications
+- **Requirements Analyst**: Analyzes user needs and creates implementation plans
+- **Architect**: Designs system architecture and technical specifications
+- **Implementer**: Writes production-quality code
+- **Tester**: Creates comprehensive test suites
+- **Documenter**: Maintains project documentation
 
-### Requirements Analyst (`requirements-analyst.md`)
-- **Purpose**: Analyzes requirements, creates implementation plans, manages project scope
-- **Tools**: Read, Write, Glob, Grep, WebSearch, WebFetch
-- **Outputs**: `READY_FOR_DEVELOPMENT` status
-- **Use Case**: Start of new features or major project phases
+**Plus Integration Agents**:
+- **GitHub Integration Coordinator**: Syncs workflow with GitHub issues and PRs
+- **Atlassian Integration Coordinator**: Syncs workflow with Jira and Confluence
 
-### Architect (`architect.md`)
-- **Purpose**: Designs system architecture, makes technical decisions
-- **Tools**: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, WebSearch, WebFetch
-- **Outputs**: `READY_FOR_IMPLEMENTATION` status
-- **Use Case**: Technical design and architecture decisions
+## ✨ Features
 
-### Implementer (`implementer.md`)
-- **Purpose**: Implements features based on architectural specifications
-- **Tools**: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task
-- **Outputs**: `READY_FOR_TESTING` or `IMPLEMENTATION_COMPLETE` status
-- **Use Case**: Writing production code
+### Core System
+- 🤖 **7 Specialized Agents** - Clear responsibilities defined by formal contracts
+- 📜 **Agent Contracts** - Formal specifications for inputs, outputs, and statuses
+- ✅ **Output Validation** - Automatic validation before workflow progression
+- 🔄 **Automated Workflows** - Contract-based intelligent task chaining
+- 📋 **Task Queue System** - Organize and track work across agents
+- 📊 **Workflow Patterns** - Predefined patterns for common scenarios
+- 🔍 **State Machine** - Formal state definitions and valid transitions
 
-### Tester (`tester.md`)
-- **Purpose**: Designs and implements comprehensive test suites
-- **Tools**: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task
-- **Outputs**: `TESTING_COMPLETE` status
-- **Use Case**: Quality assurance and validation
+### Quality & Tracking
+- 📝 **Metadata Headers** - All outputs are self-documenting and traceable
+- 🧪 **Comprehensive Logging** - Agent execution logged for analysis
+- 🔗 **Cross-Platform Sync** - GitHub and Jira/Confluence integration
+- 🎯 **Contract Validation** - Outputs validated against formal specifications
 
-### Documenter (`documenter.md`)
-- **Purpose**: Creates and maintains project documentation
-- **Tools**: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
-- **Outputs**: `DOCUMENTATION_COMPLETE` status
-- **Use Case**: User guides, API docs, and technical documentation
+### Example & Documentation
+- 🐍 **Example Application** - Sample Python CLI app with full enhancement workflow
+- 📚 **Complete Documentation** - Guides for every aspect of the system
 
-## Workflow Patterns
+## 🆕 What's New in v2.0
 
-### Standard Development Flow
-```
-Requirements Analyst → Architect → Implementer → Tester → Documenter
-```
+### Successfully Tested Features ✅
 
-### Bug Fix Flow
-```
-Requirements Analyst → Architect → Implementer → Tester
-```
+The v2.0 system has been validated with the **demo-test** enhancement, confirming:
 
-### Hotfix Flow
-```
-Implementer → Tester
-```
+- ✅ **Contract-Based Validation**: All outputs validated against AGENT_CONTRACTS.json
+- ✅ **Metadata Headers**: All documents include required 5-field YAML frontmatter
+- ✅ **Smart Auto-Chaining**: Correct next agent determined from contracts
+- ✅ **Auto-Start**: Chained tasks automatically start (when auto_chain=true)
+- ✅ **Settings Inheritance**: auto_complete and auto_chain propagate through workflow
+- ✅ **Output Validation**: Files checked before workflow progression
+- ✅ **Path Construction**: Next agent's source path built correctly from contracts
+- ✅ **Complete Workflow**: Requirements → Architecture → Implementation → Testing → Documentation
 
-## Hook System
+### Key Improvements
 
-The project implements automated workflow transitions through two main hooks:
+- **Agent Contracts**: Formal JSON specifications replace implicit behavior
+- **Output Validation**: Automated validation against contracts before chaining
+- **Metadata Headers**: All documents include YAML frontmatter (enhancement, agent, task_id, timestamp, status)
+- **Smart Auto-Chaining**: Contract-based next agent determination
+- **Workflow State Machine**: Formal state definitions with valid transitions
+- **Simplified Documentation**: Single source of truth (contracts) with human guides
+- **Enhanced Error Messages**: Clear feedback when validation fails
+- **Full Automation**: Set `auto_complete=true` and `auto_chain=true` for hands-off workflows
 
-### SubagentStop Hook (`hooks/on-subagent-stop.sh`)
-- Triggers when any subagent completes its task
-- Analyzes agent output for status markers
-- Suggests next steps based on completion status
-- Manages workflow transitions between agents
+## 🚀 Quick Start
 
-### General Stop Hook (`hooks/on-stop.sh`)
-- Triggers on any command or agent completion
-- Provides project status assessment
-- Suggests contextual next actions
-- Lists available agents and their purposes
+### 1. Install the Template
 
-## Queue System
+```bash
+# Copy .claude directory to your project
+cp -r ClaudeMultiAgentTemplate/.claude /path/to/your/project/
 
-The system includes a sophisticated task queue for managing workflows:
-
-### Queue Manager (`queues/queue_manager.sh`)
-- Add, start, complete, and manage tasks
-- Track agent status and availability
-- Support for workflow templates
-- Auto-chaining for sequential workflows
-
-### Workflow Templates (`queues/workflow_templates.json`)
-- Predefined workflows for common scenarios
-- New feature development
-- Bug fixes and hotfixes
-- Performance optimization
-- Documentation updates
-- Code refactoring
-
-See [QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md) for detailed documentation.
-
-## Usage Instructions
-
-### Starting a New Feature
-1. Launch Requirements Analyst agent:
-   ```
-   Use Task tool with subagent_type: "requirements-analyst"
-   ```
-2. Follow hook suggestions for next steps
-3. Launch appropriate agents based on requirements
-
-### Development Phase
-- **For architecture**: Use `architect` agent
-- **For implementation**: Use `implementer` agent
-- **For testing**: Use `tester` agent
-- **For documentation**: Use `documenter` agent
-
-### Status Tracking
-The hook system provides automatic status tracking with these states:
-- `READY_FOR_DEVELOPMENT` - Requirements complete, ready for architecture
-- `READY_FOR_IMPLEMENTATION` - Architecture complete, ready to code
-- `READY_FOR_TESTING` - Implementation complete, ready to test
-- `TESTING_COMPLETE` - All testing passed
-- `DOCUMENTATION_COMPLETE` - Documentation finished
-
-## Agent Output Organization
-
-Each agent writes its output files to its own subdirectory within the enhancement directory:
-
-```
-enhancements/
-└── add-json-export/
-    ├── add-json-export.md          # Initial enhancement spec
-    ├── requirements-analyst/        # Requirements Analyst output
-    │   ├── analysis_summary.md
-    │   └── [additional analysis files]
-    ├── architect/                   # Architect output
-    │   ├── implementation_plan.md
-    │   └── [additional design docs]
-    ├── implementer/                 # Implementer output
-    │   ├── test_plan.md
-    │   └── [implementation notes]
-    ├── tester/                      # Tester output
-    │   ├── test_summary.md
-    │   └── [test results]
-    └── logs/                        # Agent execution logs
-        └── [agent]_[task_id]_[timestamp].log
+# Make scripts executable
+chmod +x /path/to/your/project/.claude/hooks/*.sh
+chmod +x /path/to/your/project/.claude/queues/*.sh
 ```
 
-**Benefits:**
-- Clear separation of agent outputs
-- Easy to identify which agent created which files
-- Cleaner enhancement directories
-- Agent work is isolated and organized
+### 2. Configure Claude Code
 
-## Agent Communication
+Create `.claude/settings.local.json`:
 
-Agents communicate through:
-1. **Status Markers**: Standardized completion messages
-2. **Hook System**: Automated workflow transitions
-3. **Shared Documentation**: Common understanding of project structure
-4. **File-based Handoffs**: Each agent reads from the previous agent's subdirectory
-
-## Best Practices
-
-### Agent Selection
-- Use the **most specialized agent** for each task
-- Follow **hook suggestions** for optimal workflow
-- Consider task dependencies when sequencing work
-
-### Task Handoffs
-- Ensure **clear completion status** from each agent
-- Review **agent output** before proceeding to next phase
-- Use **hooks for guidance** on next steps
-
-### Quality Assurance
-- Always run **Tester Agent** before considering work complete
-- Use **Documenter Agent** to maintain up-to-date documentation
-- Follow **project-specific standards** documented in each agent spec
-
-## Project-Specific Customization
-
-[**NOTE TO TEMPLATE USER**: Customize this section for your project]
-
-Each agent has a "Project-Specific Customization" section where you should document:
-- Project type and programming languages
-- Key technologies and frameworks
-- Coding standards and conventions
-- Testing requirements
-- Documentation standards
-- Performance requirements
-- Security considerations
-
-## Configuration
-
-### Settings File (`settings.local.json`)
-Configure Claude Code integration with agents:
 ```json
 {
   "hooks": {
-    "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh",
-    "on_stop": ".claude/hooks/on-stop.sh"
+    "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh"
   }
 }
 ```
 
+**Note**: The `on-stop` hook has been removed in v2.0. All workflow management is handled by the queue system and `on-subagent-stop.sh` hook.
+
+### 3. Customize Agents
+
+Edit agent files in `.claude/agents/` to customize for your project:
+- Programming languages and frameworks
+- Coding standards and conventions
+- Testing requirements
+- Documentation standards
+
+See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
+
+### 4. Start Building
+
+**Quick Test with Demo Enhancement**:
+
+```bash
+# Set environment to skip integration prompts
+export AUTO_INTEGRATE="never"
+
+# Create fully automated task
+TASK_ID=$(.claude/queues/queue_manager.sh add \
+  "Demo test - requirements analysis" \
+  "requirements-analyst" \
+  "high" \
+  "analysis" \
+  "enhancements/demo-test/demo-test.md" \
+  "Analyze requirements for demo test enhancement" \
+  true \
+  true)
+
+# Start and watch it run through entire workflow automatically
+.claude/queues/queue_manager.sh start $TASK_ID
+
+# The system will:
+# 1. Run requirements-analyst → Create analysis_summary.md
+# 2. Validate output and metadata header
+# 3. Auto-create architect task
+# 4. Auto-start architect → Create implementation_plan.md
+# 5. Validate and auto-chain to implementer
+# 6. Continue through tester → documenter
+# 7. Complete with all outputs validated
+
+# Verify results
+ls enhancements/demo-test/
+# Should show:
+# - requirements-analyst/analysis_summary.md
+# - architect/implementation_plan.md
+# - implementer/test_plan.md
+# - tester/test_summary.md
+# - documenter/documentation_summary.md
+# - logs/ (all agent execution logs in one directory)
+```
+
+**Automation Levels**:
+
+```bash
+# Fully Manual (prompts for everything)
+.claude/queues/queue_manager.sh add "..." "..." "..." "..." "..." "..." false false
+
+# Semi-Automated (auto-complete but manual chain)
+.claude/queues/queue_manager.sh add "..." "..." "..." "..." "..." "..." true false
+
+# Fully Automated (runs entire workflow hands-off) ⭐
+.claude/queues/queue_manager.sh add "..." "..." "..." "..." "..." "..." true true
+
+# Control integration tasks via environment variable
+export AUTO_INTEGRATE="never"   # No integration (for testing)
+export AUTO_INTEGRATE="always"  # Auto-create integration tasks
+export AUTO_INTEGRATE="prompt"  # Ask before creating (default)
+```
+
+## 📁 Project Structure
+
+```
+your-project/
+├── .claude/                      # Multi-agent system (v2.0)
+│   ├── agents/                   # Agent definitions (enhanced)
+│   │   ├── requirements-analyst.md
+│   │   ├── architect.md
+│   │   ├── implementer.md
+│   │   ├── tester.md
+│   │   ├── documenter.md
+│   │   ├── github-integration-coordinator.md
+│   │   └── atlassian-integration-coordinator.md
+│   ├── hooks/                    # Workflow automation
+│   │   └── on-subagent-stop.sh  # Enhanced with validation
+│   ├── queues/                   # Task management
+│   │   ├── queue_manager.sh     # v2.0 with contract validation
+│   │   ├── task_queue.json
+│   │   └── workflow_templates.json
+│   ├── AGENT_CONTRACTS.json      # **NEW**: Source of truth
+│   ├── WORKFLOW_STATES.json      # **NEW**: State machine
+│   ├── WORKFLOW_GUIDE.md         # **NEW**: Workflow patterns
+│   ├── README.md                 # System documentation
+│   ├── TASK_PROMPT_DEFAULTS.md   # Prompt templates
+│   └── QUEUE_SYSTEM_GUIDE.md     # Queue usage guide
+├── enhancements/                 # Feature requests
+│   └── feature-name/
+│       ├── feature-name.md           # Enhancement spec
+│       ├── requirements-analyst/     # **NEW**: Agent subdirectories
+│       │   └── analysis_summary.md   # With metadata header
+│       ├── architect/
+│       │   └── implementation_plan.md
+│       ├── implementer/
+│       │   └── test_plan.md
+│       ├── tester/
+│       │   └── test_summary.md
+│       ├── documenter/
+│       │   └── documentation_summary.md
+│       └── logs/                     # Agent execution logs
+└── [your project files]
+```
+
+## 🔄 Development Workflow
+
+### Standard Feature Development
+
+```
+1. Requirements Analyst
+   └─> Analyzes requirements, creates plan
+       └─> Status: READY_FOR_DEVELOPMENT
+       └─> Output: requirements-analyst/analysis_summary.md
+       └─> Validation: ✓ File exists, ✓ Metadata header present
+
+2. Architect
+   └─> Designs architecture and technical specs
+       └─> Status: READY_FOR_IMPLEMENTATION
+       └─> Output: architect/implementation_plan.md
+       └─> Validation: ✓ File exists, ✓ Metadata header present
+
+3. Implementer
+   └─> Writes production code
+       └─> Status: READY_FOR_TESTING
+       └─> Output: implementer/test_plan.md
+       └─> Validation: ✓ File exists, ✓ Metadata header present
+
+4. Tester
+   └─> Creates and runs test suite
+       └─> Status: TESTING_COMPLETE
+       └─> Output: tester/test_summary.md
+       └─> Validation: ✓ File exists, ✓ Metadata header present
+
+5. Documenter (optional)
+   └─> Updates documentation
+       └─> Status: DOCUMENTATION_COMPLETE
+       └─> Output: documenter/documentation_summary.md
+       └─> Validation: ✓ File exists, ✓ Metadata header present
+```
+
+See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for other workflow patterns.
+
+## 📚 Documentation
+
+### Getting Started
+- **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation and setup
+- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting template to your project
+- **[.claude/README.md](.claude/README.md)** - Multi-agent system overview
+
+### Reference Documentation
+- **[.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json)** - **Source of truth** for agent specifications
+- **[.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md)** - Workflow patterns and best practices
+- **[.claude/WORKFLOW_STATES.json](.claude/WORKFLOW_STATES.json)** - State machine definitions
+- **[.claude/TASK_PROMPT_DEFAULTS.md](.claude/TASK_PROMPT_DEFAULTS.md)** - Agent prompt templates
+- **[.claude/QUEUE_SYSTEM_GUIDE.md](.claude/QUEUE_SYSTEM_GUIDE.md)** - Task queue usage
+
+### Agent Documentation
+- Individual agent `.md` files in `.claude/agents/` - Each agent's complete specification
+
+## ⚠️ SECURITY WARNING
+
+**CRITICAL: Never commit API credentials to version control!**
+
+The MCP configuration files in `.claude/mcp-servers/` are templates that use environment variables for credentials:
+
+```json
+{
+  "env": {
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}",
+    "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+  }
+}
+```
+
+**Credential Storage Options:**
+
+*Option 1: Secrets Manager (Recommended)*
+- Use a secrets management solution for enhanced security
+- Provides automatic rotation, audit logs, and team access control
+
+*Option 2: Environment Variables (Simpler)*
+```bash
+# Add to your shell profile (~/.bashrc, ~/.zshrc)
+export GITHUB_TOKEN="ghp_your_token_here"
+export JIRA_API_TOKEN="your_jira_token_here"
+export JIRA_EMAIL="your-email@company.com"
+```
+
+See [.claude/mcp-servers/SECURITY_README.md](.claude/mcp-servers/SECURITY_README.md) for security best practices.
+
+## 🧪 Example Project
+
+This template includes a working Python CLI task manager as a demonstration:
+
+- **Source**: `src/task_manager.py` - Simple task management CLI
+- **Tests**: `tests/test_task_manager.py` - Comprehensive test suite
+- **Demo Enhancement**: `enhancements/demo-test/` - Minimal test for verification
+- **Full Enhancement**: `enhancements/add-json-export/` - Complete workflow example
+
+Run the example:
+
+```bash
+# Try the task manager
+python src/task_manager.py add "Test task" -d "Testing the app"
+python src/task_manager.py list
+
+# Run tests
+python -m unittest discover tests
+```
+
+## 🎓 Learning Resources
+
+### For First-Time Users
+
+1. **Read** [.claude/README.md](.claude/README.md) - Understand the system
+2. **Review** [.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json) - See agent specifications
+3. **Study** [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) - Learn workflow patterns
+4. **Try** `enhancements/demo-test/` - Simple test enhancement
+5. **Explore** `enhancements/add-json-export/` - Full workflow example
+6. **Customize** [CUSTOMIZATION.md](CUSTOMIZATION.md) - Adapt to your project
+
+### Key Concepts
+
+- **Agent Contracts**: Formal specifications (JSON) define agent behavior
+- **Output Validation**: System validates outputs before chaining to next agent
+- **Metadata Headers**: Every document is self-documenting with YAML frontmatter
+- **Status Codes**: Trigger workflow transitions and next agent selection
+- **State Machine**: Defines valid workflow states and transitions
+- **Hook Automation**: Detects completion, validates, and suggests next steps
+- **Enhancement-First**: Start with clear requirements document
+
+### Understanding the Contract System
+
+The system is driven by **AGENT_CONTRACTS.json**, which defines for each agent:
+
+```json
+{
+  "inputs": {
+    "required": [{"name": "...", "pattern": "...", "description": "..."}]
+  },
+  "outputs": {
+    "root_document": "analysis_summary.md",
+    "output_directory": "requirements-analyst",
+    "additional_required": []
+  },
+  "statuses": {
+    "success": [{"code": "READY_FOR_DEVELOPMENT", "next_agents": ["architect"]}],
+    "failure": [{"code": "BLOCKED", "pattern": "BLOCKED: {reason}"}]
+  },
+  "metadata_required": true
+}
+```
+
+This contract:
+- Validates that `analysis_summary.md` exists
+- Checks for metadata header (5 required fields)
+- Determines `architect` is the next agent
+- Builds the correct source path for the next task
+
+**Single Source of Truth**: All workflow logic derives from these contracts.
+
+## 🛠️ Requirements
+
+- **Claude Code** - This template is designed for use with Claude Code
+- **bash** - For hook scripts and queue management
+- **jq** - For JSON processing (install via `brew install jq` or package manager)
+
+Optional:
+- **Python 3.7+** - For the example project (not required for template itself)
+- **Node.js 16+** - For MCP servers (GitHub/Jira integration)
+
+## 🔧 System Components
+
+### Core Files
+
+| File | Purpose |
+|------|---------|
+| `AGENT_CONTRACTS.json` | **Source of truth** - Agent specifications |
+| `WORKFLOW_STATES.json` | State machine with valid transitions |
+| `WORKFLOW_GUIDE.md` | Human-readable workflow patterns |
+| `queue_manager.sh` | Task management with contract validation |
+| `on-subagent-stop.sh` | Workflow orchestration with validation |
+
 ### Agent Definitions
-Agents are defined in markdown files in the `agents/` directory with YAML frontmatter:
-```yaml
+
+Each agent has a `.md` file in `.claude/agents/` with:
+- Role and purpose
+- When to use / not use
+- Workflow position
+- Output requirements
+- Success/failure statuses
+- Contract reference
+
+### Configuration
+
+- `settings.local.json` - Claude Code hook configuration
+- `task_queue.json` - Active task queue database
+- `workflow_templates.json` - Predefined workflow patterns
+
+## 📖 How It Works
+
+### Real Example: demo-test Enhancement
+
+Starting from `enhancements/demo-test/demo-test.md`, the system automatically:
+
+#### 1. Requirements Analyst Creates Output
+
+```markdown
 ---
-name: "Agent Name"
-description: "Agent description"
-tools: ["Read", "Write", "Edit"]
+enhancement: demo-test
+agent: requirements-analyst
+task_id: task_1234567890_12345
+timestamp: 2025-10-21T14:30:00Z
+status: READY_FOR_DEVELOPMENT
 ---
+
+# Analysis Summary
+[Requirements analysis content...]
 ```
 
-## Troubleshooting
+Location: `enhancements/demo-test/requirements-analyst/analysis_summary.md`
 
-### Hook Execution Issues
-- Verify hook scripts are executable: `chmod +x .claude/hooks/*.sh`
-- Check JSON syntax in `settings.local.json`
-- Review hook output in Claude Code console
+#### 2. System Validates
 
-### Agent Selection Confusion
-- Review agent specifications in `.claude/agents/` directory
-- Check hook suggestions for guidance
-- Consult [AGENT_ROLE_MAPPING.md](AGENT_ROLE_MAPPING.md)
-
-### Status Transition Problems
-- Verify agents output correct status markers
-- Check hook logic for status recognition
-- Manual intervention may be required for custom workflows
-
-## Directory Structure
-
-```
-.claude/
-├── agents/              # Agent definitions
-│   ├── requirements-analyst.md
-│   ├── architect.md
-│   ├── implementer.md
-│   ├── tester.md
-│   ├── documenter.md
-│   └── agents.json     # Generated agent registry
-├── hooks/              # Workflow automation hooks
-│   ├── on-subagent-stop.sh
-│   └── on-stop.sh
-├── queues/             # Task queue management
-│   ├── queue_manager.sh
-│   ├── task_queue.json
-│   └── workflow_templates.json
-├── status/             # Workflow state tracking
-│   └── workflow_state.json
-├── logs/               # Operation logs
-│   └── queue_operations.log
-└── [documentation files]
+```bash
+🔍 Validating outputs from requirements-analyst...
+  ✓ Root document exists: analysis_summary.md
+  ✓ Metadata header present
+  ✓ Required fields: enhancement, agent, task_id, timestamp, status
+✅ Output validation passed
 ```
 
-## Future Extensions
+#### 3. System Determines Next Agent
 
-The system is designed for extensibility:
-- Additional specialized agents can be added to `agents/`
-- New hooks can be created for custom workflows
-- Agent tools and permissions can be adjusted as needed
-- Status markers and workflow transitions can be customized
-- Workflow templates can be added for project-specific patterns
+```bash
+📋 Consulting AGENT_CONTRACTS.json:
+  Current agent: requirements-analyst
+  Current status: READY_FOR_DEVELOPMENT
+  Next agent: architect (from contract)
 
-## Learn More
+✅ Auto-chained to architect: task_1234567890_12346
+   Source: enhancements/demo-test/requirements-analyst/analysis_summary.md
+   Inherited automation: auto_complete=true, auto_chain=true
 
-- [AGENT_ROLE_MAPPING.md](AGENT_ROLE_MAPPING.md) - Detailed agent role descriptions
-- [TASK_PROMPT_DEFAULTS.md](TASK_PROMPT_DEFAULTS.md) - Standard task prompt templates
-- [QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md) - Complete queue system documentation
-- [WORKFLOW_STEP_TEMPLATE.md](WORKFLOW_STEP_TEMPLATE.md) - Enhancement workflow template
+🚀 Auto-starting next task...
+```
 
-This multi-agent system enhances your development workflow without disrupting established practices.
+#### 4. Workflow Continues Automatically
+
+Process repeats:
+- **Architect** → `implementation_plan.md` → `READY_FOR_IMPLEMENTATION`
+- **Implementer** → `test_plan.md` → `READY_FOR_TESTING`
+- **Tester** → `test_summary.md` → `TESTING_COMPLETE`
+- **Documenter** → `documentation_summary.md` → `DOCUMENTATION_COMPLETE`
+
+Each step includes validation before proceeding.
+
+#### 5. Final Result
+
+```
+enhancements/demo-test/
+├── demo-test.md                              # Original spec
+├── requirements-analyst/
+│   └── analysis_summary.md                   # ✓ With metadata
+├── architect/
+│   └── implementation_plan.md                # ✓ With metadata
+├── implementer/
+│   └── test_plan.md                          # ✓ With metadata
+├── tester/
+│   └── test_summary.md                       # ✓ With metadata
+├── documenter/
+│   └── documentation_summary.md              # ✓ With metadata
+└── logs/                                     # All agent logs in one place
+    ├── requirements-analyst_task_..._*.log
+    ├── architect_task_..._*.log
+    ├── implementer_task_..._*.log
+    ├── tester_task_..._*.log
+    └── documenter_task_..._*.log
+```
+
+All files have metadata headers, all validated, complete workflow trace in logs.
+
+## 🎯 Complete Walkthrough: demo-test
+
+### Step-by-Step: Running the Demo Enhancement
+
+**Prerequisites**:
+```bash
+# Ensure you're in project root
+pwd  # Should show your project directory
+
+# Check queue manager works
+.claude/queues/queue_manager.sh version
+# Should show: Queue Manager v2.0.0
+
+# Check contracts file exists
+ls -la .claude/AGENT_CONTRACTS.json
+```
+
+**Run the Full Workflow**:
+
+```bash
+# 1. Configure for full automation
+export AUTO_INTEGRATE="never"
+
+# 2. Create the first task (fully automated)
+TASK_ID=$(.claude/queues/queue_manager.sh add \
+  "Demo test - requirements analysis" \
+  "requirements-analyst" \
+  "high" \
+  "analysis" \
+  "enhancements/demo-test/demo-test.md" \
+  "Analyze requirements for demo test enhancement" \
+  true \
+  true)
+
+# Output: task_1761091368_XXXXX (your task ID)
+
+# 3. Start the workflow
+.claude/queues/queue_manager.sh start $TASK_ID
+
+# Now watch as the system:
+# - Runs requirements-analyst
+# - Validates output
+# - Auto-chains to architect
+# - Auto-starts architect
+# - Continues through implementer → tester → documenter
+# - All automatically with zero prompts!
+
+# 4. When complete, verify results
+tree enhancements/demo-test/
+
+# Output:
+# enhancements/demo-test/
+# ├── demo-test.md
+# ├── requirements-analyst/
+# │   └── analysis_summary.md
+# ├── architect/
+# │   └── implementation_plan.md
+# ├── implementer/
+# │   └── test_plan.md
+# ├── tester/
+# │   └── test_summary.md
+# ├── documenter/
+# │   └── documentation_summary.md
+# └── logs/
+#     ├── requirements-analyst_task_*_*.log
+#     ├── architect_task_*_*.log
+#     ├── implementer_task_*_*.log
+#     ├── tester_task_*_*.log
+#     └── documenter_task_*_*.log
+
+# 5. Check queue status
+.claude/queues/queue_manager.sh status
+
+# All agents should be idle
+# All tasks should be in completed_tasks
+```
+
+**Verify Metadata Headers**:
+
+```bash
+# Each output should have proper metadata
+head -10 enhancements/demo-test/requirements-analyst/analysis_summary.md
+
+# Expected:
+# ---
+# enhancement: demo-test
+# agent: requirements-analyst
+# task_id: task_1234567890_12345
+# timestamp: 2025-10-21T14:30:00Z
+# status: READY_FOR_DEVELOPMENT
+# ---
+```
+
+**Review Agent Logs**:
+
+```bash
+# See what each agent did
+cat enhancements/demo-test/logs/requirements-analyst_*.log
+cat enhancements/demo-test/logs/architect_*.log
+# etc.
+```
+
+### Troubleshooting the Demo
+
+**If validation fails**:
+```bash
+# Check what was created
+ls -la enhancements/demo-test/requirements-analyst/
+
+# If file missing:
+# - Check agent logs for errors
+# - Verify agent understood output directory requirements
+
+# If metadata missing:
+# - Check file content
+# - Verify YAML frontmatter present
+```
+
+**If auto-chain doesn't work**:
+```bash
+# Verify task has auto_chain=true
+jq '.completed_tasks[-1] | {auto_complete, auto_chain}' .claude/queues/task_queue.json
+
+# Should show:
+# {
+#   "auto_complete": true,
+#   "auto_chain": true
+# }
+```
+
+**If wrong agent suggested**:
+```bash
+# Check contract
+jq '.agents."requirements-analyst".statuses.success[0]' .claude/AGENT_CONTRACTS.json
+
+# Should show architect as next_agents
+```
+
+## 🤝 Contributing
+
+This template is designed to be adapted to your needs. Suggested improvements:
+
+- Additional specialized agents for your domain
+- Custom workflow templates
+- Project-specific automation
+- Integration with CI/CD systems
+- Additional example projects in other languages
+
+## 📝 License
+
+This template is provided as-is for use in your projects. Adapt and modify freely.
+
+## 🙏 Acknowledgments
+
+This template demonstrates contract-based multi-agent development workflows with Claude Code, showcasing how formal specifications, automated validation, and intelligent chaining create reliable, repeatable development processes.
+
+## 🔗 Links
+
+- **Claude Code**: https://claude.ai/code
+- **Documentation**: See `.claude/README.md` for complete system documentation
+- **Example Enhancement**: See `enhancements/add-json-export/` for full workflow
+- **Demo Enhancement**: See `enhancements/demo-test/` for quick test
+
+---
+
+**Ready to get started?** See [INSTALLATION.md](INSTALLATION.md) for step-by-step setup instructions.
+
+**Need to customize?** See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
+
+**Want to understand the system?** See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for workflow patterns.    
