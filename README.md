@@ -41,13 +41,29 @@ This template provides a multi-agent system that breaks down software developmen
 
 ## 🆕 What's New in v2.0
 
+### Successfully Tested Features ✅
+
+The v2.0 system has been validated with the **demo-test** enhancement, confirming:
+
+- ✅ **Contract-Based Validation**: All outputs validated against AGENT_CONTRACTS.json
+- ✅ **Metadata Headers**: All documents include required 5-field YAML frontmatter
+- ✅ **Smart Auto-Chaining**: Correct next agent determined from contracts
+- ✅ **Auto-Start**: Chained tasks automatically start (when auto_chain=true)
+- ✅ **Settings Inheritance**: auto_complete and auto_chain propagate through workflow
+- ✅ **Output Validation**: Files checked before workflow progression
+- ✅ **Path Construction**: Next agent's source path built correctly from contracts
+- ✅ **Complete Workflow**: Requirements → Architecture → Implementation → Testing → Documentation
+
+### Key Improvements
+
 - **Agent Contracts**: Formal JSON specifications replace implicit behavior
 - **Output Validation**: Automated validation against contracts before chaining
-- **Metadata Headers**: All documents include YAML frontmatter for traceability
+- **Metadata Headers**: All documents include YAML frontmatter (enhancement, agent, task_id, timestamp, status)
 - **Smart Auto-Chaining**: Contract-based next agent determination
 - **Workflow State Machine**: Formal state definitions with valid transitions
 - **Simplified Documentation**: Single source of truth (contracts) with human guides
 - **Enhanced Error Messages**: Clear feedback when validation fails
+- **Full Automation**: Set `auto_complete=true` and `auto_chain=true` for hands-off workflows
 
 ## 🚀 Quick Start
 
@@ -74,6 +90,8 @@ Create `.claude/settings.local.json`:
 }
 ```
 
+**Note**: The `on-stop` hook has been removed in v2.0. All workflow management is handled by the queue system and `on-subagent-stop.sh` hook.
+
 ### 3. Customize Agents
 
 Edit agent files in `.claude/agents/` to customize for your project:
@@ -86,37 +104,62 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
 
 ### 4. Start Building
 
+**Quick Test with Demo Enhancement**:
+
 ```bash
-# Create enhancement specification
-mkdir -p enhancements/my-feature
-cat > enhancements/my-feature/my-feature.md << 'EOF'
-# My Feature
+# Set environment to skip integration prompts
+export AUTO_INTEGRATE="never"
 
-## Goal
-Add feature X to improve Y
-
-## Requirements
-- Must: Do X
-- Must: Handle Y
-EOF
-
-# Add task to queue
-.claude/queues/queue_manager.sh add \
-  "Analyze my-feature" \
+# Create fully automated task
+TASK_ID=$(.claude/queues/queue_manager.sh add \
+  "Demo test - requirements analysis" \
   "requirements-analyst" \
   "high" \
   "analysis" \
-  "enhancements/my-feature/my-feature.md" \
-  "Analyze requirements for my-feature"
+  "enhancements/demo-test/demo-test.md" \
+  "Analyze requirements for demo test enhancement" \
+  true \
+  true)
 
-# Start task
-.claude/queues/queue_manager.sh start <task_id>
+# Start and watch it run through entire workflow automatically
+.claude/queues/queue_manager.sh start $TASK_ID
 
-# System will:
-# 1. Run requirements-analyst
-# 2. Validate outputs (analysis_summary.md with metadata header)
-# 3. Suggest next agent (architect)
-# 4. Optionally auto-chain to next phase
+# The system will:
+# 1. Run requirements-analyst → Create analysis_summary.md
+# 2. Validate output and metadata header
+# 3. Auto-create architect task
+# 4. Auto-start architect → Create implementation_plan.md
+# 5. Validate and auto-chain to implementer
+# 6. Continue through tester → documenter
+# 7. Complete with all outputs validated
+
+# Verify results
+ls enhancements/demo-test/
+# Should show:
+# - requirements-analyst/analysis_summary.md
+# - architect/implementation_plan.md
+# - implementer/test_plan.md
+# - tester/test_summary.md
+# - documenter/documentation_summary.md
+# - logs/ (all agent execution logs in one directory)
+```
+
+**Automation Levels**:
+
+```bash
+# Fully Manual (prompts for everything)
+.claude/queues/queue_manager.sh add "..." "..." "..." "..." "..." "..." false false
+
+# Semi-Automated (auto-complete but manual chain)
+.claude/queues/queue_manager.sh add "..." "..." "..." "..." "..." "..." true false
+
+# Fully Automated (runs entire workflow hands-off) ⭐
+.claude/queues/queue_manager.sh add "..." "..." "..." "..." "..." "..." true true
+
+# Control integration tasks via environment variable
+export AUTO_INTEGRATE="never"   # No integration (for testing)
+export AUTO_INTEGRATE="always"  # Auto-create integration tasks
+export AUTO_INTEGRATE="prompt"  # Ask before creating (default)
 ```
 
 ## 📁 Project Structure
@@ -138,13 +181,20 @@ your-project/
 │   │   ├── queue_manager.sh     # v2.0 with contract validation
 │   │   ├── task_queue.json
 │   │   └── workflow_templates.json
-│   ├── AGENT_CONTRACTS.json      # Source of truth
-│   ├── WORKFLOW_STATES.json      # State machine
-│   ├── WORKFLOW_GUIDE.md         # Workflow patterns
-│   ├── README.md                 # System documentation
-│   ├── TASK_PROMPT_DEFAULTS.md   # Prompt templates
-│   └── QUEUE_SYSTEM_GUIDE.md     # Queue usage guide
-├── enhancements/                 # Feature requests
+│   ├── mcp-servers/             # MCP configuration (optional)
+│   │   ├── github-config.json
+│   │   ├── atlassian-config.json
+│   │   └── [configuration guides]
+│   ├── logs/                    # System logs
+│   │   └── queue_operations.log
+│   ├── status/                  # Workflow state
+│   ├── AGENT_CONTRACTS.json     # **Source of truth** - Agent specifications
+│   ├── WORKFLOW_STATES.json     # State machine definitions
+│   ├── WORKFLOW_GUIDE.md        # Workflow patterns and queue commands
+│   ├── INTEGRATION_GUIDE.md     # GitHub/Jira integration (detailed)
+│   ├── TASK_PROMPT_DEFAULTS.md  # Agent prompt templates
+│   └── settings.local.json      # Claude Code configuration
+├── enhancements/                # Feature requests
 │   └── feature-name/
 │       ├── feature-name.md           # Enhancement spec
 │       ├── requirements-analyst/     # Agent subdirectories
@@ -157,8 +207,100 @@ your-project/
 │       │   └── test_summary.md
 │       ├── documenter/
 │       │   └── documentation_summary.md
-│       └── logs/                     # Agent execution logs
+│       └── logs/                     # All agent logs
+│           ├── requirements-analyst_task_*_*.log
+│           ├── architect_task_*_*.log
+│           ├── implementer_task_*_*.log
+│           ├── tester_task_*_*.log
+│           └── documenter_task_*_*.log
+├── README.md                    # This file - project overview
+├── INSTALLATION.md              # Setup instructions
+├── CUSTOMIZATION.md             # Customization guide
 └── [your project files]
+```
+
+## 🏗️ System Architecture
+
+The multi-agent system follows a contract-based architecture where all behavior is formally specified.
+
+### Core Components
+
+**AGENT_CONTRACTS.json** (Source of Truth):
+- Defines 7 specialized agents
+- Specifies exact input/output requirements
+- Declares success/failure status codes
+- Maps workflow transitions (next_agents)
+- Enforces output structure via validation
+
+**WORKFLOW_STATES.json** (State Machine):
+- Defines 11 workflow states
+- Specifies valid state transitions
+- Identifies terminal vs. transitional states
+- Flags integration trigger points
+- Documents state attributes
+
+**queue_manager.sh** (Workflow Engine):
+- Loads and validates agent contracts
+- Manages task lifecycle (add, start, complete, fail, cancel)
+- Validates outputs before workflow progression
+- Auto-chains to next agent based on contracts
+- Inherits automation settings through workflow
+- Provides contract query functions
+
+**on-subagent-stop.sh** (Hook Orchestration):
+- Detects agent completion status
+- Triggers output validation
+- Handles integration task creation
+- Manages auto-chaining
+- Updates queue state
+
+### Agent Specialization
+
+Each agent has a **single, well-defined responsibility**:
+
+| Agent | Role | Primary Function |
+|-------|------|------------------|
+| requirements-analyst | analysis | What needs to be built |
+| architect | technical_design | How to build it (design) |
+| implementer | implementation | Build it (code) |
+| tester | testing | Validate it works |
+| documenter | documentation | Explain how to use it |
+| github-integration-coordinator | integration | Sync with GitHub |
+| atlassian-integration-coordinator | integration | Sync with Jira/Confluence |
+
+**Principle**: Agents never overstep their boundaries. Architectural decisions stay with architect, coding stays with implementer, testing stays with tester.
+
+### Workflow Automation
+
+The system supports multiple automation levels:
+
+**Level 1: Fully Manual** (`false false`):
+- Prompts to complete each task
+- Prompts to create next task
+- Prompts to start next task
+- Full human control at every step
+
+**Level 2: Auto-Complete** (`true false`):
+- Auto-completes tasks
+- Stops after completion
+- Requires manual task creation
+
+**Level 3: Auto-Chain** (`false true`):
+- Prompts to complete
+- Auto-creates and auto-starts next task
+- Semi-automated workflow
+
+**Level 4: Fully Automated** (`true true`) ⭐:
+- Auto-completes tasks
+- Auto-creates next tasks
+- Auto-starts next tasks
+- Zero-prompt workflow execution
+
+**Plus Environment Control**:
+```bash
+export AUTO_INTEGRATE="never"   # Skip integration prompts
+export AUTO_INTEGRATE="prompt"  # Ask before integration (default)
+export AUTO_INTEGRATE="always"  # Auto-create integration tasks
 ```
 
 ## 🔄 Development Workflow
@@ -201,20 +343,26 @@ See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for other workflow pa
 
 ## 📚 Documentation
 
-### Getting Started
-- **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation and setup
+### Getting Started (Essential Reading)
+- **[README.md](README.md)** - This file - Overview, architecture, quick start
+- **[INSTALLATION.md](INSTALLATION.md)** - Step-by-step setup and verification
 - **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting template to your project
-- **[.claude/README.md](.claude/README.md)** - Multi-agent system overview
 
-### Reference Documentation
-- **[.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json)** - **Source of truth** for agent specifications
-- **[.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md)** - Workflow patterns and best practices
+### System Reference (For Daily Use)
+- **[.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md)** - Workflow patterns, queue commands, best practices
+- **[.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json)** - **Source of truth** - Agent specifications
 - **[.claude/WORKFLOW_STATES.json](.claude/WORKFLOW_STATES.json)** - State machine definitions
-- **[.claude/TASK_PROMPT_DEFAULTS.md](.claude/TASK_PROMPT_DEFAULTS.md)** - Agent prompt templates
-- **[.claude/QUEUE_SYSTEM_GUIDE.md](.claude/QUEUE_SYSTEM_GUIDE.md)** - Task queue usage
 
-### Agent Documentation
-- Individual agent `.md` files in `.claude/agents/` - Each agent's complete specification
+### Advanced Topics (As Needed)
+- **[.claude/INTEGRATION_GUIDE.md](.claude/INTEGRATION_GUIDE.md)** - GitHub/Jira integration setup and configuration
+- **[.claude/TASK_PROMPT_DEFAULTS.md](.claude/TASK_PROMPT_DEFAULTS.md)** - Agent prompt templates (reference)
+- **Individual agent `.md` files** - Complete specifications for each agent
+
+### Quick Reference
+Use artifacts from this conversation:
+- **Quick Reference Card** - Common commands cheat sheet
+- **Implementation Checklist** - Deployment verification
+- **Deployment Summary** - What files go where
 
 ## ⚠️ SECURITY WARNING
 
@@ -358,73 +506,223 @@ Each agent has a `.md` file in `.claude/agents/` with:
 
 ## 📖 How It Works
 
-### 1. Agent Completes Work
+### Real Example: demo-test Enhancement
+
+Starting from `enhancements/demo-test/demo-test.md`, the system automatically:
+
+#### 1. Requirements Analyst Creates Output
 
 ```markdown
 ---
-enhancement: add-json-export
+enhancement: demo-test
 agent: requirements-analyst
 task_id: task_1234567890_12345
-timestamp: 2025-10-21T10:30:00Z
+timestamp: 2025-10-21T14:30:00Z
 status: READY_FOR_DEVELOPMENT
 ---
 
 # Analysis Summary
-...
+[Requirements analysis content...]
 ```
 
-### 2. Hook Validates Outputs
+Location: `enhancements/demo-test/requirements-analyst/analysis_summary.md`
+
+#### 2. System Validates
 
 ```bash
 🔍 Validating outputs from requirements-analyst...
-✅ Output validation passed: enhancements/add-json-export/requirements-analyst/analysis_summary.md
-  ✓ Root document exists
-  ✓ Metadata header present (5 fields)
-  ✓ All required files present
+  ✓ Root document exists: analysis_summary.md
+  ✓ Metadata header present
+  ✓ Required fields: enhancement, agent, task_id, timestamp, status
+✅ Output validation passed
 ```
 
-### 3. System Determines Next Agent
+#### 3. System Determines Next Agent
 
 ```bash
-🔗 Next Agent Suggestion:
-   Agent: architect
-   Source: enhancements/add-json-export/requirements-analyst/analysis_summary.md
+📋 Consulting AGENT_CONTRACTS.json:
+  Current agent: requirements-analyst
+  Current status: READY_FOR_DEVELOPMENT
+  Next agent: architect (from contract)
 
-Create next task? [y/N]:
+✅ Auto-chained to architect: task_1234567890_12346
+   Source: enhancements/demo-test/requirements-analyst/analysis_summary.md
+   Inherited automation: auto_complete=true, auto_chain=true
+
+🚀 Auto-starting next task...
 ```
 
-### 4. Workflow Continues
+#### 4. Workflow Continues Automatically
 
-Process repeats through architect → implementer → tester → documenter with validation at each step.
+Process repeats:
+- **Architect** → `implementation_plan.md` → `READY_FOR_IMPLEMENTATION`
+- **Implementer** → `test_plan.md` → `READY_FOR_TESTING`
+- **Tester** → `test_summary.md` → `TESTING_COMPLETE`
+- **Documenter** → `documentation_summary.md` → `DOCUMENTATION_COMPLETE`
 
-## 🎯 Quick Example: Using demo-test
+Each step includes validation before proceeding.
 
-Test the system with the included demo enhancement:
+#### 5. Final Result
+
+```
+enhancements/demo-test/
+├── demo-test.md                              # Original spec
+├── requirements-analyst/
+│   └── analysis_summary.md                   # ✓ With metadata
+├── architect/
+│   └── implementation_plan.md                # ✓ With metadata
+├── implementer/
+│   └── test_plan.md                          # ✓ With metadata
+├── tester/
+│   └── test_summary.md                       # ✓ With metadata
+├── documenter/
+│   └── documentation_summary.md              # ✓ With metadata
+└── logs/                                     # All agent logs in one place
+    ├── requirements-analyst_task_..._*.log
+    ├── architect_task_..._*.log
+    ├── implementer_task_..._*.log
+    ├── tester_task_..._*.log
+    └── documenter_task_..._*.log
+```
+
+All files have metadata headers, all validated, complete workflow trace in logs.
+
+## 🎯 Complete Walkthrough: demo-test
+
+### Step-by-Step: Running the Demo Enhancement
+
+**Prerequisites**:
+```bash
+# Ensure you're in project root
+pwd  # Should show your project directory
+
+# Check queue manager works
+.claude/queues/queue_manager.sh version
+# Should show: Queue Manager v2.0.0
+
+# Check contracts file exists
+ls -la .claude/AGENT_CONTRACTS.json
+```
+
+**Run the Full Workflow**:
 
 ```bash
-# 1. Add requirements task
+# 1. Configure for full automation
+export AUTO_INTEGRATE="never"
+
+# 2. Create the first task (fully automated)
 TASK_ID=$(.claude/queues/queue_manager.sh add \
   "Demo test - requirements analysis" \
   "requirements-analyst" \
   "high" \
   "analysis" \
   "enhancements/demo-test/demo-test.md" \
-  "Analyze the requirements for this simple demo feature")
+  "Analyze requirements for demo test enhancement" \
+  true \
+  true)
 
-# 2. Start the task
+# Output: task_1761091368_XXXXX (your task ID)
+
+# 3. Start the workflow
 .claude/queues/queue_manager.sh start $TASK_ID
 
-# 3. After completion, system validates and suggests next agent
-# Follow prompts to continue through workflow
+# Now watch as the system:
+# - Runs requirements-analyst
+# - Validates output
+# - Auto-chains to architect
+# - Auto-starts architect
+# - Continues through implementer → tester → documenter
+# - All automatically with zero prompts!
 
-# 4. Check final results
-ls enhancements/demo-test/
-# Should see:
-# - requirements-analyst/analysis_summary.md
-# - architect/implementation_plan.md
-# - implementer/test_plan.md
-# - tester/test_summary.md
-# - logs/
+# 4. When complete, verify results
+tree enhancements/demo-test/
+
+# Output:
+# enhancements/demo-test/
+# ├── demo-test.md
+# ├── requirements-analyst/
+# │   └── analysis_summary.md
+# ├── architect/
+# │   └── implementation_plan.md
+# ├── implementer/
+# │   └── test_plan.md
+# ├── tester/
+# │   └── test_summary.md
+# ├── documenter/
+# │   └── documentation_summary.md
+# └── logs/
+#     ├── requirements-analyst_task_*_*.log
+#     ├── architect_task_*_*.log
+#     ├── implementer_task_*_*.log
+#     ├── tester_task_*_*.log
+#     └── documenter_task_*_*.log
+
+# 5. Check queue status
+.claude/queues/queue_manager.sh status
+
+# All agents should be idle
+# All tasks should be in completed_tasks
+```
+
+**Verify Metadata Headers**:
+
+```bash
+# Each output should have proper metadata
+head -10 enhancements/demo-test/requirements-analyst/analysis_summary.md
+
+# Expected:
+# ---
+# enhancement: demo-test
+# agent: requirements-analyst
+# task_id: task_1234567890_12345
+# timestamp: 2025-10-21T14:30:00Z
+# status: READY_FOR_DEVELOPMENT
+# ---
+```
+
+**Review Agent Logs**:
+
+```bash
+# See what each agent did
+cat enhancements/demo-test/logs/requirements-analyst_*.log
+cat enhancements/demo-test/logs/architect_*.log
+# etc.
+```
+
+### Troubleshooting the Demo
+
+**If validation fails**:
+```bash
+# Check what was created
+ls -la enhancements/demo-test/requirements-analyst/
+
+# If file missing:
+# - Check agent logs for errors
+# - Verify agent understood output directory requirements
+
+# If metadata missing:
+# - Check file content
+# - Verify YAML frontmatter present
+```
+
+**If auto-chain doesn't work**:
+```bash
+# Verify task has auto_chain=true
+jq '.completed_tasks[-1] | {auto_complete, auto_chain}' .claude/queues/task_queue.json
+
+# Should show:
+# {
+#   "auto_complete": true,
+#   "auto_chain": true
+# }
+```
+
+**If wrong agent suggested**:
+```bash
+# Check contract
+jq '.agents."requirements-analyst".statuses.success[0]' .claude/AGENT_CONTRACTS.json
+
+# Should show architect as next_agents
 ```
 
 ## 🤝 Contributing
@@ -458,4 +756,8 @@ This template demonstrates contract-based multi-agent development workflows with
 
 **Need to customize?** See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
 
-**Want to understand the system?** See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for workflow patterns.
+**Want to understand workflows?** See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for patterns and queue commands.
+
+**Need integration?** See [.claude/INTEGRATION_GUIDE.md](.claude/INTEGRATION_GUIDE.md) for GitHub/Jira setup.
+
+---

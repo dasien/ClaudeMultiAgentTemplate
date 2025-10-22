@@ -318,7 +318,7 @@ cp .claude/queues/task_queue.json task_queue_backup_$(date +%Y%m%d).json
 ## Next Steps
 
 1. ✅ Read [CUSTOMIZATION.md](CUSTOMIZATION.md) - Adapt template to your project
-2. ✅ Review [.claude/README.md](.claude/README.md) - Understand the system
+2. ✅ Review [README.md](README.md) - Understand the system
 3. ✅ Study [enhancements/add-json-export/](enhancements/add-json-export/) - Example workflow
 4. ✅ Create your first enhancement!
 
