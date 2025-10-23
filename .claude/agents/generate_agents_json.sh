@@ -17,6 +17,7 @@ yaml_to_json() {
     local description=""
     local model=""
     local tools_json="[]"
+    local skills_json="[]"
     local in_tools=false
 
     # Parse YAML frontmatter
@@ -25,6 +26,13 @@ yaml_to_json() {
         if [[ "$line" =~ ^tools:[[:space:]]*\[.*\][[:space:]]*$ ]]; then
             # Extract array directly
             tools_json=$(echo "$line" | sed 's/^tools:[[:space:]]*//')
+            continue
+        fi
+
+        # Check if this is the skills line with array
+        if [[ "$line" =~ ^skills:[[:space:]]*\[.*\][[:space:]]*$ ]]; then
+            # Extract array directly
+            skills_json=$(echo "$line" | sed 's/^skills:[[:space:]]*//')
             continue
         fi
 
@@ -50,12 +58,13 @@ yaml_to_json() {
         fi
     done
 
-    # Output JSON
+    # Output JSON with skills field
     cat <<EOF
   {
     "name": "$name",
     "agent-file": "$filename",
     "tools": $tools_json,
+    "skills": $skills_json,
     "description": "$description"
   }
 EOF

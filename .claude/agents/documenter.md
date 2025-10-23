@@ -2,6 +2,7 @@
 name: "Documenter"
 description: "Creates and maintains comprehensive project documentation, user guides, and API references"
 tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"]
+skills: ["technical-writing", "api-documentation"]
 ---
 
 # Documenter Agent

@@ -2,6 +2,7 @@
 name: "Implementer"
 description: "Implements features based on architectural specifications, writes production-quality code"
 tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
+skills: ["error-handling", "code-refactoring", "sql-development"]
 ---
 
 # Implementer Agent

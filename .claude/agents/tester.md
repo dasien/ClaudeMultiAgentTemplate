@@ -2,6 +2,7 @@
 name: "Tester"
 description: "Designs and implements comprehensive test suites, validates functionality and quality"
 tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
+skills: ["test-design-patterns", "test-coverage", "bug-triage"]
 ---
 
 # Tester Agent

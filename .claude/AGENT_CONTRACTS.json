@@ -24,7 +24,9 @@
           {
             "code": "READY_FOR_DEVELOPMENT",
             "description": "Requirements complete, ready for architecture",
-            "next_agents": ["architect"]
+            "next_agents": [
+              "architect"
+            ]
           }
         ],
         "failure": [
@@ -59,7 +61,9 @@
           {
             "code": "READY_FOR_IMPLEMENTATION",
             "description": "Architecture complete, ready for coding",
-            "next_agents": ["implementer"]
+            "next_agents": [
+              "implementer"
+            ]
           }
         ],
         "failure": [
@@ -94,12 +98,16 @@
           {
             "code": "READY_FOR_TESTING",
             "description": "Implementation complete, needs testing",
-            "next_agents": ["tester"]
+            "next_agents": [
+              "tester"
+            ]
           },
           {
             "code": "READY_FOR_INTEGRATION",
             "description": "Implementation complete, needs integration testing",
-            "next_agents": ["tester"]
+            "next_agents": [
+              "tester"
+            ]
           }
         ],
         "failure": [
@@ -134,7 +142,9 @@
           {
             "code": "TESTING_COMPLETE",
             "description": "All tests passed, ready for documentation",
-            "next_agents": ["documenter"]
+            "next_agents": [
+              "documenter"
+            ]
           }
         ],
         "failure": [

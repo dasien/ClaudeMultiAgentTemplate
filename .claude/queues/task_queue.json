@@ -4,32 +4,7 @@
     "version": "2.0.0",
     "description": "Task queue for multi-agent development system with contract-based validation"
   },
-  "active_workflows": [
-    {
-      "id": "task_1761096287_53708",
-      "title": "Process demo-test with tester",
-      "assigned_agent": "tester",
-      "priority": "high",
-      "task_type": "testing",
-      "description": "Continue workflow for demo-test following implementer completion",
-      "source_file": "enhancements/demo-test/implementer/test_plan.md",
-      "created": "2025-10-22T01:24:47Z",
-      "status": "active",
-      "started": "2025-10-22T01:24:47Z",
-      "completed": null,
-      "result": null,
-      "auto_complete": true,
-      "auto_chain": true,
-      "metadata": {
-        "github_issue": null,
-        "jira_ticket": null,
-        "github_pr": null,
-        "confluence_page": null,
-        "parent_task_id": null,
-        "workflow_status": null
-      }
-    }
-  ],
+  "active_workflows": [],
   "pending_tasks": [],
   "completed_tasks": [
     {
@@ -219,9 +194,9 @@
       "current_task": null
     },
     "tester": {
-      "status": "active",
-      "last_activity": "2025-10-22T01:24:47Z",
-      "current_task": "task_1761096287_53708"
+      "status": "idle",
+      "last_activity": "2025-10-23T19:48:43Z",
+      "current_task": null
     },
     "documenter": {
       "status": "idle",

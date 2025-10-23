@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0",
+  "skills": [
+    {
+      "name": "Requirements Elicitation",
+      "skill-directory": "requirements-elicitation",
+      "category": "analysis",
+      "required_tools": ["Read", "Write", "Grep"],
+      "description": "Extract and clarify requirements from specifications and stakeholder input"
+    },
+    {
+      "name": "User Story Writing",
+      "skill-directory": "user-story-writing",
+      "category": "analysis",
+      "required_tools": ["Read", "Write"],
+      "description": "Create clear user stories with acceptance criteria"
+    },
+    {
+      "name": "Bug Triage",
+      "skill-directory": "bug-triage",
+      "category": "analysis",
+      "required_tools": ["Read", "Write", "Grep", "Glob", "Bash"],
+      "description": "Analyze, reproduce, and diagnose bugs to determine root cause and fix strategy"
+    },
+    {
+      "name": "API Design",
+      "skill-directory": "api-design",
+      "category": "architecture",
+      "required_tools": ["Read", "Write", "WebSearch"],
+      "description": "Design RESTful APIs with proper contracts and specifications"
+    },
+    {
+      "name": "System Architecture Patterns",
+      "skill-directory": "architecture-patterns",
+      "category": "architecture",
+      "required_tools": ["Read", "Write", "Grep", "Glob"],
+      "description": "Apply common architectural patterns (MVC, layered, microservices, etc.)"
+    },
+    {
+      "name": "Error Handling Strategies",
+      "skill-directory": "error-handling",
+      "category": "implementation",
+      "required_tools": ["Read", "Write", "Edit", "Grep"],
+      "description": "Implement robust error handling and recovery mechanisms"
+    },
+    {
+      "name": "Code Refactoring",
+      "skill-directory": "code-refactoring",
+      "category": "implementation",
+      "required_tools": ["Read", "Write", "Edit", "MultiEdit", "Grep", "Glob"],
+      "description": "Improve code structure without changing functionality"
+    },
+    {
+      "name": "Test Design Patterns",
+      "skill-directory": "test-design-patterns",
+      "category": "testing",
+      "required_tools": ["Read", "Write", "Bash"],
+      "description": "Apply testing patterns (AAA, mocking, fixtures, parameterization)"
+    },
+    {
+      "name": "Test Coverage Analysis",
+      "skill-directory": "test-coverage",
+      "category": "testing",
+      "required_tools": ["Read", "Bash", "Grep"],
+      "description": "Analyze and improve test coverage metrics"
+    },
+    {
+      "name": "Technical Writing",
+      "skill-directory": "technical-writing",
+      "category": "documentation",
+      "required_tools": ["Read", "Write", "Edit"],
+      "description": "Write clear technical documentation for developers and users"
+    },
+    {
+      "name": "API Documentation",
+      "skill-directory": "api-documentation",
+      "category": "documentation",
+      "required_tools": ["Read", "Write", "Grep", "Glob"],
+      "description": "Document APIs with parameters, returns, examples, and usage"
+    },
+    {
+      "name": "Desktop UI Design",
+      "skill-directory": "desktop-ui-design",
+      "category": "ui-design",
+      "required_tools": ["Read", "Write", "WebSearch"],
+      "description": "Design desktop application interfaces with usability best practices"
+    },
+    {
+      "name": "Web UI Design",
+      "skill-directory": "web-ui-design",
+      "category": "ui-design",
+      "required_tools": ["Read", "Write", "WebSearch", "WebFetch"],
+      "description": "Design web application interfaces following modern UX principles"
+    },
+    {
+      "name": "SQL Development",
+      "skill-directory": "sql-development",
+      "category": "database",
+      "required_tools": ["Read", "Write", "Edit", "Bash"],
+      "description": "Design database schemas, write optimized queries, and manage data"
+    }
+  ]
+}

@@ -7,7 +7,7 @@
 #              contract-based validation and GitHub/Atlassian integration
 # Author: Brian Gentry
 # Created: 2025
-# Version: 2.0.0
+# Version: 2.1.0
 #
 # Usage: ./queue_manager.sh COMMAND [OPTIONS]
 #
@@ -69,7 +69,7 @@ set -euo pipefail
 # GLOBAL VARIABLES
 #############################################################################
 
-readonly VERSION="2.0.0"
+readonly VERSION="2.1.0"
 readonly QUEUE_DIR=".claude/queues"
 readonly LOGS_DIR=".claude/logs"
 readonly STATUS_DIR=".claude/status"
@@ -78,6 +78,163 @@ readonly CONTRACTS_FILE=".claude/AGENT_CONTRACTS.json"
 
 # Ensure required directories exist
 mkdir -p "$QUEUE_DIR" "$LOGS_DIR" "$STATUS_DIR"
+
+#############################################################################
+# SKILLS MANAGEMENT FUNCTIONS (NEW in v2.1)
+#############################################################################
+
+################################################################################
+# Get skills data from skills.json
+# Globals:
+#   None
+# Outputs:
+#   Writes skills JSON to stdout
+# Returns:
+#   0 on success, 1 if file not found
+################################################################################
+get_skills_data() {
+    local skills_file=".claude/skills/skills.json"
+
+    if [ ! -f "$skills_file" ]; then
+        echo "{\"skills\": []}"
+        return 1
+    fi
+
+    cat "$skills_file"
+    return 0
+}
+
+################################################################################
+# Get agent's skills from agent configuration file
+# Globals:
+#   None
+# Arguments:
+#   $1 - Agent config file path (e.g., ".claude/agents/requirements-analyst.md")
+# Outputs:
+#   Writes JSON array of skill directory names to stdout
+# Returns:
+#   0 on success
+################################################################################
+get_agent_skills() {
+    local agent_file="$1"
+
+    if [ ! -f "$agent_file" ]; then
+        echo "[]"
+        return 0
+    fi
+
+    # Extract skills from YAML frontmatter (between first two --- markers)
+    local skills
+    skills=$(awk '/^---$/{f=!f;next} f && /^skills:/' "$agent_file" | sed 's/^skills:[[:space:]]*//')
+
+    if [ -z "$skills" ]; then
+        echo "[]"
+    else
+        echo "$skills"
+    fi
+    return 0
+}
+
+################################################################################
+# Load skill content from SKILL.md file
+# Globals:
+#   None
+# Arguments:
+#   $1 - Skill directory name
+# Outputs:
+#   Writes skill content to stdout (without frontmatter)
+# Returns:
+#   0 on success, 1 if skill file not found
+################################################################################
+load_skill_content() {
+    local skill_dir="$1"
+    local skill_file=".claude/skills/${skill_dir}/SKILL.md"
+
+    if [ ! -f "$skill_file" ]; then
+        echo "# Skill Not Found: $skill_dir"
+        return 1
+    fi
+
+    # Read skill file, skip frontmatter (between --- markers)
+    awk '/^---$/{f=!f;next} !f' "$skill_file"
+    return 0
+}
+
+################################################################################
+# Build skills section for agent prompt
+# Globals:
+#   None
+# Arguments:
+#   $1 - Agent name
+# Outputs:
+#   Writes skills content to append to prompt
+# Returns:
+#   0 on success
+################################################################################
+build_skills_prompt() {
+    local agent="$1"
+    local agent_config=".claude/agents/${agent}.md"
+
+    # Get agent's skills
+    local skills_json
+    skills_json=$(get_agent_skills "$agent_config")
+
+    # If no skills or empty array, return empty
+    if [ "$skills_json" = "[]" ] || [ -z "$skills_json" ]; then
+        return 0
+    fi
+
+    # Parse skill directories from JSON array
+    local skill_dirs
+    skill_dirs=$(echo "$skills_json" | jq -r '.[]' 2>/dev/null)
+
+    if [ -z "$skill_dirs" ]; then
+        return 0
+    fi
+
+    # Build skills section
+    cat <<'EOF'
+
+################################################################################
+## SPECIALIZED SKILLS AVAILABLE
+################################################################################
+
+You have access to the following specialized skills that enhance your capabilities.
+Use these skills when they are relevant to your task:
+
+EOF
+
+    # Load each skill
+    local skill_count=0
+    while IFS= read -r skill_dir; do
+        if [ -n "$skill_dir" ]; then
+            local skill_content
+            skill_content=$(load_skill_content "$skill_dir")
+
+            if [ $? -eq 0 ]; then
+                ((skill_count++))
+                echo "---"
+                echo ""
+                echo "$skill_content"
+                echo ""
+            fi
+        fi
+    done <<< "$skill_dirs"
+
+    if [ $skill_count -gt 0 ]; then
+        cat <<'EOF'
+---
+
+**Using Skills**: Apply the above skills as appropriate to accomplish your objectives.
+Reference specific skills in your work when they guide your approach or decisions.
+
+################################################################################
+
+EOF
+    fi
+
+    return 0
+}
 
 #############################################################################
 # CONTRACT-BASED FUNCTIONS (NEW)
@@ -839,25 +996,25 @@ load_task_template() {
     local template_content=""
     case "$task_type" in
         "analysis")
-            template_content=$(awk '/^# ANALYSIS_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            template_content=$(awk '/^# ANALYSIS_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$template_file")
             ;;
         "technical_analysis")
-            template_content=$(awk '/^# TECHNICAL_ANALYSIS_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            template_content=$(awk '/^# TECHNICAL_ANALYSIS_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$template_file")
             ;;
         "implementation")
-            template_content=$(awk '/^# IMPLEMENTATION_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            template_content=$(awk '/^# IMPLEMENTATION_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$template_file")
             ;;
         "testing")
-            template_content=$(awk '/^# TESTING_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            template_content=$(awk '/^# TESTING_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$template_file")
             ;;
         "integration")
-            template_content=$(awk '/^# INTEGRATION_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            template_content=$(awk '/^# INTEGRATION_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$template_file")
             if [ -z "$template_content" ]; then
                 template_content="You are the integration-coordinator agent. Process the task described in the source file and synchronize with external systems as appropriate."
             fi
             ;;
         "documentation")
-            template_content=$(awk '/^# DOCUMENTATION_TEMPLATE$/{flag=1; next} /^---$/{flag=0} flag' "$template_file")
+            template_content=$(awk '/^# DOCUMENTATION_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$template_file")
             ;;
         *)
             echo "Error: Unknown task type: $task_type" >&2
@@ -946,6 +1103,14 @@ invoke_agent() {
     if [ $? -ne 0 ]; then
         echo "Failed to load task template for type: $task_type"
         return 1
+    fi
+
+    # NEW: Build and append skills section
+    local skills_section
+    skills_section=$(build_skills_prompt "$agent")
+
+    if [ -n "$skills_section" ]; then
+        template="${template}${skills_section}"
     fi
 
     # Substitute variables in template
@@ -1653,39 +1818,39 @@ case "${1:-status}" in
         update_metadata "$2" "$3" "$4"
         ;;
 
-    "validate_agent_outputs")
+    "validate-agent-outputs")
         if [ $# -lt 3 ]; then
-            echo "Usage: $0 validate_agent_outputs <agent> <enhancement_dir>"
+            echo "Usage: $0 validate-agent-outputs <agent> <enhancement_dir>"
             exit 1
         fi
         validate_agent_outputs "$2" "$3"
         ;;
 
-    "determine_next_agent_from_contract")
+    "determine-next-agent")
         if [ $# -lt 3 ]; then
-            echo "Usage: $0 determine_next_agent_from_contract <agent> <status>"
+            echo "Usage: $0 determine-next-agent <agent> <status>"
             exit 1
         fi
         determine_next_agent_from_contract "$2" "$3"
         ;;
 
-    "build_next_source_path")
+    "build-next-source")
         if [ $# -lt 4 ]; then
-            echo "Usage: $0 build_next_source_path <enhancement_name> <next_agent> <current_agent>"
+            echo "Usage: $0 build-next-source <enhancement_name> <next_agent> <current_agent>"
             exit 1
         fi
         build_next_source_path "$2" "$3" "$4"
         ;;
 
-    "auto_chain_validated")
+    "auto-chain")
         if [ $# -lt 3 ]; then
-            echo "Usage: $0 auto_chain_validated <task_id> <status>"
+            echo "Usage: $0 auto-chain <task_id> <status>"
             exit 1
         fi
         auto_chain_validated "$2" "$3"
         ;;
 
-    "sync-github"|"sync-jira"|"sync-external")
+    "sync-external")
         if [ $# -lt 2 ]; then
             echo "Usage: $0 sync-external <task_id>"
             exit 1
@@ -1697,6 +1862,59 @@ case "${1:-status}" in
         sync_all
         ;;
 
+    "get-skills-data")
+        get_skills_data | jq '.'
+        ;;
+
+    "get-agent-skills")
+        if [ $# -lt 2 ]; then
+            echo "Usage: $0 get-agent-skills <agent-file>"
+            echo "Example: $0 get-agent-skills requirements-analyst"
+            exit 1
+        fi
+        get_agent_skills ".claude/agents/$2.md"
+        ;;
+
+    "load-skill")
+        if [ $# -lt 2 ]; then
+            echo "Usage: $0 load-skill <skill-directory>"
+            echo "Example: $0 load-skill requirements-elicitation"
+            exit 1
+        fi
+        load_skill_content "$2"
+        ;;
+
+    "build-skills-prompt")
+        if [ $# -lt 2 ]; then
+            echo "Usage: $0 build-skills-prompt <agent-name>"
+            echo "Example: $0 build-skills-prompt requirements-analyst"
+            exit 1
+        fi
+        build_skills_prompt "$2"
+        ;;
+
+    "test-skills")
+        echo "=== Testing Skills System ==="
+        echo ""
+        echo "1. Skills Data:"
+        get_skills_data | jq '.'
+        echo ""
+        echo "2. Requirements Analyst Skills:"
+        get_agent_skills ".claude/agents/requirements-analyst.md"
+        echo ""
+        echo "3. Load Sample Skill (if exists):"
+        if [ -f ".claude/skills/requirements-elicitation/SKILL.md" ]; then
+            load_skill_content "requirements-elicitation" | head -20
+            echo "... (truncated)"
+        else
+            echo "Skill not found - create .claude/skills/requirements-elicitation/SKILL.md first"
+        fi
+        echo ""
+        echo "4. Build Skills Prompt for requirements-analyst:"
+        build_skills_prompt "requirements-analyst" | head -30
+        echo "... (truncated)"
+        ;;
+
     "workflow")
         if [ $# -lt 2 ]; then
             echo "Usage: $0 workflow <workflow_name> [description]"
@@ -1705,9 +1923,9 @@ case "${1:-status}" in
         start_workflow "$2" "${3:-Workflow execution}"
         ;;
 
-    "list_tasks")
+    "list-tasks")
         if [ $# -lt 2 ]; then
-            echo "Usage: $0 list_tasks <queue> [format]"
+            echo "Usage: $0 list-tasks <queue> [format]"
             echo "Queues: pending, active, completed, failed, all"
             echo "Formats: json (default), compact"
             exit 1
@@ -1767,6 +1985,61 @@ case "${1:-status}" in
                 exit 1
                 ;;
         esac
+        ;;
+
+    "preview-prompt")
+        if [ $# -lt 2 ]; then
+            echo "Usage: $0 preview-prompt <task_id>"
+            exit 1
+        fi
+
+        # Get task details
+        task_id="$2"
+        task=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+
+        if [ -z "$task" ] || [ "$task" = "null" ]; then
+            echo "Task not found in pending queue: $task_id"
+            exit 1
+        fi
+
+        # Extract task details
+        agent=$(echo "$task" | jq -r '.assigned_agent')
+        task_type=$(echo "$task" | jq -r '.task_type')
+        source_file=$(echo "$task" | jq -r '.source_file')
+        task_description=$(echo "$task" | jq -r '.description')
+
+        # Get contract info
+        agent_contract=$(get_agent_contract "$agent")
+        root_document=$(echo "$agent_contract" | jq -r '.outputs.root_document // "output.md"')
+        output_directory=$(echo "$agent_contract" | jq -r '.outputs.output_directory // "output"')
+        enhancement_name=$(extract_enhancement_name "$source_file")
+        enhancement_dir="enhancements/$enhancement_name"
+
+        # Load template
+        template=$(load_task_template "$task_type")
+
+        # Build skills
+        skills_section=$(build_skills_prompt "$agent")
+
+        if [ -n "$skills_section" ]; then
+            template="${template}${skills_section}"
+        fi
+
+        # Substitute variables
+        prompt="$template"
+        prompt="${prompt//\$\{agent\}/$agent}"
+        prompt="${prompt//\$\{agent_config\}/.claude/agents/${agent}.md}"
+        prompt="${prompt//\$\{source_file\}/$source_file}"
+        prompt="${prompt//\$\{task_description\}/$task_description}"
+        prompt="${prompt//\$\{task_id\}/$task_id}"
+        prompt="${prompt//\$\{task_type\}/$task_type}"
+        prompt="${prompt//\$\{root_document\}/$root_document}"
+        prompt="${prompt//\$\{output_directory\}/$output_directory}"
+        prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
+        prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
+
+        # Output the prompt
+        echo "$prompt"
         ;;
 
     "status"|*)

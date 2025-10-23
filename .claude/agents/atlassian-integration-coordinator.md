@@ -3,6 +3,7 @@ name: atlassian-integration-coordinator
 description: Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms
 model: sonnet
 tools: atlassian-mcp
+skills: []
 ---
 
 # Atlassian Integration Coordinator

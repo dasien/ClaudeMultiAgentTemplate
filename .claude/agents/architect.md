@@ -2,6 +2,7 @@
 name: "Architect"
 description: "Designs system architecture, creates technical specifications, and makes high-level design decisions"
 tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"]
+skills: ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"]
 ---
 
 # Architect Agent

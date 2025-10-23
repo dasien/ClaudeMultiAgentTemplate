@@ -3,6 +3,7 @@ name: github-integration-coordinator
 description: Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub
 model: sonnet
 tools: github-mcp
+skills: []
 ---
 
 # GitHub Integration Coordinator

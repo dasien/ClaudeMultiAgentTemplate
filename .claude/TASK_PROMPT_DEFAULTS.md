@@ -106,7 +106,7 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 Task ID: ${task_id}
 
----
+===END_TEMPLATE===
 
 # TECHNICAL_ANALYSIS_TEMPLATE
 
@@ -177,7 +177,7 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 Task ID: ${task_id}
 
----
+===END_TEMPLATE===
 
 # IMPLEMENTATION_TEMPLATE
 
@@ -248,7 +248,7 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 Task ID: ${task_id}
 
----
+===END_TEMPLATE===
 
 # TESTING_TEMPLATE
 
@@ -320,7 +320,7 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 Task ID: ${task_id}
 
----
+===END_TEMPLATE===
 
 # DOCUMENTATION_TEMPLATE
 
@@ -389,7 +389,7 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 Task ID: ${task_id}
 
----
+===END_TEMPLATE===
 
 # INTEGRATION_TEMPLATE
 
@@ -623,7 +623,7 @@ Next Steps:
 
 Task ID: ${task_id}
 
----
+===END_TEMPLATE===
 
 ## Integration Example Scenarios
 
