@@ -374,7 +374,7 @@ jq '.agents[] | {name: .name, skills: .skills}' .claude/agents/agents.json
 ## Next Steps
 
 1. ✅ Read [README.md](README.md) - Understand the system overview
-2. ✅ Review [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) - Learn workflow patterns
+2. ✅ Review [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Learn workflow patterns
 3. ✅ Read [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Understand the skills system
 4. ✅ Study [.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json) - See agent specifications
 5. ✅ Review [CUSTOMIZATION.md](CUSTOMIZATION.md) - Adapt to your project
@@ -386,7 +386,7 @@ jq '.agents[] | {name: .name, skills: .skills}' .claude/agents/agents.json
 
 - **Command Reference**: [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) - All cmat.sh commands
 - **Skills Guide**: [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Skills system documentation
-- **Workflow Patterns**: [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) - Detailed workflows
+- **Workflow Patterns**: [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Detailed workflows
 - **Example Code**: Study `enhancements/add-json-export/` for working example
 - **Logs**: Review `.claude/logs/` and `enhancements/*/logs/` for execution details
 

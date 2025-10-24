@@ -520,6 +520,462 @@ Review the implementation in: ${source_file}
 ...
 ```
 
+## Adding Custom Skills
+
+Custom skills allow you to add domain-specific expertise to your agents.
+
+### Step 1: Create Skill Directory and File
+````bash
+# Create skill directory
+mkdir -p .claude/skills/my-custom-skill
+
+# Copy template
+cp SKILL_TEMPLATE.md .claude/skills/my-custom-skill/SKILL.md
+````
+
+### Step 2: Define Your Skill
+
+Edit `.claude/skills/my-custom-skill/SKILL.md` following the template structure:
+````markdown
+---
+name: "My Custom Skill"
+description: "Concise description of what this skill does (max 1024 chars)"
+category: "implementation"  # or analysis, architecture, testing, documentation, etc.
+required_tools: ["Read", "Write", "Bash"]
+---
+
+# My Custom Skill
+
+## Purpose
+[2-3 sentences explaining what this skill enables the agent to do]
+
+## When to Use
+[List 3-5 scenarios where this skill is appropriate]
+- [Scenario 1]
+- [Scenario 2]
+- [Scenario 3]
+
+## Key Capabilities
+[3-5 main capabilities this skill provides]
+
+1. **[Capability 1]** - [Brief description]
+2. **[Capability 2]** - [Brief description]
+3. **[Capability 3]** - [Brief description]
+
+## Approach
+[Step-by-step methodology, typically 3-7 steps]
+
+1. [Step 1 with brief explanation]
+2. [Step 2 with brief explanation]
+3. [Step 3 with brief explanation]
+
+## Example
+**Context**: [When you'd use this skill]
+
+**Approach**:
+````
+[Code snippet, process description, or example of applying the skill]
+````
+
+**Expected Result**: [What should happen]
+
+## Best Practices
+- ✅ [Do this]
+- ✅ [Do this]
+- ✅ [Do this]
+- ❌ Avoid: [Don't do this]
+- ❌ Avoid: [Don't do this]
+````
+
+### Step 3: Register in skills.json
+
+Add your skill to `.claude/skills/skills.json`:
+````json
+{
+  "skills": [
+    {
+      "name": "My Custom Skill",
+      "skill-directory": "my-custom-skill",
+      "category": "implementation",
+      "required_tools": ["Read", "Write", "Bash"],
+      "description": "Concise description matching SKILL.md frontmatter"
+    }
+  ]
+}
+````
+
+**Important**: Keep `description` consistent between skills.json and SKILL.md.
+
+### Step 4: Assign to Agents
+
+Edit relevant agent `.md` files in `.claude/agents/`:
+
+**Example - Add to implementer**:
+````markdown
+---
+name: "Implementer"
+description: "Implements features based on architectural specifications"
+tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
+skills: ["error-handling", "code-refactoring", "sql-development", "my-custom-skill"]
+---
+````
+
+**Best Practices for Assignment**:
+- ✅ Assign 2-4 skills per agent (not too many)
+- ✅ Choose skills directly relevant to agent's role
+- ✅ Ensure agent has required tools for the skill
+- ❌ Don't assign all skills to all agents
+- ❌ Don't assign irrelevant skills
+
+### Step 5: Regenerate agents.json
+````bash
+cmat.sh agents generate-json
+````
+
+This updates `.claude/agents/agents.json` with the new skill assignments.
+
+### Step 6: Test Your Skill
+````bash
+# Verify skill is registered
+cmat.sh skills list | grep "my-custom-skill"
+
+# Check agent has the skill
+cmat.sh skills get implementer
+# Should include "my-custom-skill"
+
+# Preview what gets injected
+cmat.sh skills prompt implementer | grep -A 20 "My Custom Skill"
+
+# Test with actual task
+TASK_ID=$(cmat.sh queue add \
+  "Test custom skill" \
+  "implementer" \
+  "normal" \
+  "implementation" \
+  "test-file.md" \
+  "Testing my custom skill")
+
+cmat.sh queue start $TASK_ID
+
+# Verify skill appeared in logs
+grep "My Custom Skill" enhancements/*/logs/implementer_*.log
+````
+
+## Skill Customization Examples
+
+### Domain-Specific Skills
+
+**Example: React Component Development**
+````markdown
+---
+name: "React Component Development"
+description: "Best practices for building React components with hooks, proper state management, and TypeScript"
+category: "implementation"
+required_tools: ["Read", "Write", "Edit"]
+---
+
+# React Component Development
+
+## Purpose
+Build React components following modern best practices using hooks, TypeScript, and proper component patterns.
+
+## When to Use
+- Creating new React components
+- Refactoring class components to functional
+- Implementing complex state logic
+- Building reusable UI components
+
+## Key Capabilities
+1. **Functional Components** - Use hooks over classes
+2. **TypeScript Integration** - Proper typing for props and state
+3. **Component Composition** - Build from smaller pieces
+
+## Approach
+1. Define component interface with TypeScript
+2. Use functional component with hooks
+3. Implement proper prop validation
+4. Apply composition over inheritance
+5. Add proper error boundaries
+6. Ensure accessibility
+
+## Example
+**Context**: Creating a user profile card
+
+**Code**:
+```typescript
+interface ProfileCardProps {
+  name: string;
+  email: string;
+  avatar?: string;
+  onEdit?: () => void;
+}
+
+export const ProfileCard: React.FC<ProfileCardProps> = ({
+  name,
+  email,
+  avatar,
+  onEdit
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      className="profile-card"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      role="article"
+      aria-label={`Profile for ${name}`}
+    >
+      {avatar && <Avatar src={avatar} alt={name} />}
+      <h2>{name}</h2>
+      <p>{email}</p>
+      {onEdit && (
+        <Button
+          onClick={onEdit}
+          aria-label="Edit profile"
+        >
+          Edit
+        </Button>
+      )}
+    </div>
+  );
+};
+```
+
+## Best Practices
+- ✅ Use TypeScript for all components
+- ✅ Destructure props in function signature
+- ✅ Use semantic HTML and ARIA labels
+- ✅ Keep components small and focused
+- ✅ Use composition over inheritance
+- ❌ Avoid: Prop drilling (use context instead)
+- ❌ Avoid: Inline function definitions in JSX
+- ❌ Avoid: Missing key props in lists
+````
+
+**Assignment**: Add to `implementer` agent for React projects.
+
+### Infrastructure Skills
+
+**Example: Docker Deployment**
+````markdown
+---
+name: "Docker Deployment"
+description: "Containerize applications with Docker, write efficient Dockerfiles, and manage multi-container setups with docker-compose"
+category: "devops"
+required_tools: ["Read", "Write", "Bash"]
+---
+
+# Docker Deployment
+
+## Purpose
+Containerize applications effectively using Docker best practices for efficient, reproducible deployments.
+
+## When to Use
+- Creating Dockerfiles for applications
+- Setting up development environments
+- Preparing production deployments
+- Defining multi-service architectures
+
+## Key Capabilities
+1. **Efficient Dockerfiles** - Multi-stage builds, layer caching
+2. **Docker Compose** - Multi-container orchestration
+3. **Security** - Non-root users, minimal base images
+
+## Approach
+1. Choose appropriate base image
+2. Use multi-stage builds
+3. Optimize layer caching
+4. Run as non-root user
+5. Define health checks
+6. Document environment variables
+
+## Example
+**Context**: Containerizing a Python Flask application
+
+**Dockerfile**:
+```dockerfile
+# Build stage
+FROM python:3.11-slim as builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Runtime stage
+FROM python:3.11-slim
+WORKDIR /app
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Copy dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+ENV PATH=/home/appuser/.local/bin:$PATH
+
+# Copy application
+COPY --chown=appuser:appuser . .
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD python -c "import requests; requests.get('http://localhost:5000/health')"
+
+# Run
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+
+**docker-compose.yml**:
+```yaml
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://db:5432/app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_password
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+```
+
+## Best Practices
+- ✅ Use official base images
+- ✅ Multi-stage builds for smaller images
+- ✅ Run as non-root user
+- ✅ .dockerignore to exclude unnecessary files
+- ✅ Health checks for all services
+- ✅ Secrets management (not in environment variables)
+- ❌ Avoid: COPY . . before dependencies
+- ❌ Avoid: Running as root
+- ❌ Avoid: Large base images (use alpine/slim)
+````
+
+**Assignment**: Add to custom `devops-engineer` agent.
+
+## Skill Categories
+
+Choose the appropriate category for your skill:
+
+**Built-in Categories**:
+- `analysis` - Requirements, planning, problem analysis
+- `architecture` - System design, API design, patterns
+- `implementation` - Coding practices, refactoring, specific languages/frameworks
+- `testing` - Test strategies, coverage, quality assurance
+- `documentation` - Writing, API docs, user guides
+- `ui-design` - Interface design, UX patterns
+- `database` - Schema design, queries, optimization
+
+**Custom Categories**:
+- `security` - Security practices, auditing
+- `devops` - Deployment, CI/CD, infrastructure
+- `performance` - Optimization, profiling, scaling
+- `data-science` - ML, data analysis, visualization
+- `mobile` - iOS, Android, mobile-specific practices
+
+## Skill Quality Checklist
+
+Before finalizing a custom skill, verify:
+
+- [ ] Frontmatter has all required fields
+- [ ] Description is clear and concise (< 1024 chars)
+- [ ] Category is appropriate
+- [ ] Required tools listed accurately
+- [ ] Purpose section is 2-3 sentences
+- [ ] "When to Use" has 3-5 specific scenarios
+- [ ] Key capabilities listed (3-5 items)
+- [ ] Approach has clear steps (3-7)
+- [ ] Example is practical and complete
+- [ ] Best practices include DOs and DON'Ts
+- [ ] Content is 1-2 pages (not too long)
+- [ ] Language is clear, no unexplained jargon
+- [ ] Registered in skills.json
+- [ ] Assigned to appropriate agents
+- [ ] Tested with actual task
+
+## Skills Maintenance
+
+### Updating Skills
+
+To update a skill:
+
+1. Edit `.claude/skills/{skill-directory}/SKILL.md`
+2. No regeneration needed (changes take effect immediately)
+3. Test with: `cmat.sh skills load {skill-directory}`
+
+### Adding Skills to More Agents
+
+1. Edit agent `.md` files to add skill to `skills` array
+2. Run: `cmat.sh agents generate-json`
+3. Verify: `cmat.sh skills get {agent-name}`
+
+### Removing Skills
+
+1. Remove from agent `.md` files
+2. Run: `cmat.sh agents generate-json`
+3. Optionally delete skill directory and entry in skills.json
+
+### Version Control
+
+**Recommended**:
+- ✅ Commit all changes to `.claude/skills/`
+- ✅ Include skills.json and agents.json in version control
+- ✅ Document skill updates in CHANGELOG
+- ✅ Review skill changes in pull requests
+
+**Be Careful**:
+- Don't commit sensitive information in skills
+- Test skills before committing
+- Coordinate skill changes across team
+
+---
+
+## Skills Best Practices Summary
+
+### DO:
+- ✅ Create focused, single-purpose skills
+- ✅ Provide concrete, practical examples
+- ✅ Keep skills concise (1-2 pages)
+- ✅ Assign 2-4 skills per agent
+- ✅ Test skills with real tasks
+- ✅ Update skills as practices evolve
+- ✅ Use clear, simple language
+- ✅ Include both positive and negative examples
+
+### DON'T:
+- ❌ Make skills too broad or generic
+- ❌ Duplicate content across skills
+- ❌ Assign all skills to all agents
+- ❌ Include sensitive or proprietary information
+- ❌ Forget to regenerate agents.json after changes
+- ❌ Create skills without testing them
+
+---
+
 ## Testing Your Customizations
 
 ### 1. Verify Agent Definitions

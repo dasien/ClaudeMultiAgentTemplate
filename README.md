@@ -351,7 +351,7 @@ Each agent has a **single, well-defined responsibility**:
        └─> Validation: ✓ File exists, ✓ Metadata header present
 ```
 
-See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for other workflow patterns.
+See [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for other workflow patterns.
 
 ## 📚 Documentation
 
@@ -362,15 +362,15 @@ See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for other workflow pa
 - **[SKILL_TEMPLATE.md](SKILL_TEMPLATE.md)** - Template for creating new skills
 
 ### System Reference (For Daily Use)
-- **[.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md)** - Workflow patterns, commands, best practices
+- **[.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns, commands, best practices
 - **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Complete cmat.sh command reference (NEW v3.0)
 - **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system documentation (NEW v3.0)
 - **[.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json)** - Agent specifications
 - **[.claude/WORKFLOW_STATES.json](.claude/WORKFLOW_STATES.json)** - State machine definitions
 
 ### Advanced Topics (As Needed)
-- **[.claude/INTEGRATION_GUIDE.md](.claude/INTEGRATION_GUIDE.md)** - GitHub/Jira integration setup
-- **[.claude/TASK_PROMPT_DEFAULTS.md](.claude/TASK_PROMPT_DEFAULTS.md)** - Agent prompt templates
+- **[.claude/INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration setup
+- **[.claude/TASK_PROMPT_DEFAULTS.md](.claude/docs/TASK_PROMPT_DEFAULTS.md)** - Agent prompt templates
 - **Individual agent `.md` files** - Complete specifications for each agent
 
 ## ⚠️ SECURITY WARNING
@@ -407,7 +407,7 @@ python -m unittest discover tests
 1. **Read** this README - Understand the system
 2. **Install** following [INSTALLATION.md](INSTALLATION.md) - Set up in your project
 3. **Review** [.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json) - See agent specs
-4. **Study** [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) - Learn workflow patterns
+4. **Study** [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Learn workflow patterns
 5. **Explore** [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Understand the skills system
 6. **Try** `enhancements/demo-test/` - Simple test enhancement
 7. **Explore** `enhancements/add-json-export/` - Full workflow example
@@ -643,7 +643,7 @@ This template is provided as-is for use in your projects. Adapt and modify freel
 
 **Need to customize?** See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
 
-**Want to understand workflows?** See [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) for patterns and commands.
+**Want to understand workflows?** See [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for patterns and commands.
 
 **Creating skills?** See [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) and [SKILLS_GUIDE.md](SKILLS_GUIDE.md).
 

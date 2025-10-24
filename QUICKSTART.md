@@ -242,7 +242,7 @@ Now that installation is verified, you can:
 ### Learn the System
 
 - **Read** [README.md](README.md) - System overview
-- **Study** [.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md) - Workflow patterns
+- **Study** [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Workflow patterns
 - **Review** [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) - Complete command reference
 - **Explore** [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Skills system documentation
 
@@ -268,7 +268,7 @@ See [CUSTOMIZATION.md](CUSTOMIZATION.md) for detailed guidance.
 - **Configure** Atlassian MCP server  
 - **Test** external synchronization
 
-See [.claude/INTEGRATION_GUIDE.md](.claude/INTEGRATION_GUIDE.md) for setup.
+See [.claude/INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md) for setup.
 
 ## Quick Command Reference
 ```bash

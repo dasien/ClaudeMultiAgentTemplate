@@ -165,18 +165,10 @@ def main():
     show_parser = subparsers.add_parser("show", help="Show task details")
     show_parser.add_argument("task_id", type=int, help="Task ID to show")
 
-    # Hello command
-    hello_parser = subparsers.add_parser("hello", help="Print a hello message")
-
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
-        return
-
-    # Handle stateless commands first
-    if args.command == "hello":
-        print("Hello, World!")
         return
 
     # Initialize task manager for stateful commands

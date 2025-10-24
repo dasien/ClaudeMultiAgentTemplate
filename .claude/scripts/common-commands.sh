@@ -75,7 +75,7 @@ readonly AGENTS_DIR="$PROJECT_ROOT/.claude/agents"
 readonly SKILLS_DIR="$PROJECT_ROOT/.claude/skills"
 readonly LOGS_DIR="$PROJECT_ROOT/.claude/logs"
 readonly STATUS_DIR="$PROJECT_ROOT/.claude/status"
-readonly TEMPLATES_FILE="$PROJECT_ROOT/.claude/TASK_PROMPT_DEFAULTS.md"
+readonly TEMPLATES_FILE="$PROJECT_ROOT/.claude/docs/TASK_PROMPT_DEFAULTS.md"
 
 #############################################################################
 # DIRECTORY MANAGEMENT
