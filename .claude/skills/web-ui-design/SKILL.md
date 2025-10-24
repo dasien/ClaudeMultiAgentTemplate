@@ -1,5 +1,6 @@
 ---
 name: "Web UI Design"
+description: "Design responsive web interfaces using modern UX principles, accessibility standards, and mobile-first approaches"
 category: "ui-design"
 required_tools: ["Read", "Write", "WebSearch", "WebFetch"]
 ---

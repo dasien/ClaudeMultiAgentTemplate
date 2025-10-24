@@ -5,19 +5,13 @@
 #
 # Manages workflow transitions with contract-based validation and integration
 #
-# Features:
-# - Detects agent completion status
-# - Validates outputs against agent contracts
-# - Manages task queue updates
-# - Creates integration tasks (GitHub/Jira) when appropriate
-# - Auto-chains to next agent based on contracts
-# - Provides intelligent next-step suggestions
+# Version: 3.0.0 - Updated to use cmat command structure
 ################################################################################
 
 set -euo pipefail
 
-# Initialize queue manager
-QUEUE_MANAGER=".claude/queues/queue_manager.sh"
+# Initialize cmat command
+CMAT=".claude/scripts/cmat"
 
 # Read the subagent output from stdin
 SUBAGENT_OUTPUT=$(cat)
@@ -57,7 +51,7 @@ echo
 # Process workflow transition if status detected
 ################################################################################
 
-if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
+if [ -n "$SUBAGENT_STATUS" ] && [ -x "$CMAT" ]; then
     # Find the current active task
     CURRENT_TASK_ID=$(jq -r '.active_workflows[0].id' .claude/queues/task_queue.json 2>/dev/null)
 
@@ -82,7 +76,7 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
 
             if [ "$SUBAGENT_STATUS" = "INTEGRATION_COMPLETE" ]; then
                 # Mark integration task complete
-                "$QUEUE_MANAGER" complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+                "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
                 echo "✅ Integration task completed successfully"
 
                 # Get integration details
@@ -106,7 +100,7 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
 
             elif [ "$SUBAGENT_STATUS" = "INTEGRATION_FAILED" ]; then
                 # Mark integration task failed
-                "$QUEUE_MANAGER" fail "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+                "$CMAT" queue fail "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
                 echo "❌ Integration with external systems failed"
                 echo ""
                 echo "⚠️  Manual intervention required"
@@ -122,7 +116,7 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
                     echo "  • Missing configuration"
                     echo ""
                     echo "To retry:"
-                    echo "  .claude/queues/queue_manager.sh retry $CURRENT_TASK_ID"
+                    echo "  cmat integration sync $CURRENT_TASK_ID"
                 fi
             fi
 
@@ -134,9 +128,9 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
             # Validate agent outputs using contract
             echo "🔍 Validating agent outputs..."
 
-            if "$QUEUE_MANAGER" validate_agent_outputs "$AGENT" "$ENHANCEMENT_DIR"; then
+            if "$CMAT" workflow validate "$AGENT" "$ENHANCEMENT_DIR"; then
                 # Validation passed - mark task complete
-                "$QUEUE_MANAGER" complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+                "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
                 echo "📋 Task marked complete: $CURRENT_TASK_ID"
 
                 ################################################################
@@ -182,7 +176,7 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
                             esac
 
                             if [ "$SHOULD_INTEGRATE" = "true" ]; then
-                                "$QUEUE_MANAGER" add-integration \
+                                "$CMAT" integration add \
                                     "$SUBAGENT_STATUS" \
                                     "$SOURCE_FILE" \
                                     "$AGENT" \
@@ -197,14 +191,14 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
                     ############################################################
 
                     # Determine next agent from contract
-                    NEXT_AGENT=$("$QUEUE_MANAGER" determine_next_agent_from_contract "$AGENT" "$SUBAGENT_STATUS" 2>/dev/null || echo "UNKNOWN")
+                    NEXT_AGENT=$("$CMAT" workflow next-agent "$AGENT" "$SUBAGENT_STATUS" 2>/dev/null || echo "UNKNOWN")
 
                     if [ "$NEXT_AGENT" != "UNKNOWN" ] && [ -n "$NEXT_AGENT" ]; then
                         # Check if auto-chain is enabled
                         if [ "$AUTO_CHAIN" = "true" ]; then
                             echo ""
                             echo "🔗 Auto-chaining enabled..."
-                            "$QUEUE_MANAGER" auto_chain_validated "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+                            "$CMAT" workflow auto-chain "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
                         else
                             # Prompt for manual chain
                             echo ""
@@ -212,13 +206,13 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
                             echo "   Agent: $NEXT_AGENT"
 
                             # Build next source path
-                            NEXT_SOURCE=$("$QUEUE_MANAGER" build_next_source_path "$ENHANCEMENT_NAME" "$NEXT_AGENT" "$AGENT")
+                            NEXT_SOURCE=$("$CMAT" workflow next-source "$ENHANCEMENT_NAME" "$NEXT_AGENT" "$AGENT")
                             echo "   Source: $NEXT_SOURCE"
                             echo ""
                             echo -n "Create next task? [y/N]: "
                             read -r response
                             if [[ "$response" =~ ^[Yy]$ ]]; then
-                                "$QUEUE_MANAGER" auto_chain_validated "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+                                "$CMAT" workflow auto-chain "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
                             fi
                         fi
                     else
@@ -237,8 +231,8 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
                                 echo -n "Queue documentation task? [y/N]: "
                                 read -r doc_response
                                 if [[ "$doc_response" =~ ^[Yy]$ ]]; then
-                                    DOC_SOURCE=$("$QUEUE_MANAGER" build_next_source_path "$ENHANCEMENT_NAME" "documenter" "$AGENT")
-                                    DOC_TASK_ID=$("$QUEUE_MANAGER" add \
+                                    DOC_SOURCE=$("$CMAT" workflow next-source "$ENHANCEMENT_NAME" "documenter" "$AGENT")
+                                    DOC_TASK_ID=$("$CMAT" queue add \
                                         "Create documentation for $ENHANCEMENT_NAME" \
                                         "documenter" \
                                         "normal" \
@@ -269,7 +263,7 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$QUEUE_MANAGER" ]; then
                 # Validation failed
                 echo "❌ Agent output validation failed"
                 echo "Task marked as BLOCKED - manual review required"
-                "$QUEUE_MANAGER" fail "$CURRENT_TASK_ID" "Output validation failed: Required outputs missing"
+                "$CMAT" queue fail "$CURRENT_TASK_ID" "Output validation failed: Required outputs missing"
 
                 echo ""
                 echo "Common issues:"
@@ -288,10 +282,10 @@ fi
 # Show current queue status
 ################################################################################
 
-if [ -x "$QUEUE_MANAGER" ]; then
+if [ -x "$CMAT" ]; then
     echo ""
     echo "📊 Current Queue Status:"
-    "$QUEUE_MANAGER" status
+    "$CMAT" queue status
 fi
 
 echo ""

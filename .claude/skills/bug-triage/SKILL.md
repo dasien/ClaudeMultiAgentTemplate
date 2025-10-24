@@ -1,5 +1,6 @@
 ---
 name: "Bug Triage"
+description: "Systematically reproduce, diagnose, and analyze bugs to determine root cause, assess severity, and plan fix strategy"
 category: "analysis"
 required_tools: ["Read", "Write", "Grep", "Glob", "Bash"]
 ---

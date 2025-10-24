@@ -1,5 +1,6 @@
 ---
 name: "API Documentation"
+description: "Document APIs comprehensively with signatures, parameters, return values, errors, and working code examples for developer reference"
 category: "documentation"
 required_tools: ["Read", "Write", "Grep", "Glob"]
 ---

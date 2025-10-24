@@ -1,5 +1,6 @@
 ---
 name: "Test Design Patterns"
+description: "Apply testing patterns like AAA (Arrange-Act-Assert), mocking, fixtures, and parameterization for maintainable test suites"
 category: "testing"
 required_tools: ["Read", "Write", "Bash"]
 ---

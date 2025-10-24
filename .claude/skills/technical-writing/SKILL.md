@@ -1,5 +1,6 @@
 ---
 name: "Technical Writing"
+description: "Create clear, accessible documentation for technical and non-technical audiences with practical examples and logical structure"
 category: "documentation"
 required_tools: ["Read", "Write", "Edit"]
 ---

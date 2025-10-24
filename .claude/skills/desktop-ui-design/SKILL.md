@@ -1,5 +1,6 @@
 ---
 name: "Desktop UI Design"
+description: "Design intuitive desktop interfaces following platform conventions with proper layouts, keyboard shortcuts, and native widgets"
 category: "ui-design"
 required_tools: ["Read", "Write", "WebSearch"]
 ---

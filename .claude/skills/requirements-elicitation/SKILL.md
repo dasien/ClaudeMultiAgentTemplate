@@ -1,5 +1,6 @@
 ---
 name: "Requirements Elicitation"
+description: "Extract complete, unambiguous requirements from specifications by identifying functional/non-functional requirements and clarifying ambiguities"
 category: "analysis"
 required_tools: ["Read", "Write", "Grep"]
 ---

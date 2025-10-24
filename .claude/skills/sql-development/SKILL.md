@@ -1,5 +1,6 @@
 ---
 name: "SQL Development"
+description: "Design efficient database schemas, write optimized queries with proper indexes, and manage data operations following best practices"
 category: "database"
 required_tools: ["Read", "Write", "Edit", "Bash"]
 ---

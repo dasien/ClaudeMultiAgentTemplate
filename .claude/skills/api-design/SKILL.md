@@ -1,5 +1,6 @@
 ---
 name: "API Design"
+description: "Design RESTful APIs with proper resource modeling, HTTP methods, error handling, and clear contracts following REST principles"
 category: "architecture"
 required_tools: ["Read", "Write", "WebSearch"]
 ---

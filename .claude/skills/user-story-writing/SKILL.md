@@ -1,5 +1,6 @@
 ---
 name: "User Story Writing"
+description: "Create well-structured user stories with clear acceptance criteria in 'As a/I want/So that' format for team communication"
 category: "analysis"
 required_tools: ["Read", "Write"]
 ---

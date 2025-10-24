@@ -1,5 +1,6 @@
 ---
 name: "Error Handling Strategies"
+description: "Implement robust error handling with proper validation, recovery mechanisms, and clear feedback for system stability"
 category: "implementation"
 required_tools: ["Read", "Write", "Edit", "Grep"]
 ---

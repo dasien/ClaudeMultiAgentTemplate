@@ -1,5 +1,6 @@
 ---
 name: "System Architecture Patterns"
+description: "Apply proven architectural patterns (MVC, layered, microservices) to create maintainable systems with clear separation of concerns"
 category: "architecture"
 required_tools: ["Read", "Write", "Grep", "Glob"]
 ---

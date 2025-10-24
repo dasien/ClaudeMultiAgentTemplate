@@ -1,5 +1,6 @@
 ---
 name: "Test Coverage Analysis"
+description: "Measure and improve test coverage by identifying untested code paths and prioritizing high-risk areas for testing"
 category: "testing"
 required_tools: ["Read", "Bash", "Grep"]
 ---

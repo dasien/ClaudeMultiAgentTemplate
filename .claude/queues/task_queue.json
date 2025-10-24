@@ -4,7 +4,32 @@
     "version": "2.0.0",
     "description": "Task queue for multi-agent development system with contract-based validation"
   },
-  "active_workflows": [],
+  "active_workflows": [
+    {
+      "id": "task_1761322285_74916",
+      "title": "Process demo-test with tester",
+      "assigned_agent": "tester",
+      "priority": "high",
+      "task_type": "testing",
+      "description": "Continue workflow for demo-test following implementer completion",
+      "source_file": "enhancements/demo-test/implementer/test_plan.md",
+      "created": "2025-10-24T16:11:25Z",
+      "status": "active",
+      "started": "2025-10-24T16:11:25Z",
+      "completed": null,
+      "result": null,
+      "auto_complete": true,
+      "auto_chain": true,
+      "metadata": {
+        "github_issue": null,
+        "jira_ticket": null,
+        "github_pr": null,
+        "confluence_page": null,
+        "parent_task_id": null,
+        "workflow_status": null
+      }
+    }
+  ],
   "pending_tasks": [],
   "completed_tasks": [
     {
@@ -174,29 +199,125 @@
         "parent_task_id": null,
         "workflow_status": null
       }
+    },
+    {
+      "id": "task_1761310553_71032",
+      "title": "Test refactored system",
+      "assigned_agent": "requirements-analyst",
+      "priority": "high",
+      "task_type": "analysis",
+      "description": "Test new cmat structure with skills",
+      "source_file": "enhancements/demo-test/demo-test.md",
+      "created": "2025-10-24T12:55:53Z",
+      "status": "completed",
+      "started": "2025-10-24T12:56:15Z",
+      "completed": "2025-10-24T13:00:44Z",
+      "result": "READY_FOR_DEVELOPMENT",
+      "auto_complete": true,
+      "auto_chain": true,
+      "metadata": {
+        "github_issue": null,
+        "jira_ticket": null,
+        "github_pr": null,
+        "confluence_page": null,
+        "parent_task_id": null,
+        "workflow_status": null
+      }
+    },
+    {
+      "id": "task_1761321548_72998",
+      "title": "Test refactored system",
+      "assigned_agent": "requirements-analyst",
+      "priority": "high",
+      "task_type": "analysis",
+      "description": "Test new cmat structure with skills",
+      "source_file": "enhancements/demo-test/demo-test.md",
+      "created": "2025-10-24T15:59:08Z",
+      "status": "completed",
+      "started": "2025-10-24T15:59:48Z",
+      "completed": "2025-10-24T16:03:49Z",
+      "result": "READY_FOR_DEVELOPMENT",
+      "auto_complete": true,
+      "auto_chain": true,
+      "metadata": {
+        "github_issue": null,
+        "jira_ticket": null,
+        "github_pr": null,
+        "confluence_page": null,
+        "parent_task_id": null,
+        "workflow_status": null
+      }
+    },
+    {
+      "id": "task_1761321829_73656",
+      "title": "Process demo-test with architect",
+      "assigned_agent": "architect",
+      "priority": "high",
+      "task_type": "technical_analysis",
+      "description": "Continue workflow for demo-test following requirements-analyst completion",
+      "source_file": "enhancements/demo-test/requirements-analyst/analysis_summary.md",
+      "created": "2025-10-24T16:03:49Z",
+      "status": "completed",
+      "started": "2025-10-24T16:03:49Z",
+      "completed": "2025-10-24T16:07:34Z",
+      "result": "READY_FOR_IMPLEMENTATION",
+      "auto_complete": true,
+      "auto_chain": true,
+      "metadata": {
+        "github_issue": null,
+        "jira_ticket": null,
+        "github_pr": null,
+        "confluence_page": null,
+        "parent_task_id": null,
+        "workflow_status": null
+      }
+    },
+    {
+      "id": "task_1761322054_74106",
+      "title": "Process demo-test with implementer",
+      "assigned_agent": "implementer",
+      "priority": "high",
+      "task_type": "implementation",
+      "description": "Continue workflow for demo-test following architect completion",
+      "source_file": "enhancements/demo-test/architect/implementation_plan.md",
+      "created": "2025-10-24T16:07:34Z",
+      "status": "completed",
+      "started": "2025-10-24T16:07:34Z",
+      "completed": "2025-10-24T16:11:25Z",
+      "result": "READY_FOR_TESTING",
+      "auto_complete": true,
+      "auto_chain": true,
+      "metadata": {
+        "github_issue": null,
+        "jira_ticket": null,
+        "github_pr": null,
+        "confluence_page": null,
+        "parent_task_id": null,
+        "workflow_status": null
+      }
     }
   ],
   "failed_tasks": [],
   "agent_status": {
     "requirements-analyst": {
       "status": "idle",
-      "last_activity": "2025-10-22T01:16:15Z",
+      "last_activity": "2025-10-24T16:03:49Z",
       "current_task": null
     },
     "architect": {
       "status": "idle",
-      "last_activity": "2025-10-22T01:21:07Z",
+      "last_activity": "2025-10-24T16:07:34Z",
       "current_task": null
     },
     "implementer": {
       "status": "idle",
-      "last_activity": "2025-10-22T01:24:47Z",
+      "last_activity": "2025-10-24T16:11:25Z",
       "current_task": null
     },
     "tester": {
-      "status": "idle",
-      "last_activity": "2025-10-23T19:48:43Z",
-      "current_task": null
+      "status": "active",
+      "last_activity": "2025-10-24T16:11:25Z",
+      "current_task": "task_1761322285_74916"
     },
     "documenter": {
       "status": "idle",

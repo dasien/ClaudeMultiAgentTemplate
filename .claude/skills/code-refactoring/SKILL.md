@@ -1,5 +1,6 @@
 ---
 name: "Code Refactoring"
+description: "Improve code structure, readability, and maintainability without changing external behavior through systematic refactoring"
 category: "implementation"
 required_tools: ["Read", "Write", "Edit", "MultiEdit", "Grep", "Glob"]
 ---
