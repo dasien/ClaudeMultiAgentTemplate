@@ -385,6 +385,87 @@ status: <your-completion-status>
 Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 8601 format.
 Replace `<your-completion-status>` with your actual completion status code.
 
+## ENHANCEMENT SUMMARY (CRITICAL)
+
+In addition to `documentation_summary.md`, you MUST create `../enhancement_summary.md` at the enhancement root.
+
+This is an executive summary synthesizing ALL agent outputs from the entire workflow.
+
+### Input Sources (Read These)
+- `../requirements-analyst/analysis_summary.md` - Requirements and acceptance criteria
+- `../architect/implementation_plan.md` - Architecture decisions and technical design
+- `../implementer/test_plan.md` - Implementation details and code changes
+- `../tester/test_summary.md` - Test results and quality metrics
+- `../logs/*.log` - Agent execution logs for timing and issues
+
+### Output Location
+**File**: `../enhancement_summary.md` (one level up from documenter/)
+
+### Critical Content Requirements
+
+**1. Extract Key Decisions**
+From architect and implementer outputs, identify:
+- Technology choices and rationale
+- Architecture patterns selected
+- Implementation approaches taken
+- Trade-offs made
+
+**2. Identify Risk Areas ⚠️**
+Flag items needing human review:
+- Security concerns (auth, data handling)
+- Performance bottlenecks
+- Breaking changes
+- Database migrations
+- Complex business logic
+- Third-party integrations
+
+**3. Calculate Quality Metrics**
+From tester output, extract:
+- Test coverage percentage
+- Number of tests (unit/integration/e2e)
+- Pass/fail rates
+- Performance test results
+- Known limitations
+
+**4. Build Deployment Checklist**
+Based on all phases, create actionable checklist:
+- [ ] Review migration scripts
+- [ ] Confirm security changes
+- [ ] Load test with realistic data
+- [ ] Update monitoring dashboards
+- [ ] Prepare rollback procedure
+
+**5. Document Timeline**
+Calculate and display:
+- Each agent's duration (from logs)
+- Total workflow time
+- Status of each phase
+
+### Quality Standards
+- ✅ Specific file paths and line numbers for review items
+- ✅ Risk levels assigned (HIGH/MEDIUM/LOW)
+- ✅ Metrics with actual numbers, not vague descriptions
+- ✅ Working markdown links to all agent outputs
+- ✅ Clear action items with checkboxes
+- ✅ Professional formatting with tables and sections
+
+### Template Structure
+Follow this exact structure:
+1. Executive Overview (2-3 paragraphs)
+2. Workflow Timeline (table)
+3. Key Decisions Made (with rationale and risk)
+4. Areas Requiring Human Review (HIGH/MEDIUM/LOW sections)
+5. Code Quality Assessment (metrics)
+6. Testing Summary (coverage and edge cases)
+7. Deployment Recommendations (checklist)
+8. Files Changed (created/modified)
+9. Skills Applied (per phase)
+10. Integration Status (links)
+11. Lessons Learned
+12. Next Steps
+
+**Remember**: This document is for executives, deployment engineers, and code reviewers. Make it scannable, actionable, and complete.
+
 **IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
 Task ID: ${task_id}

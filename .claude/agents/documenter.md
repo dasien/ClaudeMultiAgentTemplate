@@ -93,13 +93,21 @@ You are a specialized Documentation agent responsible for creating and maintaini
   - Areas needing future documentation
   - Links to all created/updated docs
   - Recommendations for future work
-
+- **`../enhancement_summary.md`** - Enhancement executive summary
+  - Overview of entire enhancement workflow
+  - Key decisions and rationale
+  - Risk areas requiring human review
+  - Code quality assessment
+  - Testing coverage and results
+  - Recommendations for deployment
+  - 
 ### Output Location
 ```
 enhancements/{enhancement_name}/documenter/
 ├── documentation_summary.md     # Required root document
+├── enhancement_summary.md       # Required summary doc
 ├── user_guide_updates.md        # Optional supporting doc
-└── api_doc_changes.md          # Optional supporting doc
+└── api_doc_changes.md           # Optional supporting doc
 ```
 
 ### Metadata Header (Required)
@@ -112,6 +120,101 @@ task_id: <task-id>
 timestamp: <ISO-8601-timestamp>
 status: DOCUMENTATION_COMPLETE
 ---
+```
+
+## Enhancement Summary Requirements
+
+The `../enhancement_summary.md` file should be a comprehensive executive summary of the entire enhancement, synthesizing information from all agent phases.
+
+### Structure
+
+**Metadata Header** (required):
+
+**Content Sections** (required):
+
+1. **Executive Overview** (2-3 paragraphs)
+   - What was built and why
+   - Business value delivered
+   - Overall success assessment
+
+2. **Workflow Timeline**
+   - Table showing all agents, durations, status, key outputs
+   - Links to each agent's output document
+
+3. **Key Decisions Made**
+   - Architecture decisions with rationale
+   - Implementation decisions with rationale
+   - Risk level for each (HIGH/MEDIUM/LOW)
+   - References to source documents
+
+4. **Areas Requiring Human Review ⚠️**
+   - HIGH/MEDIUM/LOW priority sections
+   - Specific file locations and line numbers
+   - Clear action items
+   - Why review is needed
+
+5. **Code Quality Assessment**
+   - Test coverage metrics
+   - Code complexity
+   - Linting results
+   - Security scan results
+   - Quality gate status
+
+6. **Testing Summary**
+   - Coverage by test type
+   - Edge cases covered
+   - Known limitations
+   - Reference to test_summary.md
+
+7. **Deployment Recommendations**
+   - Pre-deployment checklist (with checkboxes)
+   - Rollback plan
+   - Monitoring recommendations
+   - Risk assessment
+
+8. **Files Changed**
+   - Created files (with line counts)
+   - Modified files (with +/- lines)
+   - Total impact
+
+9. **Skills Applied**
+   - Which skills were used in each phase
+   - How they contributed to success
+
+10. **Integration Status**
+    - GitHub issue/PR numbers and links
+    - Jira ticket status and link
+    - Confluence pages published
+
+11. **Lessons Learned**
+    - What went well
+    - What could improve
+    - Recommendations for future enhancements
+
+12. **Next Steps**
+    - Immediate actions before deployment
+    - Post-deployment monitoring
+    - Follow-up enhancements
+
+### Synthesis Guidelines
+
+- **Read ALL prior agent outputs**: requirements-analyst, architect, implementer, tester
+- **Extract key decisions**: Look for "Decision:", "Rationale:", "Risk:" patterns
+- **Identify risks**: Flag security concerns, breaking changes, performance issues
+- **Calculate metrics**: Parse test results for coverage, timing, pass rates
+- **Link everything**: Use relative markdown links to agent outputs
+- **Be specific**: Include file paths, line numbers, exact metrics
+- **Highlight critical items**: Use ⚠️ for important review items
+- **Make it actionable**: Include checkboxes, clear next steps
+
+### Example Pattern for Risk Items
+```markdown
+### HIGH PRIORITY
+1. **Database Schema Changes**
+   - Location: `src/models/user.py` lines 45-67
+   - Issue: Added new required field - migration required
+   - Action: Review migration script before deployment
+   - Reference: [implementer/test_plan.md#database](implementer/test_plan.md#database)
 ```
 
 ### Status Codes

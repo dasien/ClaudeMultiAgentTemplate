@@ -172,7 +172,7 @@
       "outputs": {
         "root_document": "documentation_summary.md",
         "output_directory": "documenter",
-        "additional_required": []
+        "additional_required": ["../enhancement_summary.md"]
       },
       "statuses": {
         "success": [

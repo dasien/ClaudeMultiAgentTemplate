@@ -193,6 +193,21 @@ invoke_agent() {
     echo "Log: $log_file" | tee -a "$log_file"
     echo "" | tee -a "$log_file"
 
+    # Log the complete prompt sent to agent
+    {
+        echo "====================================================================="
+        echo "PROMPT SENT TO AGENT"
+        echo "====================================================================="
+        echo ""
+        echo "$prompt"
+        echo ""
+        echo "====================================================================="
+        echo "END OF PROMPT"
+        echo "====================================================================="
+        echo ""
+        echo ""
+    } >> "$log_file"
+
     # Invoke Claude Code with bypass permissions
     claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
 
@@ -219,7 +234,9 @@ invoke_agent() {
 
     # Extract and log exit status
     local status
-    status=$(grep -E "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|COMPLETED|BLOCKED:[^*]*|INTEGRATION_COMPLETE|INTEGRATION_FAILED)" | head -1)
+
+    # Look for common status patterns: READY_FOR_*, *_COMPLETE, BLOCKED:
+    status=$(grep -E "(READY_FOR_[A-Z_]+|[A-Z_]+_COMPLETE|BLOCKED:)" "$log_file" | tail -1 | grep -oE "(READY_FOR_[A-Z_]+|[A-Z_]+_COMPLETE|BLOCKED:[^*]*)" | head -1)
 
     if [ -n "$status" ]; then
         echo "Exit Status: $status" >> "$log_file"
