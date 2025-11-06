@@ -16,6 +16,8 @@ The following variables are automatically substituted in templates when launchin
 - `${output_directory}` - Agent's output subdirectory from contract (e.g., "requirements-analyst")
 - `${enhancement_name}` - Enhancement name extracted from source file
 - `${enhancement_dir}` - Full enhancement directory path
+- `${success_statuses}` - Valid success status codes from agent contract (e.g., "READY_FOR_DEVELOPMENT")
+- `${failure_pattern}` - Failure status pattern from agent contract (e.g., "BLOCKED: <reason>")
 
 ## How This Works
 
@@ -104,6 +106,21 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 **IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
+## COMPLETION STATUS (REQUIRED)
+
+When you have finished your analysis work, you MUST output your completion status explicitly in your final message.
+
+**Output one of these status lines:**
+```
+Status: ${success_statuses}
+```
+or if blocked:
+```
+Status: ${failure_pattern}
+```
+
+This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
+
 Task ID: ${task_id}
 
 ===END_TEMPLATE===
@@ -174,6 +191,21 @@ Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 860
 Replace `<your-completion-status>` with your actual completion status code.
 
 **IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+
+## COMPLETION STATUS (REQUIRED)
+
+When you have finished your technical analysis work, you MUST output your completion status explicitly in your final message.
+
+**Output one of these status lines:**
+```
+Status: ${success_statuses}
+```
+or if blocked:
+```
+Status: ${failure_pattern}
+```
+
+This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
 
 Task ID: ${task_id}
 
@@ -246,6 +278,21 @@ Replace `<your-completion-status>` with your actual completion status code.
 
 **IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
 
+## COMPLETION STATUS (REQUIRED)
+
+When you have finished your implementation work, you MUST output your completion status explicitly in your final message.
+
+**Output one of these status lines:**
+```
+Status: ${success_statuses}
+```
+or if blocked:
+```
+Status: ${failure_pattern}
+```
+
+This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
+
 Task ID: ${task_id}
 
 ===END_TEMPLATE===
@@ -317,6 +364,21 @@ Replace `<current-ISO-8601-timestamp>` with the current UTC timestamp in ISO 860
 Replace `<your-completion-status>` with your actual completion status code.
 
 **IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+
+## COMPLETION STATUS (REQUIRED)
+
+When you have finished your testing work, you MUST output your completion status explicitly in your final message.
+
+**Output one of these status lines:**
+```
+Status: ${success_statuses}
+```
+or if blocked:
+```
+Status: ${failure_pattern}
+```
+
+This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
 
 Task ID: ${task_id}
 
@@ -467,6 +529,21 @@ Follow this exact structure:
 **Remember**: This document is for executives, deployment engineers, and code reviewers. Make it scannable, actionable, and complete.
 
 **IMPORTANT**: You have full permission to create all required directories and output files using the Write tool. Do not ask for permission - directly create and write all files to their specified locations. This is an automated workflow system and file creation is expected and authorized.
+
+## COMPLETION STATUS (REQUIRED)
+
+When you have finished all documentation work, you MUST output your completion status explicitly in your final message.
+
+**Output one of these status lines:**
+```
+Status: ${success_statuses}
+```
+or if blocked:
+```
+Status: ${failure_pattern}
+```
+
+This status line is critical for the queue manager to recognize task completion. Without it, your task will remain in active status even if all work is complete.
 
 Task ID: ${task_id}
 

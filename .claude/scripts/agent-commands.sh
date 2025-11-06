@@ -29,7 +29,7 @@
 # Template Variables:
 #   ${agent}, ${agent_config}, ${source_file}, ${task_description},
 #   ${task_id}, ${task_type}, ${root_document}, ${output_directory},
-#   ${enhancement_name}, ${enhancement_dir}
+#   ${enhancement_name}, ${enhancement_dir}, ${success_statuses}, ${failure_pattern}
 #
 # Dependencies:
 #   - common-commands.sh (sourced)
@@ -131,6 +131,11 @@ invoke_agent() {
     root_document=$(echo "$agent_contract" | jq -r '.outputs.root_document // "output.md"')
     output_directory=$(echo "$agent_contract" | jq -r '.outputs.output_directory // "output"')
 
+    # Extract status codes from contract
+    local success_statuses failure_pattern
+    success_statuses=$(echo "$agent_contract" | jq -r '[.statuses.success[].code] | join(" or ")' 2>/dev/null || echo "")
+    failure_pattern=$(echo "$agent_contract" | jq -r '.statuses.failure[0].pattern // .statuses.failure[0].code // "BLOCKED: <reason>"' 2>/dev/null || echo "BLOCKED: <reason>")
+
     # Extract enhancement name
     local enhancement_name enhancement_dir
     enhancement_name=$(extract_enhancement_name "$source_file")
@@ -176,6 +181,8 @@ invoke_agent() {
     prompt="${prompt//\$\{output_directory\}/$output_directory}"
     prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
     prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
+    prompt="${prompt//\$\{success_statuses\}/$success_statuses}"
+    prompt="${prompt//\$\{failure_pattern\}/$failure_pattern}"
 
     local start_time start_timestamp
     start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
