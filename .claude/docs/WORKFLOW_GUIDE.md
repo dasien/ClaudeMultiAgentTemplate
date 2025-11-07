@@ -1,8 +1,8 @@
 # Workflow Patterns Guide
 
-This guide describes common workflow patterns in the multi-agent system. All patterns are driven by the agent contracts defined in `AGENT_CONTRACTS.json`.
+This guide describes common workflow patterns in the multi-agent system. All patterns are driven by the agent contracts defined in `agent_contracts.json`.
 
-**Version**: 3.0.0 - Updated for modular cmat.sh command structure and skills system
+**Version**: 4.0.0 - Updated for modular cmat.sh command structure and skills system
 
 ## Table of Contents
 
@@ -467,7 +467,7 @@ Each status code triggers a specific next agent according to agent contracts:
 | `DOCUMENTATION_COMPLETE` | none | (workflow complete) |
 | `BLOCKED: <reason>` | none | (manual intervention required) |
 
-**State Machine**: See `WORKFLOW_STATES.json` for complete state machine definition.
+**State Machine**: See `workflow_states.json` for complete state machine definition.
 
 ---
 
@@ -618,7 +618,7 @@ If contract validation fails:
 ls -la enhancements/feature-x/
 
 # Check what contract expects
-jq '.agents."requirements-analyst".outputs' .claude/AGENT_CONTRACTS.json
+jq '.agents."requirements-analyst".outputs' .claude/agent_contracts.json
 
 # Manually validate
 cmat.sh workflow validate requirements-analyst enhancements/feature-x
@@ -679,9 +679,6 @@ cmat.sh queue status
 # Check agent logs
 tail -f enhancements/add-search/logs/*.log
 
-# View workflow state
-cat .claude/status/workflow_state.json | jq '.project_milestones'
-
 # Check skill application
 grep "Skills Applied" enhancements/add-search/*/
 ```
@@ -728,7 +725,7 @@ tail -100 enhancements/*/logs/*_$(date +%Y%m%d)*.log
 ls -la enhancements/feature-x/
 
 # Check what contract expects
-jq '.agents."requirements-analyst".outputs' .claude/AGENT_CONTRACTS.json
+jq '.agents."requirements-analyst".outputs' .claude/agent_contracts.json
 
 # Manually validate
 cmat.sh workflow validate requirements-analyst enhancements/feature-x
@@ -816,4 +813,4 @@ cmat.sh integration sync-all
 **This guide should be updated as new workflows are discovered or system capabilities expand.**
 
 **Last Updated**: 10/24/2025
-**Version**: 3.0.0
+**Version**: 4.0.0

@@ -16,7 +16,7 @@ After completing this guide:
 - Node.js 16 or higher
 - GitHub account with admin access to repository
 - Jira/Confluence access (for Atlassian integration)
-- Claude Multi-Agent Template v3.0 installed
+- Claude Multi-Agent Template v4.0 installed
 
 ## GitHub Integration (5 minutes)
 
@@ -572,5 +572,5 @@ cmat.sh queue list all | jq '.active[] | select(.assigned_agent | contains("inte
 
 **Setup Time**: ~15 minutes  
 **Difficulty**: Beginner  
-**Version**: 3.0.0  
+**Version**: 4.0.0  
 **Last Updated**: 2025-10-24

@@ -13,7 +13,7 @@ You are a specialized Software Implementation agent responsible for writing prod
 
 **Key Principle**: Implement the design created by the architect, writing clean, well-tested, and maintainable code that follows project conventions and best practices.
 
-**Agent Contract**: See `AGENT_CONTRACTS.json → agents.implementer` for formal input/output specifications
+**Agent Contract**: See `agent_contracts.json → agents.implementer` for formal input/output specifications
 
 ## Core Responsibilities
 
@@ -83,7 +83,7 @@ You are a specialized Software Implementation agent responsible for writing prod
 **Next Agent**: 
 - **tester** (when status is `READY_FOR_TESTING` or `READY_FOR_INTEGRATION`)
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.implementer`
+**Contract Reference**: `agent_contracts.json → agents.implementer`
 
 ## Output Requirements
 
@@ -125,7 +125,7 @@ status: READY_FOR_TESTING
 **Failure Status**:
 - `BLOCKED: <reason>` - Cannot proceed (e.g., "BLOCKED: Missing database schema, cannot implement data layer")
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.implementer.statuses`
+**Contract Reference**: `agent_contracts.json → agents.implementer.statuses`
 
 ## Workflow
 

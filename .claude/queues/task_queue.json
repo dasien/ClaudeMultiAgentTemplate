@@ -1,7 +1,7 @@
 {
   "queue_metadata": {
     "created": "2025-11-07T02:08:59Z",
-    "version": "3.0.1",
+    "version": "4.0.0",
     "description": "Task queue for multi-agent development system with contract-based validation"
   },
   "active_workflows": [],
@@ -9,42 +9,42 @@
   "completed_tasks": [],
   "failed_tasks": [],
   "agent_status": {
-  "architect": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
+    "architect": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "atlassian-integration-coordinator": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "documenter": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "github-integration-coordinator": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "implementer": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "requirements-analyst": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    },
+    "tester": {
+      "status": "idle",
+      "last_activity": null,
+      "current_task": null
+    }
   },
-  "atlassian-integration-coordinator": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
-  },
-  "documenter": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
-  },
-  "github-integration-coordinator": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
-  },
-  "implementer": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
-  },
-  "requirements-analyst": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
-  },
-  "tester": {
-    "status": "idle",
-    "last_activity": null,
-    "current_task": null
-  }
-},
   "workflow_chains": {
     "sequential_development": {
       "name": "Sequential Development Flow",
@@ -93,5 +93,6 @@
       "current_step": 0,
       "status": "ready"
     }
-  }
+  },
+  "version": "4.0.0"
 }

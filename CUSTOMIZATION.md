@@ -6,7 +6,7 @@ This guide shows you how to adapt the Claude Multi-Agent Template v2.0 for your 
 
 The template is designed to be **language-agnostic** and **project-flexible**. Customization involves updating agent definitions, agent contracts, workflow patterns, and project-specific documentation to match your needs.
 
-**v2.0 Key Principle**: The system is driven by **AGENT_CONTRACTS.json** (machine-readable) with human-friendly guides that reference it.
+**v2.0 Key Principle**: The system is driven by **agent_contracts.json** (machine-readable) with human-friendly guides that reference it.
 
 ## Essential Customizations
 
@@ -114,7 +114,7 @@ Each agent file (`.claude/agents/*.md`) has a "Project-Specific Customization" s
 
 ### 2. Agent Contracts (NEW in v2.0)
 
-**File**: `.claude/AGENT_CONTRACTS.json`
+**File**: `.claude/agents/agent_contracts.json`
 
 The agent contracts file is the **source of truth** for the system. You typically don't need to modify it unless you're adding custom agents or changing workflow patterns.
 
@@ -373,7 +373,7 @@ tools: ["Read", "Grep", "Glob", "WebSearch"]
 ## Role and Purpose
 Review code for security vulnerabilities and ensure compliance with security standards.
 
-**Agent Contract**: See `AGENT_CONTRACTS.json → agents.security-reviewer`
+**Agent Contract**: See `agent_contracts.json → agents.security-reviewer`
 
 ## Core Responsibilities
 - Check for common vulnerabilities (OWASP Top 10)
@@ -402,7 +402,7 @@ Review code for security vulnerabilities and ensure compliance with security sta
 
 ### Step 2: Add to Agent Contracts
 
-**File**: `.claude/AGENT_CONTRACTS.json`
+**File**: `.claude/agents/agent_contracts.json`
 
 Add new agent to the contracts:
 
@@ -450,7 +450,7 @@ Add new agent to the contracts:
 
 ### Step 3: Update Workflow States (if needed)
 
-**File**: `.claude/WORKFLOW_STATES.json`
+**File**: `.claude/queues/workflow_states.json`
 
 Add new state if using custom status codes:
 
@@ -992,13 +992,13 @@ done
 
 ```bash
 # Validate contract JSON syntax
-jq '.' .claude/AGENT_CONTRACTS.json
+jq '.' .claude/agents/agent_contracts.json
 
 # Check specific agent contract
-jq '.agents."requirements-analyst"' .claude/AGENT_CONTRACTS.json
+jq '.agents."requirements-analyst"' .claude/agents/agent_contracts.json
 
 # Verify all agents have required fields
-jq '.agents | to_entries[] | select(.value.outputs.root_document == null) | .key' .claude/AGENT_CONTRACTS.json
+jq '.agents | to_entries[] | select(.value.outputs.root_document == null) | .key' .claude/agents/agent_contracts.json
 # Should return empty (all agents have root_document)
 ```
 
@@ -1008,7 +1008,7 @@ Launch each agent with a simple task to verify customizations are accessible:
 
 ```bash
 # Test requirements analyst
-.claude/queues/queue_manager.sh add \
+.claude/scripts/cmat.sh queue add \
   "Test task" \
   "requirements-analyst" \
   "normal" \
@@ -1016,25 +1016,25 @@ Launch each agent with a simple task to verify customizations are accessible:
   "enhancements/demo-test/demo-test.md" \
   "Test agent customization"
 
-.claude/queues/queue_manager.sh start <task_id>
+.claude/scripts/cmat.sh queue start <task_id>
 ```
 
 ### 4. Test Contract Validation
 
 ```bash
 # Test output validation
-.claude/queues/queue_manager.sh validate_agent_outputs \
+.claude/scripts/cmat.sh workflow validate \
   "requirements-analyst" \
   "enhancements/demo-test"
 
 # Test next agent determination
-.claude/queues/queue_manager.sh determine_next_agent_from_contract \
+.claude/scripts/cmat.sh workflow next-agent \
   "requirements-analyst" \
   "READY_FOR_DEVELOPMENT"
 # Should output: architect
 
 # Test path building
-.claude/queues/queue_manager.sh build_next_source_path \
+.claude/scripts/cmat.sh workflow next-source \
   "demo-test" \
   "architect" \
   "requirements-analyst"
@@ -1047,7 +1047,7 @@ Run through a complete workflow with the demo enhancement to verify all customiz
 
 ```bash
 # Use demo-test enhancement as validation
-.claude/queues/queue_manager.sh add \
+.claude/scripts/cmat.sh queue add \
   "Demo validation" \
   "requirements-analyst" \
   "high" \
@@ -1087,7 +1087,7 @@ If you need different output file names, update the contract:
 
 ### Custom Workflow States
 
-Add project-specific states to `WORKFLOW_STATES.json`:
+Add project-specific states to `workflow_states.json`:
 
 ```json
 {
@@ -1118,7 +1118,7 @@ The system requires 5 fields in metadata headers:
 - `timestamp`
 - `status`
 
-**To add custom fields**, modify validation in `queue_manager.sh`:
+**To add custom fields**, modify validation in `.claude/scripts/workflow-commands.sh`:
 
 ```bash
 # Add optional field checking
@@ -1215,11 +1215,11 @@ Before using customized contracts:
 - [ ] All `next_agents` reference agents that exist
 - [ ] All status codes are unique and descriptive
 - [ ] `metadata_required` is set appropriately (true for workflow agents, false for integration)
-- [ ] JSON syntax is valid: `jq '.' .claude/AGENT_CONTRACTS.json`
+- [ ] JSON syntax is valid: `jq '.' .claude/agents/agent_contracts.json`
 
 ### Workflow Validation Checklist
 
-- [ ] All states in WORKFLOW_STATES.json are reachable
+- [ ] All states in workflow_states.json are reachable
 - [ ] All agents mentioned in contracts exist in `.claude/agents/`
 - [ ] All workflow patterns have clear documentation
 - [ ] State transitions form valid paths (no dead ends except terminal states)
@@ -1246,7 +1246,7 @@ For each custom agent `.md` file:
 **Solution**:
 ```bash
 # Validate JSON syntax
-jq '.' .claude/AGENT_CONTRACTS.json
+jq '.' .claude/agents/agent_contracts.json
 
 # Check for common issues:
 # - Missing commas
@@ -1262,7 +1262,7 @@ jq '.' .claude/AGENT_CONTRACTS.json
 **Solution**:
 ```bash
 # List all agents in contract
-jq '.agents | keys' .claude/AGENT_CONTRACTS.json
+jq '.agents | keys' .claude/agents/agent_contracts.json
 
 # Verify agent name matches exactly (case-sensitive)
 # Check agent .md file name matches contract key
@@ -1275,7 +1275,7 @@ jq '.agents | keys' .claude/AGENT_CONTRACTS.json
 **Solution**:
 ```bash
 # Check what contract expects
-jq '.agents."your-agent".outputs' .claude/AGENT_CONTRACTS.json
+jq '.agents."your-agent".outputs' .claude/agents/agent_contracts.json
 
 # Compare with actual output location
 ls -la enhancements/your-enhancement/your-agent/
@@ -1293,7 +1293,7 @@ ls -la enhancements/your-enhancement/your-agent/
 **Solution**:
 ```bash
 # Check status code mapping
-jq '.agents."current-agent".statuses.success' .claude/AGENT_CONTRACTS.json
+jq '.agents."current-agent".statuses.success' .claude/agents/agent_contracts.json
 
 # Verify status code exactly matches
 # Check next_agents array contains expected agent
@@ -1305,7 +1305,7 @@ jq '.agents."current-agent".statuses.success' .claude/AGENT_CONTRACTS.json
 
 If you're upgrading from the original template:
 
-### 1. Add AGENT_CONTRACTS.json
+### 1. Add agent_contracts.json
 
 Create the contracts file with your 5 core agents plus any custom agents.
 
@@ -1321,9 +1321,9 @@ Add the new sections to each agent:
 
 Move content from old `AGENT_ROLE_MAPPING.md` to the new guide.
 
-### 4. Update queue_manager.sh
+### 4. Update Scripts (v4.0)
 
-Replace with v2.0 version that includes contract validation functions.
+The modular script system in `.claude/scripts/` includes all necessary contract validation functions. No replacement needed - the v3.0 system is already up to date.
 
 ### 5. Update on-subagent-stop.sh
 

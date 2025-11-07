@@ -2,7 +2,7 @@
 
 A contract-based multi-agent development workflow system using Claude Code. This template provides specialized AI agents with formal contracts, automated validation, intelligent workflow chaining, and a comprehensive skills system.
 
-**Version**: 3.0.0 - Modular script architecture with skills system
+**Version**: 4.0.0 - Modular script architecture with skills system
 
 ## 🎯 What Is This?
 
@@ -46,7 +46,7 @@ This template provides a multi-agent system that breaks down software developmen
 - 🐍 **Example Application** - Sample Python CLI app with full enhancement workflow
 - 📚 **Complete Documentation** - Guides for every aspect of the system
 
-## 🆕 What's New in v3.0
+## 🆕 What's New
 
 ### Modular Script Architecture ✅
 
@@ -57,13 +57,6 @@ Complete refactoring of the script system:
 - **Shared Utilities**: Common functions in reusable library
 - **Better Maintainability**: Each script has single, clear responsibility
 
-**Old**:
-```bash
-.claude/queues/queue_manager.sh add "Task" "agent" ...
-.claude/queues/queue_manager.sh validate_agent_outputs ...
-```
-
-**New v3.0**:
 ```bash
 cmat.sh queue add "Task" "agent" ...
 cmat.sh workflow validate ...
@@ -92,7 +85,7 @@ Comprehensive skills providing specialized knowledge to agents:
 └── common-commands.sh         # Shared utilities
 ```
 
-### Key Improvements from v2.x
+### Key Improvements
 
 - ✅ **Single Command Entry Point**: `cmat.sh` for all operations
 - ✅ **Skills System**: Domain expertise automatically available to agents
@@ -186,7 +179,7 @@ cmat.sh queue add "..." "..." "..." "..." "..." "..." true true
 ## 📁 Project Structure
 ```
 your-project/
-├── .claude/                      # Multi-agent system (v3.0)
+├── .claude/                      # Multi-agent system (v4.0)
 │   ├── scripts/                  # Command scripts (NEW v3.0)
 │   │   ├── cmat.sh              # Main command launcher
 │   │   ├── queue-commands.sh     # Queue operations
@@ -231,9 +224,8 @@ your-project/
 │   │   └── [configuration guides]
 │   ├── logs/                    # System logs
 │   │   └── queue_operations.log
-│   ├── status/                  # Workflow state
-│   ├── AGENT_CONTRACTS.json     # Agent specifications
-│   ├── WORKFLOW_STATES.json     # State machine definitions
+│   ├── agent_contracts.json     # Agent specifications
+│   ├── workflow_states.json     # State machine definitions
 │   ├── WORKFLOW_GUIDE.md        # Workflow patterns and commands
 │   ├── INTEGRATION_GUIDE.md     # GitHub/Jira integration
 │   ├── TASK_PROMPT_DEFAULTS.md  # Agent prompt templates
@@ -265,14 +257,14 @@ The multi-agent system follows a contract-based architecture where all behavior 
 - Routes commands to specialized subsystems
 - Git-like command structure: `cmat.sh <category> <command>`
 
-**AGENT_CONTRACTS.json** (Source of Truth):
+**agent_contracts.json** (Source of Truth):
 - Defines 7 specialized agents
 - Specifies exact input/output requirements
 - Declares success/failure status codes
 - Maps workflow transitions (next_agents)
 - Enforces output structure via validation
 
-**WORKFLOW_STATES.json** (State Machine):
+**workflow_states.json** (State Machine):
 - Defines 11 workflow states
 - Specifies valid state transitions
 - Identifies terminal vs. transitional states
@@ -365,8 +357,8 @@ See [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for other workfl
 - **[.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns, commands, best practices
 - **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Complete cmat.sh command reference (NEW v3.0)
 - **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system documentation (NEW v3.0)
-- **[.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json)** - Agent specifications
-- **[.claude/WORKFLOW_STATES.json](.claude/WORKFLOW_STATES.json)** - State machine definitions
+- **[.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json)** - Agent specifications
+- **[.claude/queues/workflow_states.json](.claude/queues/workflow_states.json)** - State machine definitions
 
 ### Advanced Topics (As Needed)
 - **[.claude/INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration setup
@@ -406,7 +398,7 @@ python -m unittest discover tests
 
 1. **Read** this README - Understand the system
 2. **Install** following [INSTALLATION.md](INSTALLATION.md) - Set up in your project
-3. **Review** [.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json) - See agent specs
+3. **Review** [.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json) - See agent specs
 4. **Study** [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Learn workflow patterns
 5. **Explore** [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Understand the skills system
 6. **Try** `enhancements/demo-test/` - Simple test enhancement
@@ -447,6 +439,9 @@ cmat.sh queue fail <task_id> [error]
 cmat.sh queue status
 cmat.sh queue list <pending|active|completed|failed|all> [json|compact]
 cmat.sh queue metadata <task_id> <key> <value>
+cmat.sh queue preview-prompt <task_id>
+cmat.sh queue clear-finished [--force]
+cmat.sh queue init [--force]
 ```
 
 ### Workflow Commands
@@ -525,7 +520,7 @@ Location: `enhancements/demo-test/requirements-analyst/analysis_summary.md`
 
 #### 3. System Determines Next Agent
 ```bash
-📋 Consulting AGENT_CONTRACTS.json:
+📋 Consulting agent_contracts.json:
   Current agent: requirements-analyst
   Current status: READY_FOR_DEVELOPMENT
   Next agent: architect (from contract)

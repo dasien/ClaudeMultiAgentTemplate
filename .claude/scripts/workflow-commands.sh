@@ -6,7 +6,7 @@
 #              and determines workflow transitions based on agent contracts
 # Author: Brian Gentry
 # Created: 2025
-# Version: 3.0.0
+# Version: 4.0.0
 #
 # Usage: cmat workflow <command> [OPTIONS]
 #
@@ -36,7 +36,7 @@
 # Dependencies:
 #   - common-commands.sh (sourced)
 #   - queue-commands.sh (called for task operations)
-#   - AGENT_CONTRACTS.json (contract definitions)
+#   - agent_contracts.json (contract definitions)
 #   - jq (JSON processor)
 #
 # Exit Codes:

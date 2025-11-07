@@ -1,6 +1,6 @@
 # Skills System Guide
 
-Complete guide to the Skills System in Claude Multi-Agent Template v3.0.
+Complete guide to the Skills System in Claude Multi-Agent Template v4.0.
 
 ## Table of Contents
 
@@ -850,7 +850,7 @@ skills: ["security-audit"]
 
 ### 5. Update Contracts
 
-Add to `.claude/AGENT_CONTRACTS.json`:
+Add to `.claude/agents/agent_contracts.json`:
 ```json
 {
   "agents": {
@@ -1035,5 +1035,5 @@ grep -A 10 "SPECIALIZED SKILLS" enhancements/demo-test/logs/*.log
 
 ---
 
-**Version**: 3.0.0  
+**Version**: 4.0.0  
 **Last Updated**: 2025-10-24

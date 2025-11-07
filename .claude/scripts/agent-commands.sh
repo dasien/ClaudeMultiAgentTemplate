@@ -6,7 +6,7 @@
 #              and agents.json generation from agent markdown files
 # Author: Brian Gentry
 # Created: 2025
-# Version: 3.0.0
+# Version: 4.0.0
 #
 # Usage: cmat agents <command> [OPTIONS]
 #

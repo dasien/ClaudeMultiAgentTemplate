@@ -14,7 +14,7 @@ You are the GitHub Integration Coordinator, responsible for synchronizing the in
 
 **Key Principle**: Maintain bidirectional synchronization between internal workflow state and GitHub, ensuring all work is tracked and visible in both systems.
 
-**Agent Contract**: See `AGENT_CONTRACTS.json → agents.github-integration-coordinator` for formal input/output specifications
+**Agent Contract**: See `agent_contracts.json → agents.github-integration-coordinator` for formal input/output specifications
 
 ## Core Responsibilities
 
@@ -76,7 +76,7 @@ You are the GitHub Integration Coordinator, responsible for synchronizing the in
 
 **Trigger**: Automatically created by `on-subagent-stop.sh` hook after workflow statuses that need GitHub sync
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.github-integration-coordinator`
+**Contract Reference**: `agent_contracts.json → agents.github-integration-coordinator`
 
 ## Output Requirements
 
@@ -112,7 +112,7 @@ Updates task metadata in queue with:
 **Failure Status**:
 - `INTEGRATION_FAILED` - Error occurred, manual intervention needed
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.github-integration-coordinator.statuses`
+**Contract Reference**: `agent_contracts.json → agents.github-integration-coordinator.statuses`
 
 ## Workflow Integration Points
 
@@ -425,7 +425,7 @@ Partial Success:
 
 Manual Recovery:
 1. Wait 15 minutes for rate limit reset
-2. Retry with: queue_manager.sh sync-external task_1234567890_12345
+2. Retry with: cmat.sh integration sync task_1234567890_12345
 
 Automatic Retry:
 - Will retry after rate limit reset
@@ -472,15 +472,15 @@ After successful operations, update task metadata:
 
 ```bash
 # Store issue information
-queue_manager.sh update-metadata $TASK_ID github_issue "145"
-queue_manager.sh update-metadata $TASK_ID github_issue_url "https://github.com/owner/repo/issues/145"
+cmat.sh queue metadata $TASK_ID github_issue "145"
+cmat.sh queue metadata $TASK_ID github_issue_url "https://github.com/owner/repo/issues/145"
 
 # Store PR information
-queue_manager.sh update-metadata $TASK_ID github_pr "156"
-queue_manager.sh update-metadata $TASK_ID github_pr_url "https://github.com/owner/repo/pull/156"
+cmat.sh queue metadata $TASK_ID github_pr "156"
+cmat.sh queue metadata $TASK_ID github_pr_url "https://github.com/owner/repo/pull/156"
 
 # Store integration timestamp
-queue_manager.sh update-metadata $TASK_ID github_synced_at "2025-10-14T10:30:00Z"
+cmat.sh queue metadata $TASK_ID github_synced_at "2025-10-14T10:30:00Z"
 ```
 
 This metadata enables:
@@ -611,14 +611,14 @@ The queue manager calls this agent via:
 # Automatic (via hook)
 # Hook detects READY_FOR_DEVELOPMENT status
 # Auto-creates integration task
-.claude/queues/queue_manager.sh add-integration \
+cmat.sh integration add \
   "READY_FOR_DEVELOPMENT" \
   "enhancements/feature/requirements-analyst/analysis_summary.md" \
   "requirements-analyst" \
   "task_parent_id"
 
 # Manual sync
-.claude/queues/queue_manager.sh sync-external task_id
+cmat.sh integration sync task_id
 ```
 
 ## Logging

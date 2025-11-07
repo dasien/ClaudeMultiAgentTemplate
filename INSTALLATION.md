@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide will walk you through installing and configuring the Claude Multi-Agent Template v3.0 in your project.
+This guide will walk you through installing and configuring the Claude Multi-Agent Template v4.0 in your project.
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ ls -l .claude/scripts/
 .claude/scripts/cmat.sh version
 
 # Should show:
-# cmat v3.0.0
+# cmat v4.0.0
 # Claude Multi-Agent Template System
 # Dependencies: ✓ jq, ✓ claude, ✓ bash
 # Project paths and counts
@@ -247,13 +247,13 @@ ls .claude/skills/requirements-elicitation/SKILL.md
 
 ### "Agent not found in contracts"
 
-**Solution**: Verify AGENT_CONTRACTS.json
+**Solution**: Verify agent_contracts.json
 ```bash
 # Check contracts file exists
-ls .claude/AGENT_CONTRACTS.json
+ls .claude/agents/agent_contracts.json
 
 # List all agents in contracts
-jq '.agents | keys' .claude/AGENT_CONTRACTS.json
+jq '.agents | keys' .claude/agents/agent_contracts.json
 ```
 
 ### "Hooks not executing"
@@ -312,7 +312,7 @@ See [SKILLS_GUIDE.md](SKILLS_GUIDE.md) for complete instructions.
 
 After installation, verify:
 
-- [ ] `cmat.sh version` shows v3.0.0 and all dependencies
+- [ ] `cmat.sh version` shows v4.0.0 and all dependencies
 - [ ] `cmat.sh queue status` works without errors
 - [ ] `cmat.sh skills list` shows 14 skills
 - [ ] Agent files customized for your project
@@ -351,7 +351,7 @@ ls .claude/
 ```bash
 # Validate all JSON files
 jq '.' .claude/queues/task_queue.json
-jq '.' .claude/AGENT_CONTRACTS.json
+jq '.' .claude/agents/agent_contracts.json
 jq '.' .claude/skills/skills.json
 jq '.' .claude/agents/agents.json
 
@@ -376,7 +376,7 @@ jq '.agents[] | {name: .name, skills: .skills}' .claude/agents/agents.json
 1. ✅ Read [README.md](README.md) - Understand the system overview
 2. ✅ Review [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Learn workflow patterns
 3. ✅ Read [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Understand the skills system
-4. ✅ Study [.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json) - See agent specifications
+4. ✅ Study [.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json) - See agent specifications
 5. ✅ Review [CUSTOMIZATION.md](CUSTOMIZATION.md) - Adapt to your project
 6. ✅ Try `enhancements/demo-test/` - Run simple test
 7. ✅ Explore `enhancements/add-json-export/` - Full workflow example

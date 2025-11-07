@@ -1,6 +1,6 @@
 # Queue System Guide
 
-Complete guide to the task queue system in Claude Multi-Agent Template v3.0.
+Complete guide to the task queue system in Claude Multi-Agent Template v4.0.
 
 ## Table of Contents
 
@@ -410,6 +410,69 @@ cmat.sh queue metadata task_456 parent_task_id "task_123"
 # Update workflow status
 cmat.sh queue metadata task_123 workflow_status "READY_FOR_TESTING"
 ```
+
+### Previewing Task Prompts
+
+Preview the exact prompt that will be sent to an agent before starting a task:
+
+```bash
+# Preview prompt for pending task
+cmat.sh queue preview-prompt task_1234567890_12345
+
+# Save prompt to file for review
+cmat.sh queue preview-prompt task_123 > prompt_review.txt
+```
+
+**What's Included**:
+- Complete task template with all variables substituted
+- Injected skills specific to the agent
+- Contract status codes for success/failure
+- All configuration and context values
+
+**Use Cases**:
+- **Debugging**: Verify prompt construction before execution
+- **Template Testing**: Validate variable substitution is correct
+- **Skills Verification**: Confirm correct skills are included
+- **Documentation**: Generate example prompts for reference
+
+### Clearing Finished Tasks
+
+Remove completed and failed tasks to keep queue size manageable:
+
+```bash
+# Interactive (prompts for confirmation)
+cmat.sh queue clear-finished
+
+# Force mode (no prompt - for scripts/automation)
+cmat.sh queue clear-finished --force
+```
+
+**Best Practice - Archive Before Clearing**:
+
+```bash
+# Create archive directory
+mkdir -p archive
+
+# Archive finished tasks with timestamp
+DATE=$(date +%Y%m%d_%H%M%S)
+cmat.sh queue list completed > "archive/completed_$DATE.json"
+cmat.sh queue list failed > "archive/failed_$DATE.json"
+
+# Then clear
+cmat.sh queue clear-finished
+```
+
+**What It Does**:
+- ✅ Clears all `completed_tasks` and `failed_tasks` arrays
+- ✅ Preserves all `pending` and `active` tasks
+- ✅ Logs operation to queue_operations.log
+- ✅ Reduces queue file size for better performance
+
+**When to Use**:
+- Regular maintenance to prevent queue file bloat
+- After completing major milestones
+- Before archiving project state
+- When queue operations slow down
 
 ---
 
@@ -919,7 +982,7 @@ cmat.sh queue list failed | jq '.[] |
    ```bash
    # Check agent exists
    ls .claude/agents/my-agent.md
-   jq '.agents | keys' .claude/AGENT_CONTRACTS.json
+   jq '.agents | keys' .claude/agents/agent_contracts.json
    ```
 
 ### Task Stuck in Active
@@ -1050,9 +1113,9 @@ cmat.sh queue list failed | jq '.[] |
 - **[SCRIPTS_REFERENCE.md](../SCRIPTS_REFERENCE.md)** - Complete command reference
 - **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns and orchestration
 - **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - External system integration
-- **[AGENT_CONTRACTS.json](../AGENT_CONTRACTS.json)** - Agent specifications
+- **[agent_contracts.json](../agent_contracts.json)** - Agent specifications
 
 ---
 
-**Version**: 3.0.0  
+**Version**: 4.0.0  
 **Last Updated**: 2025-10-24

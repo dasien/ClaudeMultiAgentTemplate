@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-This document describes the process to get up and running with the Claude Multi-Agent Template v3.0.
+This document describes the process to get up and running with the Claude Multi-Agent Template v4.0.
 
 ## Step 1: Verify Installation
 ```bash
@@ -11,7 +11,7 @@ cd /path/to/your/project
 .claude/scripts/cmat.sh version
 
 # Should show:
-# cmat v3.0.0
+# cmat v4.0.0
 # Dependencies: ✓ jq, ✓ claude, ✓ bash
 # Environment info with paths and counts
 ```

@@ -6,7 +6,7 @@
 #              through integration coordinator agents
 # Author: Brian Gentry
 # Created: 2025
-# Version: 3.0.0
+# Version: 4.0.0
 #
 # Usage: cmat integration <command> [OPTIONS]
 #

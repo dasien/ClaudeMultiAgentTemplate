@@ -1,6 +1,6 @@
 # Scripts Reference Guide
 
-Complete reference for all `cmat.sh` commands in the Claude Multi-Agent Template v3.0.
+Complete reference for all `cmat.sh` commands in the Claude Multi-Agent Template v4.0.
 
 ## Command Structure
 
@@ -393,6 +393,88 @@ cmat.sh queue metadata task_123 jira_ticket "PROJ-456"
 # Link to parent task
 cmat.sh queue metadata task_456 parent_task_id "task_123"
 ```
+
+---
+
+### queue preview-prompt
+
+Preview the complete prompt that would be sent to the agent for a pending task.
+
+```bash
+cmat.sh queue preview-prompt <task_id>
+```
+
+**Parameters**:
+- `task_id` (required) - ID of pending task to preview
+
+**Output**: Complete prompt including:
+- Task template with substituted variables
+- Injected skills for the agent
+- Contract status codes
+- All configuration values
+
+**Examples**:
+```bash
+# Preview prompt before starting task
+cmat.sh queue preview-prompt task_1234567890_12345
+
+# Save prompt to file for review
+cmat.sh queue preview-prompt task_123 > prompt_review.txt
+```
+
+**Use Cases**:
+- **Debugging**: Verify prompt is correct before execution
+- **Template Testing**: Check variable substitution
+- **Skills Review**: Confirm correct skills are injected
+- **Documentation**: Generate prompt examples
+
+---
+
+### queue clear-finished
+
+Clear all completed and failed tasks from queue history. Preserves pending and active tasks.
+
+```bash
+cmat.sh queue clear-finished [--force]
+```
+
+**Parameters**:
+- `--force` (optional) - Skip confirmation prompt for automation
+
+**Behavior**:
+- Clears both `completed_tasks` and `failed_tasks` arrays
+- **Preserves** all pending and active tasks
+- Prompts for confirmation unless `--force` is used
+- Logs operation to queue_operations.log
+
+**Examples**:
+```bash
+# Interactive (prompts for confirmation)
+cmat.sh queue clear-finished
+
+# Force mode (no confirmation - for automation/scripts)
+cmat.sh queue clear-finished --force
+```
+
+**Best Practice - Archive Before Clearing**:
+```bash
+# Create timestamped archive
+DATE=$(date +%Y%m%d_%H%M%S)
+mkdir -p archive
+
+# Archive finished tasks
+cmat.sh queue list completed > "archive/completed_$DATE.json"
+cmat.sh queue list failed > "archive/failed_$DATE.json"
+
+# Then clear
+cmat.sh queue clear-finished
+```
+
+**Use Cases**:
+- **Maintenance**: Keep queue size manageable
+- **Performance**: Reduce JSON file size for faster operations
+- **Cleanup**: Remove old task history while preserving current work
+- **Automation**: Script-friendly with `--force` flag
 
 ---
 
@@ -921,7 +1003,7 @@ cmat.sh version
 
 **Output**:
 ```
-cmat v3.0.0
+cmat v4.0.0
 Claude Multi-Agent Template System
 
 Dependencies:
@@ -933,7 +1015,7 @@ Dependencies:
 Environment:
   Project Root: /path/to/project
   Queue File: .claude/queues/task_queue.json
-  Contracts: .claude/AGENT_CONTRACTS.json
+  Contracts: .claude/agents/agent_contracts.json
   Skills: .claude/skills/skills.json
   Tasks: 2 pending, 1 active, 15 completed
   Agents: 7 defined
@@ -1115,7 +1197,7 @@ Install jq: `brew install jq` (macOS) or `apt-get install jq` (Linux)
 Initialize: `cmat.sh queue status`
 
 ### "Agent not found in contracts"
-Verify: `jq '.agents | keys' .claude/AGENT_CONTRACTS.json`
+Verify: `jq '.agents | keys' .claude/agents/agent_contracts.json`
 
 ### "Skills not loading"
 Check: `cmat.sh skills test`
@@ -1146,9 +1228,9 @@ Check task flags: `cmat.sh queue list active | jq '.[] | {id, auto_chain}'`
 - **[.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md)** - Workflow patterns
 - **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system documentation
 - **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting to your project
-- **[.claude/AGENT_CONTRACTS.json](.claude/AGENT_CONTRACTS.json)** - Agent specifications
+- **[.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json)** - Agent specifications
 
 ---
 
-**Version**: 3.0.0  
+**Version**: 4.0.0  
 **Last Updated**: 2025-10-24

@@ -5,7 +5,7 @@
 #
 # Manages workflow transitions with contract-based validation and integration
 #
-# Version: 3.0.0 - Updated to use cmat command structure
+# Version: 4.0.0 - Updated to use cmat command structure
 ################################################################################
 
 set -euo pipefail

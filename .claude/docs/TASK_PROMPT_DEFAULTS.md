@@ -4,7 +4,7 @@ This file contains standardized prompt templates for different task types in the
 
 ## Template Variables
 
-The following variables are automatically substituted in templates when launching agents via queue_manager.sh:
+The following variables are automatically substituted in templates when launching agents via cmat.sh queue commands:
 
 - `${agent}` - The agent name executing the task
 - `${agent_config}` - Path to the agent's configuration file (.md file)
@@ -21,10 +21,10 @@ The following variables are automatically substituted in templates when launchin
 
 ## How This Works
 
-When you use queue_manager.sh to create a task:
+When you use cmat.sh queue to create a task:
 
 ```bash
-.claude/queues/queue_manager.sh add \
+cmat.sh queue add \
   "Analyze feature X" \
   "requirements-analyst" \
   "high" \
@@ -34,7 +34,7 @@ When you use queue_manager.sh to create a task:
 ```
 
 The queue manager will:
-1. Look up the agent contract from AGENT_CONTRACTS.json
+1. Look up the agent contract from agent_contracts.json
 2. Extract root_document, output_directory, and other contract details
 3. Load the appropriate template below (based on task_type)
 4. Substitute all ${variables} with actual values
@@ -679,7 +679,7 @@ Partial Success:
 
 Manual Steps:
 1. Wait 15 minutes for rate limit reset
-2. Retry: queue_manager.sh retry ${task_id}
+2. Retry: cmat.sh integration sync ${task_id}
 ```
 
 ## METADATA TRACKING:
@@ -846,7 +846,7 @@ Task ID: ${task_id}
 ### Example 1: Launch Requirements Analysis
 
 ```bash
-.claude/queues/queue_manager.sh add \
+cmat.sh queue add \
   "Analyze JSON export feature" \
   "requirements-analyst" \
   "high" \
@@ -870,7 +870,7 @@ Task ID: ${task_id}
 ### Example 2: Launch Architecture Design
 
 ```bash
-.claude/queues/queue_manager.sh add \
+cmat.sh queue add \
   "Design JSON export architecture" \
   "architect" \
   "high" \
@@ -916,7 +916,7 @@ To customize these templates for your project:
 2. **Adjust output requirements** for your workflow
 3. **Add/remove template sections** as needed
 4. **Create custom templates** for project-specific task types
-5. **Update variable substitution** in queue_manager.sh if needed
+5. **Update variable substitution** in queue-commands.sh if needed
 
 Example custom template:
 
@@ -935,7 +935,7 @@ Review the code in: ${source_file}
 Then use it:
 
 ```bash
-.claude/queues/queue_manager.sh add \
+cmat.sh queue add \
   "Review implementation" \
   "architect" \
   "high" \

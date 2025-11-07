@@ -88,7 +88,7 @@ This is a test to verify the integration system works.
 EOF
 
 # Add requirements analysis task
-TASK_ID=$(.claude/queues/queue_manager.sh add \
+TASK_ID=$(cmat.sh queue add \
   "Analyze test-integration enhancement" \
   "requirements-analyst" \
   "high" \
@@ -99,7 +99,7 @@ TASK_ID=$(.claude/queues/queue_manager.sh add \
 echo "Created task: $TASK_ID"
 
 # Start the task
-.claude/queues/queue_manager.sh start $TASK_ID
+cmat.sh queue start $TASK_ID
 ```
 
 **What happens**:
@@ -113,7 +113,7 @@ echo "Created task: $TASK_ID"
 
 ```bash
 # View queue status
-.claude/queues/queue_manager.sh status
+cmat.sh queue status
 
 # Check for integration tasks
 jq '.pending_tasks[] | select(.assigned_agent == "integration-coordinator")' .claude/queues/task_queue.json
@@ -128,25 +128,25 @@ jq '.pending_tasks[] | select(.assigned_agent == "integration-coordinator")' .cl
 
 ```bash
 # Get task ID from completed tasks
-.claude/queues/queue_manager.sh status
+cmat.sh queue status
 
 # Sync specific task to GitHub/Jira
-.claude/queues/queue_manager.sh sync-external <task_id>
+cmat.sh integration sync <task_id>
 ```
 
 ### Sync All Unsynced Tasks
 
 ```bash
 # Find all completed tasks that need integration
-.claude/queues/queue_manager.sh sync-all
+cmat.sh integration sync-all
 ```
 
 ### Update Task Metadata
 
 ```bash
 # Store external IDs manually if needed
-.claude/queues/queue_manager.sh update-metadata <task_id> github_issue "145"
-.claude/queues/queue_manager.sh update-metadata <task_id> github_issue_url "https://github.com/..."
+cmat.sh queue metadata <task_id> github_issue "145"
+cmat.sh queue metadata <task_id> github_issue_url "https://github.com/..."
 ```
 
 ## Integration Modes
@@ -205,7 +205,7 @@ vim enhancements/add-search-feature/add-search-feature.md
 export AUTO_INTEGRATE="always"
 
 # 3. Add initial requirements task
-TASK_ID=$(.claude/queues/queue_manager.sh add \
+TASK_ID=$(cmat.sh queue add \
   "Analyze search feature requirements" \
   "requirements-analyst" \
   "high" \
@@ -214,7 +214,7 @@ TASK_ID=$(.claude/queues/queue_manager.sh add \
   "Analyze requirements for search functionality")
 
 # 4. Start the task
-.claude/queues/queue_manager.sh start $TASK_ID
+cmat.sh queue start $TASK_ID
 
 # Result: GitHub issue will be created automatically after requirements complete
 ```
@@ -229,10 +229,10 @@ After implementation is complete:
 # Start the integration task to create PR
 
 # Find the integration task
-.claude/queues/queue_manager.sh status | grep integration-coordinator
+cmat.sh queue status | grep integration-coordinator
 
 # Start it
-.claude/queues/queue_manager.sh start <integration_task_id>
+cmat.sh queue start <integration_task_id>
 
 # Result: Pull request created linking to original issue
 ```
@@ -292,7 +292,7 @@ LATEST_LOG=$(ls -t enhancements/*/logs/integration-coordinator_* | head -1)
 cat "$LATEST_LOG"
 
 # Retry the integration
-.claude/queues/queue_manager.sh sync-external <task_id>
+cmat.sh integration sync <task_id>
 ```
 
 ## Advanced: Custom Label Mappings
@@ -330,16 +330,16 @@ Edit `.claude/mcp-servers/github-config.json` to customize labels:
 export AUTO_INTEGRATE="always"
 
 # Check status
-.claude/queues/queue_manager.sh status
+cmat.sh queue status
 
 # Sync specific task
-.claude/queues/queue_manager.sh sync-external <task_id>
+cmat.sh integration sync <task_id>
 
 # Sync all unsynced
-.claude/queues/queue_manager.sh sync-all
+cmat.sh integration sync-all
 
 # Update metadata
-.claude/queues/queue_manager.sh update-metadata <task_id> <key> <value>
+cmat.sh queue metadata <task_id> <key> <value>
 
 # View integration tasks
 jq '.[] | select(.assigned_agent == "integration-coordinator")' .claude/queues/task_queue.json

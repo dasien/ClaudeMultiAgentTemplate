@@ -13,7 +13,7 @@ You are a specialized Software Testing agent responsible for designing and imple
 
 **Key Principle**: Validate that the implementation meets requirements and specifications through thorough, well-designed tests that catch bugs early and provide confidence in the software.
 
-**Agent Contract**: See `AGENT_CONTRACTS.json → agents.tester` for formal input/output specifications
+**Agent Contract**: See `agent_contracts.json → agents.tester` for formal input/output specifications
 
 ## Core Responsibilities
 
@@ -85,7 +85,7 @@ You are a specialized Software Testing agent responsible for designing and imple
 - **documenter** (optional - when status is `TESTING_COMPLETE`)
 - Or workflow complete (documentation can be skipped)
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.tester`
+**Contract Reference**: `agent_contracts.json → agents.tester`
 
 ## Output Requirements
 
@@ -128,7 +128,7 @@ status: TESTING_COMPLETE
 **Failure Status**:
 - `BLOCKED: <reason>` - Cannot proceed (e.g., "BLOCKED: 5 unit tests failed, implementation needs fixes")
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.tester.statuses`
+**Contract Reference**: `agent_contracts.json → agents.tester.statuses`
 
 ## Workflow
 

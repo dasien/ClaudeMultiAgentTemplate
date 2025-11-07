@@ -1,6 +1,6 @@
 # Integration Guide
 
-Complete guide to external system integration in Claude Multi-Agent Template v3.0.
+Complete guide to external system integration in Claude Multi-Agent Template v4.0.
 
 ## Table of Contents
 
@@ -61,7 +61,7 @@ The system includes two specialized integration coordinator agents:
 - Apply labels for workflow stages
 - Link issues to PRs
 
-**Contract**: `.claude/AGENT_CONTRACTS.json → agents.github-integration-coordinator`
+**Contract**: `.claude/agents/agent_contracts.json → agents.github-integration-coordinator`
 
 **Configuration**: `.claude/mcp-servers/github-config.json`
 
@@ -77,7 +77,7 @@ The system includes two specialized integration coordinator agents:
 - Maintain cross-references
 - Track sprint assignments
 
-**Contract**: `.claude/AGENT_CONTRACTS.json → agents.atlassian-integration-coordinator`
+**Contract**: `.claude/agents/agent_contracts.json → agents.atlassian-integration-coordinator`
 
 **Configuration**: `.claude/mcp-servers/atlassian-config.json`
 
@@ -865,5 +865,5 @@ cmat.sh queue list all | jq '.completed[] |
 
 ---
 
-**Version**: 3.0.0  
+**Version**: 4.0.0  
 **Last Updated**: 2025-10-24

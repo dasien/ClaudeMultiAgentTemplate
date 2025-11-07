@@ -6,7 +6,7 @@
 #              directory management, and agent status updates
 # Author: Brian Gentry
 # Created: 2025
-# Version: 3.0.0
+# Version: 4.0.0
 #
 # Usage: Source this file from other scripts
 #        source "$(dirname "$0")/common-commands.sh"
@@ -26,7 +26,7 @@
 # Exported Variables:
 #   PROJECT_ROOT      Project root directory path
 #   QUEUE_FILE        Path to task_queue.json
-#   CONTRACTS_FILE    Path to AGENT_CONTRACTS.json
+#   CONTRACTS_FILE    Path to agent_contracts.json
 #   SKILLS_FILE       Path to skills.json
 #   AGENTS_DIR        Path to agents directory
 #   SKILLS_DIR        Path to skills directory
@@ -46,7 +46,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="3.0.1"
+readonly VERSION="4.0.0"
 
 #############################################################################
 # PROJECT NAVIGATION
@@ -75,7 +75,7 @@ fi
 
 # Global paths
 readonly QUEUE_FILE="$PROJECT_ROOT/.claude/queues/task_queue.json"
-readonly CONTRACTS_FILE="$PROJECT_ROOT/.claude/AGENT_CONTRACTS.json"
+readonly CONTRACTS_FILE="$PROJECT_ROOT/.claude/agents/agent_contracts.json"
 readonly SKILLS_FILE="$PROJECT_ROOT/.claude/skills/skills.json"
 readonly AGENTS_DIR="$PROJECT_ROOT/.claude/agents"
 readonly SKILLS_DIR="$PROJECT_ROOT/.claude/skills"
@@ -221,6 +221,8 @@ QUEUE COMMANDS:
   cmat queue status
   cmat queue list <queue_type> [format]
   cmat queue metadata <task_id> <key> <value>
+  cmat queue preview-prompt <task_id>
+  cmat queue clear-finished [--force]
   cmat queue init [--force]
 
 WORKFLOW COMMANDS:

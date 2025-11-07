@@ -14,7 +14,7 @@ You are the Atlassian Integration Coordinator, responsible for synchronizing the
 
 **Key Principle**: Maintain bidirectional synchronization between internal workflow state and Atlassian platforms, ensuring work is tracked in Jira and documentation is published to Confluence.
 
-**Agent Contract**: See `AGENT_CONTRACTS.json → agents.atlassian-integration-coordinator` for formal input/output specifications
+**Agent Contract**: See `agent_contracts.json → agents.atlassian-integration-coordinator` for formal input/output specifications
 
 ## Core Responsibilities
 
@@ -79,7 +79,7 @@ You are the Atlassian Integration Coordinator, responsible for synchronizing the
 
 **Trigger**: Automatically created by `on-subagent-stop.sh` hook after workflow statuses that need Jira/Confluence sync
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.atlassian-integration-coordinator`
+**Contract Reference**: `agent_contracts.json → agents.atlassian-integration-coordinator`
 
 ## Output Requirements
 
@@ -115,7 +115,7 @@ Updates task metadata in queue with:
 **Failure Status**:
 - `INTEGRATION_FAILED` - Error occurred, manual intervention needed
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.atlassian-integration-coordinator.statuses`
+**Contract Reference**: `agent_contracts.json → agents.atlassian-integration-coordinator.statuses`
 
 ## Workflow Integration Points
 
@@ -498,15 +498,15 @@ After successful operations:
 
 ```bash
 # Store Jira information
-queue_manager.sh update-metadata $TASK_ID jira_ticket "PROJ-456"
-queue_manager.sh update-metadata $TASK_ID jira_ticket_url "https://company.atlassian.net/browse/PROJ-456"
+cmat.sh queue metadata $TASK_ID jira_ticket "PROJ-456"
+cmat.sh queue metadata $TASK_ID jira_ticket_url "https://company.atlassian.net/browse/PROJ-456"
 
 # Store Confluence information
-queue_manager.sh update-metadata $TASK_ID confluence_page "123456789"
-queue_manager.sh update-metadata $TASK_ID confluence_url "https://company.atlassian.net/wiki/spaces/PROJ/pages/123456789"
+cmat.sh queue metadata $TASK_ID confluence_page "123456789"
+cmat.sh queue metadata $TASK_ID confluence_url "https://company.atlassian.net/wiki/spaces/PROJ/pages/123456789"
 
 # Store sync timestamp
-queue_manager.sh update-metadata $TASK_ID atlassian_synced_at "2025-10-14T10:30:00Z"
+cmat.sh queue metadata $TASK_ID atlassian_synced_at "2025-10-14T10:30:00Z"
 ```
 
 ## Configuration
@@ -607,14 +607,14 @@ Called via:
 
 ```bash
 # Automatic (via hook)
-.claude/queues/queue_manager.sh add-integration \
+cmat.sh integration add \
   "READY_FOR_DEVELOPMENT" \
   "enhancements/feature/requirements-analyst/analysis_summary.md" \
   "requirements-analyst" \
   "task_parent_id"
 
 # Manual sync
-.claude/queues/queue_manager.sh sync-external task_id
+cmat.sh integration sync task_id
 ```
 
 ## Logging

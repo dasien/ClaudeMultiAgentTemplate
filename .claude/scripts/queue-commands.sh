@@ -6,7 +6,7 @@
 #              status tracking, and metadata updates
 # Author: Brian Gentry
 # Created: 2025
-# Version: 3.0.0
+# Version: 4.0.0
 #
 # Usage: cmat queue <command> [OPTIONS]
 #
@@ -29,6 +29,12 @@
 #       List tasks (types: pending, active, completed, failed, all)
 #   metadata <task_id> <key> <value>
 #       Update task metadata field
+#   preview-prompt <task_id>
+#       Preview the complete prompt that would be sent to the agent
+#   clear-finished [--force]
+#       Clear all completed and failed tasks from history
+#   init [--force]
+#       Initialize/reset the queue system
 #
 # Task Priorities:
 #   critical, high, normal, low
@@ -306,6 +312,43 @@ cancel_all_tasks() {
     echo "✅ Cancelled $pending_count pending and $active_count active tasks"
 }
 
+clear_finished_tasks() {
+    local force="${1:-}"
+
+    # Count tasks before clearing
+    local completed_count failed_count
+    completed_count=$(jq '.completed_tasks | length' "$QUEUE_FILE")
+    failed_count=$(jq '.failed_tasks | length' "$QUEUE_FILE")
+    local total_count=$((completed_count + failed_count))
+
+    if [ "$total_count" -eq 0 ]; then
+        echo "No finished tasks to clear"
+        return 0
+    fi
+
+    # Skip confirmation if --force flag is provided
+    if [ "$force" != "--force" ]; then
+        echo "Found $completed_count completed and $failed_count failed tasks"
+        echo -n "Clear all finished tasks? [y/N]: "
+        read -r response
+
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            echo "❌ Clear cancelled"
+            return 1
+        fi
+    fi
+
+    local temp_file
+    temp_file=$(mktemp)
+
+    # Clear completed_tasks and failed_tasks arrays
+    jq '.completed_tasks = [] | .failed_tasks = []' "$QUEUE_FILE" > "$temp_file"
+    mv "$temp_file" "$QUEUE_FILE"
+
+    log_operation "FINISHED_TASKS_CLEARED" "Cleared $completed_count completed and $failed_count failed tasks"
+    echo "✅ Cleared $total_count finished tasks (completed: $completed_count, failed: $failed_count)"
+}
+
 update_metadata() {
     local task_id="$1"
     local key="$2"
@@ -442,6 +485,108 @@ list_tasks() {
             exit 1
             ;;
     esac
+}
+
+preview_prompt() {
+    local task_id="$1"
+
+    # Get task details
+    local task
+    task=$(jq -r ".pending_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+
+    if [ -z "$task" ] || [ "$task" = "null" ]; then
+        echo "Task not found in pending queue: $task_id"
+        exit 1
+    fi
+
+    # Extract task details
+    local agent task_type source_file task_description
+    agent=$(echo "$task" | jq -r '.assigned_agent')
+    task_type=$(echo "$task" | jq -r '.task_type')
+    source_file=$(echo "$task" | jq -r '.source_file')
+    task_description=$(echo "$task" | jq -r '.description')
+
+    # Get contract info
+    local agent_contract root_document output_directory enhancement_name enhancement_dir
+    agent_contract=$("$SCRIPT_DIR/workflow-commands.sh" get-contract "$agent" 2>/dev/null || echo "{}")
+    root_document=$(echo "$agent_contract" | jq -r '.outputs.root_document // "output.md"')
+    output_directory=$(echo "$agent_contract" | jq -r '.outputs.output_directory // "output"')
+
+    # Extract status codes from contract
+    local success_statuses failure_pattern
+    success_statuses=$(echo "$agent_contract" | jq -r '[.statuses.success[].code] | join(" or ")' 2>/dev/null || echo "")
+    failure_pattern=$(echo "$agent_contract" | jq -r '.statuses.failure[0].pattern // .statuses.failure[0].code // "BLOCKED: <reason>"' 2>/dev/null || echo "BLOCKED: <reason>")
+
+    enhancement_name=$(extract_enhancement_name "$source_file")
+    enhancement_dir="enhancements/$enhancement_name"
+
+    local agent_config="$AGENTS_DIR/${agent}.md"
+
+    # Load template (inline to avoid dependencies)
+    local template=""
+    if [ ! -f "$TEMPLATES_FILE" ]; then
+        echo "Error: Task prompt template file not found: $TEMPLATES_FILE" >&2
+        return 1
+    fi
+
+    case "$task_type" in
+        "analysis")
+            template=$(awk '/^# ANALYSIS_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$TEMPLATES_FILE")
+            ;;
+        "technical_analysis")
+            template=$(awk '/^# TECHNICAL_ANALYSIS_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$TEMPLATES_FILE")
+            ;;
+        "implementation")
+            template=$(awk '/^# IMPLEMENTATION_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$TEMPLATES_FILE")
+            ;;
+        "testing")
+            template=$(awk '/^# TESTING_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$TEMPLATES_FILE")
+            ;;
+        "integration")
+            template=$(awk '/^# INTEGRATION_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$TEMPLATES_FILE")
+            if [ -z "$template" ]; then
+                template="You are the integration-coordinator agent. Process the task described in the source file and synchronize with external systems as appropriate."
+            fi
+            ;;
+        "documentation")
+            template=$(awk '/^# DOCUMENTATION_TEMPLATE$/{flag=1; next} /^===END_TEMPLATE===$/{flag=0} flag' "$TEMPLATES_FILE")
+            ;;
+        *)
+            echo "Error: Unknown task type: $task_type" >&2
+            return 1
+            ;;
+    esac
+
+    if [ -z "$template" ]; then
+        echo "Error: No template found for task type: $task_type" >&2
+        return 1
+    fi
+
+    # Build skills section
+    local skills_section
+    skills_section=$("$SCRIPT_DIR/skills-commands.sh" prompt "$agent")
+
+    if [ -n "$skills_section" ]; then
+        template="${template}${skills_section}"
+    fi
+
+    # Substitute variables
+    local prompt="$template"
+    prompt="${prompt//\$\{agent\}/$agent}"
+    prompt="${prompt//\$\{agent_config\}/$agent_config}"
+    prompt="${prompt//\$\{source_file\}/$source_file}"
+    prompt="${prompt//\$\{task_description\}/$task_description}"
+    prompt="${prompt//\$\{task_id\}/$task_id}"
+    prompt="${prompt//\$\{task_type\}/$task_type}"
+    prompt="${prompt//\$\{root_document\}/$root_document}"
+    prompt="${prompt//\$\{output_directory\}/$output_directory}"
+    prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
+    prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
+    prompt="${prompt//\$\{success_statuses\}/$success_statuses}"
+    prompt="${prompt//\$\{failure_pattern\}/$failure_pattern}"
+
+    # Output the prompt
+    echo "$prompt"
 }
 
 initialize_queue() {
@@ -665,9 +810,21 @@ case "${1:-status}" in
         initialize_queue "${2:-}"
         ;;
 
+    "preview-prompt")
+        if [ $# -lt 2 ]; then
+            echo "Usage: cmat queue preview-prompt <task_id>"
+            exit 1
+        fi
+        preview_prompt "$2"
+        ;;
+
+    "clear-finished")
+        clear_finished_tasks "${2:-}"
+        ;;
+
     *)
         echo "Unknown queue command: ${1:-status}" >&2
-        echo "Usage: cmat queue <add|start|complete|cancel|cancel-all|fail|status|list|metadata|init>" >&2
+        echo "Usage: cmat queue <add|start|complete|cancel|cancel-all|fail|status|list|metadata|init|preview-prompt|clear-finished>" >&2
         exit 1
         ;;
 esac

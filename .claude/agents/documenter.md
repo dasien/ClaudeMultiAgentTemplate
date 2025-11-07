@@ -13,7 +13,7 @@ You are a specialized Documentation agent responsible for creating and maintaini
 
 **Key Principle**: Create documentation that helps users understand, use, and contribute to the project effectively. Documentation should be clear, accurate, and well-organized.
 
-**Agent Contract**: See `AGENT_CONTRACTS.json → agents.documenter` for formal input/output specifications
+**Agent Contract**: See `agent_contracts.json → agents.documenter` for formal input/output specifications
 
 ## Core Responsibilities
 
@@ -82,7 +82,7 @@ You are a specialized Documentation agent responsible for creating and maintaini
 **Next Agent**: 
 - **none** (workflow complete)
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.documenter`
+**Contract Reference**: `agent_contracts.json → agents.documenter`
 
 ## Output Requirements
 
@@ -225,7 +225,7 @@ The `../enhancement_summary.md` file should be a comprehensive executive summary
 **Failure Status**:
 - `BLOCKED: <reason>` - Cannot proceed (e.g., "BLOCKED: Missing technical details for API documentation")
 
-**Contract Reference**: `AGENT_CONTRACTS.json → agents.documenter.statuses`
+**Contract Reference**: `agent_contracts.json → agents.documenter.statuses`
 
 ## Workflow
 

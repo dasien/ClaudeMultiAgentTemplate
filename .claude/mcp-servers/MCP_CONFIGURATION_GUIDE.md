@@ -241,7 +241,7 @@ claude --agent integration-coordinator \
 export AUTO_INTEGRATE="always"
 
 # Add a task that will auto-integrate
-.claude/queues/queue_manager.sh add \
+cmat.sh queue add \
   "Test feature requirements" \
   "requirements-analyst" \
   "high" \
@@ -250,7 +250,7 @@ export AUTO_INTEGRATE="always"
   "Analyze requirements and test integration"
 
 # Start the task
-.claude/queues/queue_manager.sh start <task_id>
+cmat.sh queue start <task_id>
 ```
 
 ### Integration Modes
@@ -272,10 +272,10 @@ export AUTO_INTEGRATE="prompt"
 
 ```bash
 # Sync a specific completed task
-.claude/queues/queue_manager.sh sync-external <task_id>
+cmat.sh integration sync <task_id>
 
 # Sync all unsynced completed tasks
-.claude/queues/queue_manager.sh sync-all
+cmat.sh integration sync-all
 ```
 
 ## Troubleshooting
