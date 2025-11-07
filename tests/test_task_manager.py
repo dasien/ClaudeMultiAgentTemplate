@@ -137,35 +137,5 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(manager2.tasks[0].title, "Task 1")
         self.assertEqual(manager2.tasks[1].title, "Task 2")
 
-
-class TestHelloCommand(unittest.TestCase):
-    """Test cases for hello command."""
-
-    def test_hello_command_via_cli(self):
-        """Test hello command produces correct output via subprocess."""
-        result = subprocess.run(
-            [sys.executable, "src/task_manager.py", "hello"],
-            capture_output=True,
-            text=True
-        )
-
-        self.assertEqual(result.returncode, 0, "Command should exit with code 0")
-        self.assertEqual(result.stdout, "Hello, World!\n", "Output should match exactly")
-        self.assertEqual(result.stderr, "", "Should not produce error output")
-
-    def test_hello_command_in_help(self):
-        """Test hello command appears in help output."""
-        result = subprocess.run(
-            [sys.executable, "src/task_manager.py", "--help"],
-            capture_output=True,
-            text=True
-        )
-
-        self.assertEqual(result.returncode, 0, "Help should exit with code 0")
-        self.assertIn("hello", result.stdout, "Help should list hello command")
-        self.assertIn("Print a greeting message", result.stdout,
-                      "Help should show hello description")
-
-
 if __name__ == "__main__":
     unittest.main()

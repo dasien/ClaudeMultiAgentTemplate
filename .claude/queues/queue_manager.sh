@@ -44,6 +44,8 @@
 #       Start a predefined workflow chain
 #   list_tasks <queue> [format]
 #       List tasks in JSON format (queues: pending, active, completed, failed, all)
+#   init [--force]
+#       Initialize/reset the queue system (clears all tasks and logs)
 #   status
 #       Show current queue status (default command)
 #   version
@@ -1617,6 +1619,137 @@ sync_all() {
 #############################################################################
 
 ################################################################################
+# Initialize/reset the queue system
+# Globals:
+#   QUEUE_FILE
+#   LOGS_DIR
+# Arguments:
+#   $1 - Force flag (--force to skip confirmation)
+# Outputs:
+#   Writes confirmation messages to stdout
+#   Creates fresh queue file and clears logs
+# Returns:
+#   0 on success, 1 if cancelled
+################################################################################
+initialize_queue() {
+    local force="${1:-}"
+
+    # Check if queue exists and has data
+    if [ -f "$QUEUE_FILE" ]; then
+        local task_count
+        task_count=$(jq '(.pending_tasks | length) + (.active_workflows | length) + (.completed_tasks | length)' "$QUEUE_FILE" 2>/dev/null || echo "0")
+
+        if [ "$task_count" -gt 0 ] && [ "$force" != "--force" ]; then
+            echo "⚠️  Warning: Queue contains $task_count tasks"
+            echo ""
+            echo "This will:"
+            echo "  • Clear all pending, active, completed, and failed tasks"
+            echo "  • Clear queue operations log"
+            echo "  • Reset all agent statuses to idle"
+            echo ""
+            echo -n "Are you sure you want to reset the queue? [y/N]: "
+            read -r response
+            if [[ ! "$response" =~ ^[Yy]$ ]]; then
+                echo "❌ Initialization cancelled"
+                return 1
+            fi
+        fi
+    fi
+
+    echo "🔄 Initializing queue system..."
+
+    # Get list of all defined agents from contracts file
+    local agent_status="{}"
+    if [ -f "$CONTRACTS_FILE" ]; then
+        agent_status=$(jq -r '.agents | keys | map({(.): {status: "idle", last_activity: null, current_task: null}}) | add' "$CONTRACTS_FILE" 2>/dev/null || echo "{}")
+    fi
+
+    # Create fresh queue file
+    local timestamp
+    timestamp=$(get_timestamp)
+
+    cat > "$QUEUE_FILE" <<EOF
+{
+  "queue_metadata": {
+    "created": "$timestamp",
+    "version": "$VERSION",
+    "description": "Task queue for multi-agent development system with contract-based validation"
+  },
+  "active_workflows": [],
+  "pending_tasks": [],
+  "completed_tasks": [],
+  "failed_tasks": [],
+  "agent_status": $agent_status,
+  "workflow_chains": {
+    "sequential_development": {
+      "name": "Sequential Development Flow",
+      "description": "Standard feature development workflow",
+      "steps": [
+        "requirements-analyst",
+        "architect",
+        "implementer",
+        "tester",
+        "documenter"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    },
+    "bug_fix": {
+      "name": "Bug Fix Flow",
+      "description": "Workflow for fixing bugs",
+      "steps": [
+        "requirements-analyst",
+        "architect",
+        "implementer",
+        "tester"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    },
+    "hotfix_flow": {
+      "name": "Hotfix Flow",
+      "description": "Emergency fix workflow (skip requirements and architecture)",
+      "steps": [
+        "implementer",
+        "tester"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    },
+    "refactoring": {
+      "name": "Refactoring Flow",
+      "description": "Code refactoring workflow (skip requirements)",
+      "steps": [
+        "architect",
+        "implementer",
+        "tester",
+        "documenter"
+      ],
+      "current_step": 0,
+      "status": "ready"
+    }
+  }
+}
+EOF
+
+    # Clear queue operations log
+    if [ -f "$LOGS_DIR/queue_operations.log" ]; then
+        > "$LOGS_DIR/queue_operations.log"
+    fi
+
+    log_operation "QUEUE_INITIALIZED" "Queue system reset to clean state"
+
+    echo "✅ Queue initialized successfully"
+    echo "   • Queue file: $QUEUE_FILE"
+    echo "   • Operations log cleared: $LOGS_DIR/queue_operations.log"
+    echo ""
+    echo "You can now add tasks with:"
+    echo "  $0 add <title> <agent> <priority> <task_type> <source_file> <description>"
+
+    return 0
+}
+
+################################################################################
 # Display current queue status
 # Globals:
 #   QUEUE_FILE
@@ -2040,6 +2173,10 @@ case "${1:-status}" in
 
         # Output the prompt
         echo "$prompt"
+        ;;
+
+    "init")
+        initialize_queue "${2:-}"
         ;;
 
     "status"|*)
