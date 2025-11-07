@@ -1,7 +1,7 @@
 {
   "queue_metadata": {
     "created": "2025-11-07T02:08:59Z",
-    "version": "4.0.0",
+    "version": "4.0.1",
     "description": "Task queue for multi-agent development system with contract-based validation"
   },
   "active_workflows": [],
@@ -93,6 +93,5 @@
       "current_step": 0,
       "status": "ready"
     }
-  },
-  "version": "4.0.0"
+  }
 }
