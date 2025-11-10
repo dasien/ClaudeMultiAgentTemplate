@@ -6,7 +6,6 @@
 #              directory management, and agent status updates
 # Author: Brian Gentry
 # Created: 2025
-# Version: 4.0.0
 #
 # Usage: Source this file from other scripts
 #        source "$(dirname "$0")/common-commands.sh"
@@ -46,7 +45,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="4.0.1"
+readonly VERSION="4.1.0"
 
 #############################################################################
 # PROJECT NAVIGATION

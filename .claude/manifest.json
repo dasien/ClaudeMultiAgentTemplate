@@ -1,5 +1,5 @@
 {
-  "version": "4.0.1",
+  "version": "4.1.0",
   "name": "Claude Multi-Agent Template",
   "description": "Installation manifest - all listed items are required",
   "structure": {
@@ -26,7 +26,8 @@
         "WORKFLOW_GUIDE.md"
       ],
       "hooks": [
-        "on-subagent-stop.sh"
+        "on-subagent-stop.sh",
+        "on-session-end-cost.sh"
       ],
       "logs": [],
       "mcp-servers": [

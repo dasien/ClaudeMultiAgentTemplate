@@ -6,7 +6,6 @@
 #              status tracking, and metadata updates
 # Author: Brian Gentry
 # Created: 2025
-# Version: 4.0.0
 #
 # Usage: cmat queue <command> [OPTIONS]
 #
@@ -347,6 +346,39 @@ clear_finished_tasks() {
 
     log_operation "FINISHED_TASKS_CLEARED" "Cleared $completed_count completed and $failed_count failed tasks"
     echo "✅ Cleared $total_count finished tasks (completed: $completed_count, failed: $failed_count)"
+}
+
+show_task_cost() {
+    local task_id="$1"
+
+    # Search all queues for the task
+    local cost
+    cost=$(jq -r --arg id "$task_id" '
+        [.pending_tasks[], .active_workflows[], .completed_tasks[], .failed_tasks[]] |
+        map(select(.id == $id)) |
+        .[0].metadata.cost_usd // "0.00"
+    ' "$QUEUE_FILE")
+
+    if [ "$cost" = "0.00" ] || [ "$cost" = "null" ]; then
+        echo "0.00"
+    else
+        printf "%.4f\n" "$cost"
+    fi
+}
+
+show_enhancement_cost() {
+    local enhancement_name="$1"
+
+    # Sum costs for all tasks related to this enhancement
+    local total_cost
+    total_cost=$(jq -r --arg enh "$enhancement_name" '
+        [.completed_tasks[], .failed_tasks[]] |
+        map(select(.source_file | contains($enh)) | .metadata.cost_usd // 0) |
+        map(tonumber) |
+        add // 0
+    ' "$QUEUE_FILE")
+
+    printf "%.4f\n" "$total_cost"
 }
 
 update_metadata() {
@@ -822,6 +854,21 @@ case "${1:-status}" in
         clear_finished_tasks "${2:-}"
         ;;
 
+    "show-task-cost")
+        if [ $# -lt 2 ]; then
+            echo "Usage: cmat queue show-task-cost <task_id>" >&2
+            exit 1
+        fi
+        show_task_cost "$2"
+        ;;
+
+    "show-enhancement-cost")
+        if [ $# -lt 2 ]; then
+            echo "Usage: cmat queue show-enhancement-cost <enhancement_name>" >&2
+            exit 1
+        fi
+        show_enhancement_cost "$2"
+        ;;
     *)
         echo "Unknown queue command: ${1:-status}" >&2
         echo "Usage: cmat queue <add|start|complete|cancel|cancel-all|fail|status|list|metadata|init|preview-prompt|clear-finished>" >&2

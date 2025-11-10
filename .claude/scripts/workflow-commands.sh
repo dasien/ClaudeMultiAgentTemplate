@@ -6,7 +6,6 @@
 #              and determines workflow transitions based on agent contracts
 # Author: Brian Gentry
 # Created: 2025
-# Version: 4.0.0
 #
 # Usage: cmat workflow <command> [OPTIONS]
 #

@@ -478,6 +478,107 @@ cmat.sh queue clear-finished
 
 ---
 
+### queue show-task-cost
+
+Display cost information for a specific task.
+
+```bash
+cmat.sh queue show-task-cost <task_id>
+```
+
+**Parameters**:
+- `task_id` (required) - Task ID to get cost for
+
+**Returns**: Cost in USD (e.g., `0.0234`)
+
+**Examples**:
+```bash
+# Get cost for a specific task
+cmat.sh queue show-task-cost task_1234567890_12345
+# Output: 0.0234
+
+# Use in calculations
+COST=$(cmat.sh queue show-task-cost task_123)
+echo "Task cost: \$$COST USD"
+
+# Check if task has cost data
+COST=$(cmat.sh queue show-task-cost task_123)
+if [ "$COST" != "0.00" ]; then
+  echo "Cost tracked: \$$COST"
+else
+  echo "No cost data available"
+fi
+```
+
+**Cost Data Source**:
+- Automatically extracted from session transcripts by `on-session-end-cost.sh` hook
+- Includes input, output, cache creation, and cache read tokens
+- Calculated based on model-specific pricing (Sonnet 4.5, Haiku, Opus)
+
+**When No Cost Available**:
+- Returns `0.00` if task has no cost metadata
+- Task may have failed before completion
+- Hook may not be configured
+- Transcript may not contain usage data
+
+---
+
+### queue show-enhancement-cost
+
+Display total cost for all tasks related to an enhancement.
+
+```bash
+cmat.sh queue show-enhancement-cost <enhancement_name>
+```
+
+**Parameters**:
+- `enhancement_name` (required) - Enhancement name (from enhancements/ directory)
+
+**Returns**: Total cost in USD (e.g., `0.1567`)
+
+**Examples**:
+```bash
+# Get total cost for an enhancement
+cmat.sh queue show-enhancement-cost my-feature
+# Output: 0.1567
+
+# Compare costs across enhancements
+for enh in feature-a feature-b feature-c; do
+  cost=$(cmat.sh queue show-enhancement-cost $enh)
+  echo "$enh: \$$cost"
+done
+
+# Track running total during development
+TOTAL=$(cmat.sh queue show-enhancement-cost my-feature)
+echo "Current enhancement cost: \$$TOTAL USD"
+```
+
+**Cost Aggregation**:
+- Sums costs from all completed and failed tasks
+- Matches tasks by source_file containing enhancement name
+- Includes all agent tasks in the workflow chain
+- Useful for budgeting and cost analysis
+
+**Detailed Cost Breakdown**:
+```bash
+# View per-task breakdown for enhancement
+cmat.sh queue list completed | jq --arg enh "my-feature" '
+  .[] |
+  select(.source_file | contains($enh)) |
+  {
+    id,
+    agent: .assigned_agent,
+    cost: .metadata.cost_usd,
+    tokens: {
+      input: .metadata.cost_input_tokens,
+      output: .metadata.cost_output_tokens
+    }
+  }
+'
+```
+
+---
+
 ## Workflow Commands
 
 Workflow orchestration and contract validation.

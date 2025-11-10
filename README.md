@@ -2,7 +2,7 @@
 
 A contract-based multi-agent development workflow system using Claude Code. This template provides specialized AI agents with formal contracts, automated validation, intelligent workflow chaining, and a comprehensive skills system.
 
-**Version**: 4.0.0 - Modular script architecture with skills system
+**Version**: 4.1.0 
 
 ## 🎯 What Is This?
 
@@ -38,6 +38,7 @@ This template provides a multi-agent system that breaks down software developmen
 ### Quality & Tracking
 - 📝 **Metadata Headers** - All outputs are self-documenting and traceable
 - 🧪 **Comprehensive Logging** - Agent execution logged for analysis
+- 💰 **Cost Tracking** - Automatic tracking of token usage and costs per task
 - 🔗 **Cross-Platform Sync** - GitHub and Jira/Confluence integration
 - 🎯 **Contract Validation** - Outputs validated against formal specifications
 - 🏗️ **Modular Architecture** - Clean separation of concerns in script design
@@ -47,6 +48,24 @@ This template provides a multi-agent system that breaks down software developmen
 - 📚 **Complete Documentation** - Guides for every aspect of the system
 
 ## 🆕 What's New
+
+### Cost Tracking (v4.1.0) ✅
+
+Automatic cost tracking for all agent tasks:
+
+- **Automatic Extraction**: Session end hook captures token usage from transcripts
+- **Per-Task Tracking**: Input, output, cache creation, and cache read tokens
+- **Model-Aware Pricing**: Supports Sonnet 4.5, Haiku, and Opus pricing models
+- **Cost Aggregation**: View costs by task or enhancement
+- **Detailed Logging**: Cost information appended to task logs
+
+```bash
+# View cost for specific task
+cmat.sh queue show-task-cost <task_id>
+
+# View total cost for an enhancement
+cmat.sh queue show-enhancement-cost <enhancement_name>
+```
 
 ### Modular Script Architecture ✅
 
@@ -214,7 +233,8 @@ your-project/
 │   │   ├── web-ui-design/
 │   │   └── sql-development/
 │   ├── hooks/                    # Workflow automation
-│   │   └── on-subagent-stop.sh  # Enhanced with validation
+│   │   ├── on-subagent-stop.sh  # Enhanced with validation
+│   │   └── on-session-end-cost.sh # Cost tracking
 │   ├── queues/                   # Task management
 │   │   ├── task_queue.json
 │   │   └── workflow_templates.json
@@ -442,6 +462,8 @@ cmat.sh queue metadata <task_id> <key> <value>
 cmat.sh queue preview-prompt <task_id>
 cmat.sh queue clear-finished [--force]
 cmat.sh queue init [--force]
+cmat.sh queue show-task-cost <task_id>
+cmat.sh queue show-enhancement-cost <enhancement_name>
 ```
 
 ### Workflow Commands

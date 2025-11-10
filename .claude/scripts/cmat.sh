@@ -6,7 +6,6 @@
 #              to specialized subsystems (queue, workflow, skills, integration, agents)
 # Author: Brian Gentry
 # Created: 2025
-# Version: 4.0.0
 #
 # Usage: cmat <category> <command> [OPTIONS]
 #

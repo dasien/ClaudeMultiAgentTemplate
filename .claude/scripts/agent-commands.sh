@@ -6,7 +6,6 @@
 #              and agents.json generation from agent markdown files
 # Author: Brian Gentry
 # Created: 2025
-# Version: 4.0.0
 #
 # Usage: cmat agents <command> [OPTIONS]
 #
@@ -198,6 +197,7 @@ invoke_agent() {
     echo "Output Directory: $output_directory" | tee -a "$log_file"
     echo "Root Document: $root_document" | tee -a "$log_file"
     echo "Log: $log_file" | tee -a "$log_file"
+    echo "Cost Tracking: ENABLED (SessionEnd hook)" | tee -a "$log_file"
     echo "" | tee -a "$log_file"
 
     # Log the complete prompt sent to agent
@@ -215,10 +215,22 @@ invoke_agent() {
         echo ""
     } >> "$log_file"
 
-    # Invoke Claude Code with bypass permissions
-    claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
+    # Set context for SessionEnd hook (cost tracking)
+    export CMAT_CURRENT_TASK_ID="$task_id"
+    export CMAT_CURRENT_LOG_FILE="$log_file"
+    export CMAT_AGENT="$agent"
+    export CMAT_ENHANCEMENT="$enhancement_name"
 
+    # Invoke Claude Code with bypass permissions
+    # claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
+    claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1
+
+    local exit_code=$?
     local exit_code=${PIPESTATUS[0]}
+
+    # Unset context after execution (SessionEnd hook will have already run)
+    unset CMAT_CURRENT_TASK_ID CMAT_CURRENT_LOG_FILE CMAT_AGENT CMAT_ENHANCEMENT
+
     local end_time end_timestamp duration
     end_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     end_timestamp=$(date +%s)

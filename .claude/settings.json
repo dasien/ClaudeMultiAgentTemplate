@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/on-subagent-stop.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/on-session-end-cost.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "agents_directory": ".claude/agents",
+  "enhancements_directory": "enhancements"
+}

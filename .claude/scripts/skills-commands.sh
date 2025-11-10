@@ -6,7 +6,6 @@
 #              skills sections for agent prompts
 # Author: Brian Gentry
 # Created: 2025
-# Version: 4.0.0
 #
 # Usage: cmat skills <command> [OPTIONS]
 #
