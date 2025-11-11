@@ -20,6 +20,7 @@
 #   ensure_directories()         Create required directory structure
 #   update_agent_status()        Update agent status in queue
 #   extract_enhancement_name()   Extract enhancement name from path
+#   extract_enhancement_title()  Extract enhancement title from file
 #   needs_integration()          Check if status requires integration
 #
 # Exported Variables:
@@ -45,7 +46,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="4.1.0"
+readonly VERSION="4.1.1"
 
 #############################################################################
 # PROJECT NAVIGATION
@@ -297,6 +298,40 @@ update_agent_status() {
 extract_enhancement_name() {
     local source_file="$1"
     echo "$source_file" | sed -E 's|^enhancements/([^/]+)/.*|\1|'
+}
+
+# Extract enhancement title from source file
+# Looks for "Title:", "Enhancement:", or "Bug Fix:" fields (with or without markdown headers)
+# Returns "Not part of an Enhancement" if not found
+extract_enhancement_title() {
+    local source_file="$1"
+
+    if [ ! -f "$source_file" ]; then
+        echo "Not part of an Enhancement"
+        return
+    fi
+
+    # Try to extract title from various field formats
+    local title
+
+    # First try: Look for "Title:" field (with or without markdown header #)
+    title=$(grep -m 1 -E "^#*[[:space:]]*Title:" "$source_file" 2>/dev/null | sed -E 's/^#*[[:space:]]*Title:[[:space:]]*//')
+
+    # Second try: Look for "Enhancement:" field (with or without markdown header #)
+    if [ -z "$title" ]; then
+        title=$(grep -m 1 -E "^#*[[:space:]]*Enhancement:" "$source_file" 2>/dev/null | sed -E 's/^#*[[:space:]]*Enhancement:[[:space:]]*//')
+    fi
+
+    # Third try: Look for "Bug Fix:" field (with or without markdown header #)
+    if [ -z "$title" ]; then
+        title=$(grep -m 1 -E "^#*[[:space:]]*Bug Fix:" "$source_file" 2>/dev/null | sed -E 's/^#*[[:space:]]*Bug Fix:[[:space:]]*//')
+    fi
+
+    if [ -z "$title" ]; then
+        echo "Not part of an Enhancement"
+    else
+        echo "$title"
+    fi
 }
 
 needs_integration() {

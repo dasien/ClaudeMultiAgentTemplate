@@ -1,6 +1,6 @@
 # Customization Guide
 
-This guide shows you how to adapt the Claude Multi-Agent Template v2.0 for your specific project.
+This guide shows you how to adapt the Claude Multi-Agent Template for your specific project.
 
 ## Overview
 

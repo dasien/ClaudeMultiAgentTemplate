@@ -232,11 +232,12 @@ auto_chain() {
         return 1
     fi
 
-    local agent source_file parent_auto_complete parent_auto_chain
+    local agent source_file parent_auto_complete parent_auto_chain parent_enhancement_title
     agent=$(echo "$task" | jq -r '.assigned_agent')
     source_file=$(echo "$task" | jq -r '.source_file')
     parent_auto_complete=$(echo "$task" | jq -r '.auto_complete // false')
     parent_auto_chain=$(echo "$task" | jq -r '.auto_chain // false')
+    parent_enhancement_title=$(echo "$task" | jq -r '.metadata.enhancement_title // "Not part of an Enhancement"')
 
     # Extract enhancement name
     local enhancement_name enhancement_dir
@@ -275,7 +276,7 @@ auto_chain() {
     next_desc="Continue workflow for $enhancement_name following $agent completion"
     task_type=$(get_task_type_for_agent "$next_agent")
 
-    # Create next task - inherit automation settings
+    # Create next task - inherit automation settings and enhancement_title
     local new_task_id
     new_task_id=$("$SCRIPT_DIR/queue-commands.sh" add \
         "$next_title" \
@@ -285,7 +286,8 @@ auto_chain() {
         "$next_source" \
         "$next_desc" \
         "$parent_auto_complete" \
-        "$parent_auto_chain")
+        "$parent_auto_chain" \
+        "$parent_enhancement_title")
 
     echo "✅ Auto-chained to $next_agent: $new_task_id"
     echo "   Source: $next_source"

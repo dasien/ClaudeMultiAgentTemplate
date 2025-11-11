@@ -61,6 +61,7 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$CMAT" ]; then
         AGENT=$(echo "$TASK" | jq -r '.assigned_agent')
         SOURCE_FILE=$(echo "$TASK" | jq -r '.source_file')
         AUTO_CHAIN=$(echo "$TASK" | jq -r '.auto_chain // false')
+        ENHANCEMENT_TITLE=$(echo "$TASK" | jq -r '.metadata.enhancement_title // "Not part of an Enhancement"')
 
         # Extract enhancement name
         ENHANCEMENT_NAME=$(echo "$SOURCE_FILE" | sed -E 's|^enhancements/([^/]+)/.*|\1|')
@@ -240,7 +241,8 @@ if [ -n "$SUBAGENT_STATUS" ] && [ -x "$CMAT" ]; then
                                         "$DOC_SOURCE" \
                                         "Document feature for users and developers" \
                                         "false" \
-                                        "false")
+                                        "false" \
+                                        "$ENHANCEMENT_TITLE")
                                     echo "📚 Documentation task queued: $DOC_TASK_ID"
                                 else
                                     echo "Skipping documentation - feature complete"

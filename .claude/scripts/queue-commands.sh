@@ -10,7 +10,7 @@
 # Usage: cmat queue <command> [OPTIONS]
 #
 # Commands:
-#   add <title> <agent> <priority> <type> <source> <desc> [auto_complete] [auto_chain]
+#   add <title> <agent> <priority> <type> <source> <desc> [auto_complete] [auto_chain] [enhancement_title]
 #       Add a new task to the pending queue
 #   start <task_id>
 #       Move task from pending to active and invoke agent
@@ -71,11 +71,17 @@ add_task() {
     local description="${6:-No description}"
     local auto_complete="${7:-false}"
     local auto_chain="${8:-false}"
+    local enhancement_title="${9:-}"
 
     local task_id
     task_id="task_$(date +%s)_$$"
     local timestamp
     timestamp=$(get_timestamp)
+
+    # Extract enhancement title if not provided
+    if [ -z "$enhancement_title" ]; then
+        enhancement_title=$(extract_enhancement_title "$source_file")
+    fi
 
     local task_object
     task_object=$(jq -n \
@@ -90,6 +96,7 @@ add_task() {
         --arg status "pending" \
         --arg auto_complete "$auto_complete" \
         --arg auto_chain "$auto_chain" \
+        --arg enhancement_title "$enhancement_title" \
         '{
             id: $id,
             title: $title,
@@ -111,7 +118,8 @@ add_task() {
                 github_pr: null,
                 confluence_page: null,
                 parent_task_id: null,
-                workflow_status: null
+                workflow_status: null,
+                enhancement_title: $enhancement_title
             }
         }')
 
@@ -750,13 +758,14 @@ EOF
 case "${1:-status}" in
     "add")
         if [ $# -lt 7 ]; then
-            echo "Usage: cmat queue add <title> <agent> <priority> <task_type> <source_file> <description> [auto_complete] [auto_chain]"
+            echo "Usage: cmat queue add <title> <agent> <priority> <task_type> <source_file> <description> [auto_complete] [auto_chain] [enhancement_title]"
             echo "Task types: analysis, technical_analysis, implementation, testing, integration, documentation"
             echo "auto_complete: true/false (default: false)"
             echo "auto_chain: true/false (default: false)"
+            echo "enhancement_title: optional, will be extracted from source file if not provided"
             exit 1
         fi
-        add_task "$2" "$3" "$4" "$5" "$6" "$7" "${8:-false}" "${9:-false}"
+        add_task "$2" "$3" "$4" "$5" "$6" "$7" "${8:-false}" "${9:-false}" "${10:-}"
         ;;
 
     "start")

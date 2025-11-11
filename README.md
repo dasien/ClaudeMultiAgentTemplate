@@ -2,7 +2,7 @@
 
 A contract-based multi-agent development workflow system using Claude Code. This template provides specialized AI agents with formal contracts, automated validation, intelligent workflow chaining, and a comprehensive skills system.
 
-**Version**: 4.1.0 
+**Version**: 4.1.1 
 
 ## 🎯 What Is This?
 

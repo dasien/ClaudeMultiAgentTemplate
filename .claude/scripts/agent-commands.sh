@@ -221,12 +221,18 @@ invoke_agent() {
     export CMAT_AGENT="$agent"
     export CMAT_ENHANCEMENT="$enhancement_name"
 
-    # Invoke Claude Code with bypass permissions
+    # Invoke Claude Code with bypass permissions in background to capture PID
     # claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
-    claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1
+    claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1 &
 
+    local claude_pid=$!
+
+    # Store PID in task metadata immediately so it can be killed if cancelled
+    "$SCRIPT_DIR/queue-commands.sh" metadata "$task_id" "process_pid" "$claude_pid" 2>/dev/null || true
+
+    # Wait for the claude process to complete
+    wait $claude_pid
     local exit_code=$?
-    local exit_code=${PIPESTATUS[0]}
 
     # Unset context after execution (SessionEnd hook will have already run)
     unset CMAT_CURRENT_TASK_ID CMAT_CURRENT_LOG_FILE CMAT_AGENT CMAT_ENHANCEMENT

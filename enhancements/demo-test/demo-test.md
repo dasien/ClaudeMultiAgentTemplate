@@ -1,4 +1,4 @@
-# Demo Test Enhancement
+# Enhancement: Demo Test Enhancement
 
 ## Purpose
 This is a minimal test enhancement to verify the multi-agent workflow system is functioning correctly.
