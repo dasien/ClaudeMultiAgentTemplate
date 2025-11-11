@@ -121,6 +121,21 @@ Status: ${failure_pattern}
 
 This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
 
+## SKILLS USAGE REPORTING (OPTIONAL)
+
+If you used any specialized skills during this task, report them in a structured format at the end of your final message (before cost information if present):
+
+╔════════════════════════════════════════════════════════════╗
+║                   SKILLS UTILIZED                          ║
+╚════════════════════════════════════════════════════════════╝
+
+SKILLS_USED: skill-1, skill-2, skill-3
+SKILLS_DETAIL:
+- skill-1: Brief description of how this skill was applied
+- skill-2: Brief description of how this skill was applied
+
+This helps track which skills were valuable for different types of tasks.
+
 Task ID: ${task_id}
 
 ===END_TEMPLATE===
@@ -206,6 +221,21 @@ Status: ${failure_pattern}
 ```
 
 This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
+
+## SKILLS USAGE REPORTING (OPTIONAL)
+
+If you used any specialized skills during this task, report them in a structured format at the end of your final message (before cost information if present):
+
+╔════════════════════════════════════════════════════════════╗
+║                   SKILLS UTILIZED                          ║
+╚════════════════════════════════════════════════════════════╝
+
+SKILLS_USED: skill-1, skill-2, skill-3
+SKILLS_DETAIL:
+- skill-1: Brief description of how this skill was applied
+- skill-2: Brief description of how this skill was applied
+
+This helps track which skills were valuable for different types of tasks.
 
 Task ID: ${task_id}
 
@@ -293,6 +323,21 @@ Status: ${failure_pattern}
 
 This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
 
+## SKILLS USAGE REPORTING (OPTIONAL)
+
+If you used any specialized skills during this task, report them in a structured format at the end of your final message (before cost information if present):
+
+╔════════════════════════════════════════════════════════════╗
+║                   SKILLS UTILIZED                          ║
+╚════════════════════════════════════════════════════════════╝
+
+SKILLS_USED: skill-1, skill-2, skill-3
+SKILLS_DETAIL:
+- skill-1: Brief description of how this skill was applied
+- skill-2: Brief description of how this skill was applied
+
+This helps track which skills were valuable for different types of tasks.
+
 Task ID: ${task_id}
 
 ===END_TEMPLATE===
@@ -379,6 +424,21 @@ Status: ${failure_pattern}
 ```
 
 This status line is critical for the queue manager to recognize task completion and chain to the next phase. Without it, your task will remain in active status even if all work is complete.
+
+## SKILLS USAGE REPORTING (OPTIONAL)
+
+If you used any specialized skills during this task, report them in a structured format at the end of your final message (before cost information if present):
+
+╔════════════════════════════════════════════════════════════╗
+║                   SKILLS UTILIZED                          ║
+╚════════════════════════════════════════════════════════════╝
+
+SKILLS_USED: skill-1, skill-2, skill-3
+SKILLS_DETAIL:
+- skill-1: Brief description of how this skill was applied
+- skill-2: Brief description of how this skill was applied
+
+This helps track which skills were valuable for different types of tasks.
 
 Task ID: ${task_id}
 
@@ -544,6 +604,21 @@ Status: ${failure_pattern}
 ```
 
 This status line is critical for the queue manager to recognize task completion. Without it, your task will remain in active status even if all work is complete.
+
+## SKILLS USAGE REPORTING (OPTIONAL)
+
+If you used any specialized skills during this task, report them in a structured format at the end of your final message (before cost information if present):
+
+╔════════════════════════════════════════════════════════════╗
+║                   SKILLS UTILIZED                          ║
+╚════════════════════════════════════════════════════════════╝
+
+SKILLS_USED: skill-1, skill-2, skill-3
+SKILLS_DETAIL:
+- skill-1: Brief description of how this skill was applied
+- skill-2: Brief description of how this skill was applied
+
+This helps track which skills were valuable for different types of tasks.
 
 Task ID: ${task_id}
 
@@ -778,6 +853,21 @@ Next Steps:
 - Issue ready for development
 - Ticket assigned to current sprint
 ```
+
+## SKILLS USAGE REPORTING (OPTIONAL)
+
+If you used any specialized skills during this task, report them in a structured format at the end of your final message (before cost information if present):
+
+╔════════════════════════════════════════════════════════════╗
+║                   SKILLS UTILIZED                          ║
+╚════════════════════════════════════════════════════════════╝
+
+SKILLS_USED: skill-1, skill-2, skill-3
+SKILLS_DETAIL:
+- skill-1: Brief description of how this skill was applied
+- skill-2: Brief description of how this skill was applied
+
+This helps track which skills were valuable for different types of tasks.
 
 Task ID: ${task_id}
 

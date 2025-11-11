@@ -34,6 +34,10 @@
 #       Clear all completed and failed tasks from history
 #   init [--force]
 #       Initialize/reset the queue system
+#   show-task-cost <task_id>
+#       Display cost in USD for a specific task
+#   show-enhancement-cost <enhancement_name>
+#       Display total cost in USD for all tasks in an enhancement
 #
 # Task Priorities:
 #   critical, high, normal, low
