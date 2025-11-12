@@ -60,44 +60,47 @@ CACHE_READ_TOKENS=$(echo "$USAGE_SUMMARY" | jq -r '.total_cache_read_tokens // 0
 # Determine model from transcript (default to Sonnet 4.5)
 MODEL=$(grep -a '"model":' "$TRANSCRIPT_PATH" | head -1 | grep -oE 'claude-[a-z]+-[0-9]+-[0-9]+-[0-9]+' || echo "claude-sonnet-4-5-20250929")
 
-# Calculate cost based on model pricing
-# Sonnet 4.5 pricing (as of Nov 2024):
-#   Input: $3 per million tokens
-#   Output: $15 per million tokens
-#   Cache write: $3.75 per million tokens
-#   Cache read: $0.30 per million tokens
+# Load model pricing from models.json
+MODELS_FILE="$PROJECT_ROOT/.claude/models/models.json"
 
-case "$MODEL" in
-    *sonnet-4-5*|*sonnet-4*)
-        INPUT_PRICE=3.00
-        OUTPUT_PRICE=15.00
-        CACHE_WRITE_PRICE=3.75
-        CACHE_READ_PRICE=0.30
-        MODEL_NAME="claude-sonnet-4.5"
-        ;;
-    *haiku*)
-        INPUT_PRICE=0.25
-        OUTPUT_PRICE=1.25
-        CACHE_WRITE_PRICE=0.30
-        CACHE_READ_PRICE=0.03
-        MODEL_NAME="claude-haiku"
-        ;;
-    *opus*)
-        INPUT_PRICE=15.00
-        OUTPUT_PRICE=75.00
-        CACHE_WRITE_PRICE=18.75
-        CACHE_READ_PRICE=1.50
-        MODEL_NAME="claude-opus-4"
-        ;;
-    *)
-        # Default to Sonnet pricing
-        INPUT_PRICE=3.00
-        OUTPUT_PRICE=15.00
-        CACHE_WRITE_PRICE=3.75
-        CACHE_READ_PRICE=0.30
-        MODEL_NAME="claude-sonnet-4.5"
-        ;;
-esac
+if [ ! -f "$MODELS_FILE" ]; then
+    echo "⚠️  models.json not found, using fallback pricing" >&2
+    # Fallback to Sonnet 4.5 pricing
+    INPUT_PRICE=3.00
+    OUTPUT_PRICE=15.00
+    CACHE_WRITE_PRICE=3.75
+    CACHE_READ_PRICE=0.30
+    MODEL_NAME="claude-sonnet-4.5"
+else
+    # Find matching model by checking patterns
+    MODEL_KEY=""
+    for key in $(jq -r '.models | keys[]' "$MODELS_FILE"); do
+        PATTERN=$(jq -r ".models[\"$key\"].pattern" "$MODELS_FILE")
+        # Split pattern on | and test each part separately
+        IFS='|' read -ra PATTERNS <<< "$PATTERN"
+        for pat in "${PATTERNS[@]}"; do
+            case "$MODEL" in
+                $pat)
+                    MODEL_KEY="$key"
+                    break 2  # Break out of both loops
+                    ;;
+            esac
+        done
+    done
+
+    # If no match found, use default model
+    if [ -z "$MODEL_KEY" ]; then
+        MODEL_KEY=$(jq -r '.default_model' "$MODELS_FILE")
+        echo "⚠️  Model '$MODEL' not found in models.json, using default: $MODEL_KEY" >&2
+    fi
+
+    # Extract pricing information
+    MODEL_NAME=$(jq -r ".models[\"$MODEL_KEY\"].name" "$MODELS_FILE")
+    INPUT_PRICE=$(jq -r ".models[\"$MODEL_KEY\"].pricing.input" "$MODELS_FILE")
+    OUTPUT_PRICE=$(jq -r ".models[\"$MODEL_KEY\"].pricing.output" "$MODELS_FILE")
+    CACHE_WRITE_PRICE=$(jq -r ".models[\"$MODEL_KEY\"].pricing.cache_write" "$MODELS_FILE")
+    CACHE_READ_PRICE=$(jq -r ".models[\"$MODEL_KEY\"].pricing.cache_read" "$MODELS_FILE")
+fi
 
 # Calculate total cost
 COST_USD=$(echo "scale=4; \

@@ -1,5 +1,5 @@
 {
-  "version": "4.1.2",
+  "version": "4.1.3",
   "name": "Claude Multi-Agent Template",
   "description": "Installation manifest - all listed items are required",
   "structure": {
@@ -42,6 +42,9 @@
         "task_queue_empty.json",
         "workflow_states.json",
         "workflow_templates.json"
+      ],
+      "models": [
+        "models.json"
       ],
       "scripts": [
         "agent-commands.sh",

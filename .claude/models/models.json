@@ -1,0 +1,52 @@
+{
+  "models": {
+    "claude-sonnet-4.5": {
+      "pattern": "*sonnet-4-5*|*sonnet-4*",
+      "name": "Claude Sonnet 4.5",
+      "description": "Balanced model offering excellent performance for most tasks with strong reasoning and coding capabilities",
+      "max_tokens": 200000,
+      "pricing": {
+        "input": 3.00,
+        "output": 15.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+        "currency": "USD",
+        "per_tokens": 1000000
+      }
+    },
+    "claude-haiku": {
+      "pattern": "*haiku*",
+      "name": "Claude Haiku",
+      "description": "Fast and cost-effective model optimized for quick responses and high-volume tasks",
+      "max_tokens": 200000,
+      "pricing": {
+        "input": 0.25,
+        "output": 1.25,
+        "cache_write": 0.30,
+        "cache_read": 0.03,
+        "currency": "USD",
+        "per_tokens": 1000000
+      }
+    },
+    "claude-opus-4": {
+      "pattern": "*opus*",
+      "name": "Claude Opus 4",
+      "description": "Most capable model with superior performance on complex reasoning, analysis, and creative tasks",
+      "max_tokens": 200000,
+      "pricing": {
+        "input": 15.00,
+        "output": 75.00,
+        "cache_write": 18.75,
+        "cache_read": 1.50,
+        "currency": "USD",
+        "per_tokens": 1000000
+      }
+    }
+  },
+  "default_model": "claude-sonnet-4.5",
+  "metadata": {
+    "last_updated": "2025-11-11",
+    "pricing_source": "https://www.anthropic.com/pricing",
+    "notes": "Pricing as of November 2024. Check Anthropic's website for current rates."
+  }
+}
