@@ -756,6 +756,368 @@ cmat.sh workflow template bug_fix "Fix login validation"
 
 **Custom Templates**: Add to `.claude/queues/workflow_templates.json`
 
+
+# Workflow Template Management Commands
+
+Add this section to SCRIPTS_REFERENCE.md after the existing workflow commands section:
+
+---
+
+## Workflow Template Management
+
+Manage workflow templates that define reusable agent sequences.
+
+### workflow create
+
+Create a new workflow template.
+
+```bash
+cmat workflow create <template_name> <description>
+```
+
+**Parameters**:
+- `template_name` (required) - Unique identifier for template (use lowercase-with-hyphens)
+- `description` (required) - Human-readable description of workflow purpose
+
+**Examples**:
+```bash
+# Create custom workflow for quick implementations
+cmat workflow create quick-impl "Quick implementation workflow"
+
+# Create documentation-only workflow
+cmat workflow create docs-only "Documentation update workflow"
+
+# Create security review workflow
+cmat workflow create security-review "Feature with security review"
+```
+
+**Output**:
+```
+✅ Created workflow template: quick-impl
+```
+
+**Notes**:
+- Template names must be unique
+- Templates start with empty steps array
+- Add steps using `workflow add-step`
+
+---
+
+### workflow list
+
+List all available workflow templates.
+
+```bash
+cmat workflow list
+```
+
+**Output**:
+```
+new_feature_development - Complete workflow for implementing a new feature (5 steps)
+bugfix_workflow - Workflow for fixing bugs (4 steps)
+hotfix_workflow - Fast-track workflow for critical issues (2 steps)
+quick-impl - Quick implementation workflow (3 steps)
+docs-only - Documentation update workflow (2 steps)
+```
+
+**Use Cases**:
+- Discover available workflows
+- Check template step counts
+- Find appropriate workflow for task
+
+---
+
+### workflow show
+
+Display detailed information about a workflow template.
+
+```bash
+cmat workflow show <template_name>
+```
+
+**Parameters**:
+- `template_name` (required) - Template identifier
+
+**Examples**:
+```bash
+cmat workflow show quick-impl
+```
+
+**Output**:
+```
+Template: quick-impl
+Description: Quick implementation workflow
+Steps: 3
+Created: 2025-11-15T10:00:00Z
+
+Steps:
+  architect → implementer → tester
+```
+
+**Use Cases**:
+- Preview workflow before using
+- Verify template structure
+- Check agent sequence
+
+---
+
+### workflow delete
+
+Delete a workflow template.
+
+```bash
+cmat workflow delete <template_name>
+```
+
+**Parameters**:
+- `template_name` (required) - Template identifier to delete
+
+**Examples**:
+```bash
+# Delete custom template
+cmat workflow delete quick-impl
+```
+
+**Output**:
+```
+✅ Deleted workflow template: quick-impl
+```
+
+**Notes**:
+- Deletion is permanent
+- Cannot delete templates currently in use by active tasks
+- Built-in templates can be deleted (be careful!)
+
+---
+
+### workflow add-step
+
+Add an agent step to a workflow template.
+
+```bash
+cmat workflow add-step <template_name> <agent> [--position=N]
+```
+
+**Parameters**:
+- `template_name` (required) - Template to modify
+- `agent` (required) - Agent name to add (must exist in agent_contracts.json)
+- `--position=N` (optional) - Insert at position N (0-indexed), default appends to end
+
+**Examples**:
+```bash
+# Add architect to beginning
+cmat workflow add-step quick-impl architect --position=0
+
+# Add implementer after architect (position 1)
+cmat workflow add-step quick-impl implementer --position=1
+
+# Add tester at end (no position specified)
+cmat workflow add-step quick-impl tester
+```
+
+**Output**:
+```
+✅ Added step to template: architect
+```
+
+**Validation**:
+- Agent must exist in agent_contracts.json
+- Position must be valid (0 to current_step_count)
+
+---
+
+### workflow remove-step
+
+Remove a step from workflow template.
+
+```bash
+cmat workflow remove-step <template_name> <step_number>
+```
+
+**Parameters**:
+- `template_name` (required) - Template to modify
+- `step_number` (required) - Step number to remove (1-indexed for user display)
+
+**Examples**:
+```bash
+# Remove step 2 (implementer)
+cmat workflow remove-step quick-impl 2
+
+# After removal, remaining steps renumber automatically
+```
+
+**Output**:
+```
+✅ Removed step 2 (implementer) from template
+```
+
+**Notes**:
+- Steps are numbered starting from 1 for user display
+- Remaining steps automatically renumber after removal
+
+---
+
+### workflow list-steps
+
+List all steps in a workflow template.
+
+```bash
+cmat workflow list-steps <template_name>
+```
+
+**Parameters**:
+- `template_name` (required) - Template to list
+
+**Examples**:
+```bash
+cmat workflow list-steps quick-impl
+```
+
+**Output**:
+```
+Steps in 'quick-impl':
+  1. architect
+  2. implementer
+  3. tester
+```
+
+**Use Cases**:
+- View current step sequence
+- Determine step numbers for removal
+- Verify step order
+
+---
+
+### workflow show-step
+
+Display details of a specific step in a workflow template.
+
+```bash
+cmat workflow show-step <template_name> <step_number>
+```
+
+**Parameters**:
+- `template_name` (required) - Template identifier
+- `step_number` (required) - Step number (1-indexed)
+
+**Examples**:
+```bash
+# Show details of step 2
+cmat workflow show-step quick-impl 2
+```
+
+**Output**:
+```
+Step 2 of 'quick-impl':
+  AGENT: implementer
+  TASK: Execute implementer
+  DESCRIPTION: Implements features based on architectural specifications, writes production-quality code
+```
+
+**Use Cases**:
+- Understand what a step does
+- Verify agent assignment
+- Check step configuration
+
+---
+
+## Workflow Template Usage Examples
+
+### Creating a Custom Workflow from Scratch
+
+```bash
+# 1. Create template
+cmat workflow create api-development "REST API development workflow"
+
+# 2. Add steps in order
+cmat workflow add-step api-development requirements-analyst
+cmat workflow add-step api-development architect
+cmat workflow add-step api-development implementer
+cmat workflow add-step api-development tester
+cmat workflow add-step api-development documenter
+
+# 3. View result
+cmat workflow show api-development
+
+# Output:
+# Template: api-development
+# Description: REST API development workflow
+# Steps: 5
+# Steps:
+#   requirements-analyst → architect → implementer → tester → documenter
+```
+
+### Modifying an Existing Template
+
+```bash
+# View current steps
+cmat workflow list-steps api-development
+
+# Remove documenter (step 5)
+cmat workflow remove-step api-development 5
+
+# Verify
+cmat workflow show api-development
+# Now shows 4 steps
+```
+
+### Creating Specialized Workflows
+
+```bash
+# Quick implementation (skip requirements)
+cmat workflow create quick-impl "Quick implementation workflow"
+cmat workflow add-step quick-impl architect
+cmat workflow add-step quick-impl implementer
+cmat workflow add-step quick-impl tester
+
+# Documentation only
+cmat workflow create docs-only "Documentation update"
+cmat workflow add-step docs-only requirements-analyst
+cmat workflow add-step docs-only documenter
+
+# Security-focused
+cmat workflow create secure-feature "Feature with security review"
+cmat workflow add-step secure-feature requirements-analyst
+cmat workflow add-step secure-feature architect
+cmat workflow add-step secure-feature implementer
+cmat workflow add-step secure-feature security-reviewer
+cmat workflow add-step secure-feature tester
+cmat workflow add-step secure-feature documenter
+```
+
+### Inspecting Workflow Steps
+
+```bash
+# List all templates
+cmat workflow list
+
+# Pick one to inspect
+cmat workflow show new_feature_development
+
+# View specific step
+cmat workflow show-step new_feature_development 3
+
+# List all steps
+cmat workflow list-steps new_feature_development
+```
+
+---
+
+## Integration with Task Creation
+
+Workflow templates are referenced when creating tasks. The UI (MultiAgentUI) will:
+
+1. Call `cmat workflow list` to populate workflow dropdown
+2. User selects a template
+3. UI calls `cmat workflow show <template>` to preview steps
+4. UI creates tasks based on template steps
+5. Each task references the template in metadata
+
+**Future Enhancement**: Direct template execution from CLI:
+```bash
+# Not yet implemented - for future versions
+cmat workflow execute <template_name> <enhancement_name>
+```
 ---
 
 ## Skills Commands
@@ -1332,6 +1694,3 @@ Check task flags: `cmat.sh queue list active | jq '.[] | {id, auto_chain}'`
 - **[.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json)** - Agent specifications
 
 ---
-
-**Version**: 4.0.0  
-**Last Updated**: 2025-10-24

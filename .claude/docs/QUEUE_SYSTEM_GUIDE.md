@@ -1311,6 +1311,3 @@ cmat.sh queue list failed | jq '.[] |
 - **[agent_contracts.json](../agent_contracts.json)** - Agent specifications
 
 ---
-
-**Version**: 4.0.0  
-**Last Updated**: 2025-10-24

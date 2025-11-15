@@ -864,6 +864,3 @@ cmat.sh queue list all | jq '.completed[] |
 - **[SCRIPTS_REFERENCE.md](../SCRIPTS_REFERENCE.md)** - Integration commands
 
 ---
-
-**Version**: 4.0.0  
-**Last Updated**: 2025-10-24

@@ -2,8 +2,6 @@
 
 This guide describes common workflow patterns in the multi-agent system. All patterns are driven by the agent contracts defined in `agent_contracts.json`.
 
-**Version**: 4.0.0 - Updated for modular cmat.sh command structure and skills system
-
 ## Table of Contents
 
 - [Command Reference](#command-reference)

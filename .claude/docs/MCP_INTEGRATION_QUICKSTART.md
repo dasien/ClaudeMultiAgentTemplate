@@ -569,8 +569,3 @@ cmat.sh queue list all | jq '.active[] | select(.assigned_agent | contains("inte
 **Confluence API**: https://developer.atlassian.com/cloud/confluence/rest/v1/
 
 ---
-
-**Setup Time**: ~15 minutes  
-**Difficulty**: Beginner  
-**Version**: 4.0.0  
-**Last Updated**: 2025-10-24

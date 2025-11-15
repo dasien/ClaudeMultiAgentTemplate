@@ -46,7 +46,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="4.1.3"
+readonly VERSION="4.1.4"
 
 #############################################################################
 # PROJECT NAVIGATION
@@ -212,7 +212,7 @@ cmat - Claude Multi-Agent Template Command Launcher
 Usage: cmat <category> <command> [options]
 
 QUEUE COMMANDS:
-  cmat queue add <title> <agent> <priority> <type> <source> <desc> [auto_complete] [auto_chain]
+  cmat queue add <title> <agent> <priority> <type> <source> <desc> [auto_complete] [auto_chain] [enhancement_title]
   cmat queue start <task_id>
   cmat queue complete <task_id> [result] [--auto-chain]
   cmat queue cancel <task_id> [reason]
@@ -224,12 +224,28 @@ QUEUE COMMANDS:
   cmat queue preview-prompt <task_id>
   cmat queue clear-finished [--force]
   cmat queue init [--force]
+  cmat queue show-task-cost <task_id>
+  cmat queue show-enhancement-cost <enhancement_name>
 
 WORKFLOW COMMANDS:
+  Contract-based operations:
   cmat workflow validate <agent> <enhancement_dir>
   cmat workflow next-agent <agent> <status>
   cmat workflow next-source <enhancement> <next_agent> <current_agent>
   cmat workflow auto-chain <task_id> <status>
+  cmat workflow get-contract <agent>
+
+  Template management:
+  cmat workflow create <template_name> <description>
+  cmat workflow list
+  cmat workflow show <template_name>
+  cmat workflow delete <template_name>
+  cmat workflow add-step <template_name> <agent> [--position=N]
+  cmat workflow remove-step <template_name> <step_number>
+  cmat workflow list-steps <template_name>
+  cmat workflow show-step <template_name> <step_number>
+
+  Template execution:
   cmat workflow template <template_name> [description]
 
 SKILLS COMMANDS:
@@ -254,13 +270,17 @@ UTILITY COMMANDS:
   cmat help
 
 Examples:
+  # Create custom workflow template
+  cmat workflow create my-workflow "My custom workflow"
+  cmat workflow add-step my-workflow architect
+  cmat workflow add-step my-workflow implementer
+  cmat workflow show my-workflow
+
+  # Use in task creation (via UI or script)
   cmat queue add "New feature" "requirements-analyst" "high" "analysis" "enhancements/feat/feat.md" "Analyze"
   cmat queue status
   cmat skills list
   cmat workflow validate "architect" "enhancements/feature"
-
-For backward compatibility, you can still use:
-  .claude/scripts/queue-commands.sh status    (direct call)
 
 EOF
 }
