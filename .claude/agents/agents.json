@@ -8,7 +8,7 @@
   }
 ,
   {
-    "name": "atlassian-integration-coordinator",
+    "name": "Atlassian Integrator",
     "agent-file": "atlassian-integration-coordinator",
     "tools": [],
     "skills": [],
@@ -24,7 +24,7 @@
   }
 ,
   {
-    "name": "github-integration-coordinator",
+    "name": "Github Integrator",
     "agent-file": "github-integration-coordinator",
     "tools": [],
     "skills": [],
