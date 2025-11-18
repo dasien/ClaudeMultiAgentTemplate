@@ -1,16 +1,16 @@
 # Scripts Reference Guide
 
-Complete reference for all `cmat.sh` commands in the Claude Multi-Agent Template v4.0.
+Complete reference for all `cmat` commands in the Claude Multi-Agent Template v5.0.
 
 ## Command Structure
 
 ```bash
-cmat.sh <category> <command> [options]
+cmat <category> <command> [options]
 ```
 
 **Categories**:
 - `queue` - Task queue management
-- `workflow` - Workflow orchestration
+- `workflow` - Workflow template management and orchestration
 - `skills` - Skills management
 - `integration` - External system integration
 - `agents` - Agent operations
@@ -21,13 +21,14 @@ cmat.sh <category> <command> [options]
 
 ```bash
 # Common operations
-cmat.sh queue status                    # View queue status
-cmat.sh queue add "..." "..." ...       # Add task
-cmat.sh queue start <task_id>           # Start task
-cmat.sh skills list                     # List all skills
-cmat.sh workflow validate ...           # Validate outputs
-cmat.sh integration sync <task_id>      # Sync to external systems
-cmat.sh version                         # Show version info
+cmat queue status                       # View queue status
+cmat queue add "..." "..." ...          # Add task
+cmat queue start <task_id>              # Start task
+cmat skills list                        # List all skills
+cmat workflow validate <template>       # Validate workflow template
+cmat workflow start <workflow> <enh>    # Start workflow
+cmat integration sync <task_id>         # Sync to external systems
+cmat version                            # Show version info
 ```
 
 ---
@@ -41,7 +42,7 @@ Task lifecycle management operations.
 Add a new task to the pending queue.
 
 ```bash
-cmat.sh queue add <title> <agent> <priority> <type> <source> <description> [auto_complete] [auto_chain]
+cmat queue add <title> <agent> <priority> <type> <source> <description> [auto_complete] [auto_chain] [enhancement_title]
 ```
 
 **Parameters**:
@@ -49,17 +50,18 @@ cmat.sh queue add <title> <agent> <priority> <type> <source> <description> [auto
 - `agent` (required) - Agent name (must exist in agents.json)
 - `priority` (required) - Task priority: `critical`, `high`, `normal`, `low`
 - `type` (required) - Task type: `analysis`, `technical_analysis`, `implementation`, `testing`, `documentation`, `integration`
-- `source` (required) - Path to source file (e.g., `enhancements/feature/feature.md`)
+- `source` (required) - Path to source file or directory
 - `description` (required) - Detailed task description
 - `auto_complete` (optional) - Auto-complete without prompt: `true`|`false` (default: `false`)
-- `auto_chain` (optional) - Auto-chain to next agent: `true`|`false` (default: `false`)
+- `auto_chain` (optional) - Auto-chain to next step: `true`|`false` (default: `false`)
+- `enhancement_title` (optional) - Enhancement title (extracted from source if not provided)
 
 **Returns**: Task ID (e.g., `task_1234567890_12345`)
 
 **Examples**:
 ```bash
 # Manual task (prompts for everything)
-TASK_ID=$(cmat.sh queue add \
+TASK_ID=$(cmat queue add \
   "Analyze feature requirements" \
   "requirements-analyst" \
   "high" \
@@ -69,19 +71,8 @@ TASK_ID=$(cmat.sh queue add \
   false \
   false)
 
-# Semi-automated (auto-complete but manual chain)
-TASK_ID=$(cmat.sh queue add \
-  "Design architecture" \
-  "architect" \
-  "high" \
-  "technical_analysis" \
-  "enhancements/my-feature/requirements-analyst/analysis_summary.md" \
-  "Create technical design" \
-  true \
-  false)
-
 # Fully automated (runs entire workflow hands-off)
-TASK_ID=$(cmat.sh queue add \
+TASK_ID=$(cmat queue add \
   "Full workflow" \
   "requirements-analyst" \
   "high" \
@@ -92,11 +83,6 @@ TASK_ID=$(cmat.sh queue add \
   true)
 ```
 
-**Automation Levels**:
-- `false, false` - Manual: Prompts to complete, prompts to chain
-- `true, false` - Semi-auto: Auto-completes, prompts to chain
-- `true, true` - Full-auto: Auto-completes and auto-chains through entire workflow
-
 ---
 
 ### queue start
@@ -104,7 +90,7 @@ TASK_ID=$(cmat.sh queue add \
 Move task from pending to active and invoke the agent.
 
 ```bash
-cmat.sh queue start <task_id>
+cmat queue start <task_id>
 ```
 
 **Parameters**:
@@ -118,21 +104,6 @@ cmat.sh queue start <task_id>
 5. Invokes agent with task parameters
 6. Logs execution to `enhancements/{name}/logs/`
 
-**Examples**:
-```bash
-# Start a task
-cmat.sh queue start task_1234567890_12345
-
-# The agent will:
-# - Read role definition from .claude/agents/{agent}.md
-# - Receive assigned skills automatically
-# - Process source file
-# - Create outputs in enhancements/{name}/{agent}/
-# - Return completion status
-```
-
-**Output**: Agent execution log and status
-
 ---
 
 ### queue complete
@@ -140,126 +111,13 @@ cmat.sh queue start task_1234567890_12345
 Mark active task as completed.
 
 ```bash
-cmat.sh queue complete <task_id> [result] [--auto-chain]
+cmat queue complete <task_id> [result] [--auto-chain|true|false]
 ```
 
 **Parameters**:
 - `task_id` (required) - Task ID to complete
 - `result` (optional) - Result message or status code (default: "completed successfully")
-- `--auto-chain` or `true` (optional) - Automatically chain to next agent if applicable
-
-**Status Codes** (common):
-- `READY_FOR_DEVELOPMENT` - Requirements complete, ready for architecture
-- `READY_FOR_IMPLEMENTATION` - Architecture complete, ready for coding
-- `READY_FOR_TESTING` - Implementation complete, ready for testing
-- `TESTING_COMPLETE` - Tests complete, ready for documentation
-- `DOCUMENTATION_COMPLETE` - Documentation complete, workflow finished
-- `INTEGRATION_COMPLETE` - Integration task complete
-- `BLOCKED: <reason>` - Task blocked, cannot proceed
-
-**Examples**:
-```bash
-# Complete with default status
-cmat.sh queue complete task_1234567890_12345
-
-# Complete with custom status
-cmat.sh queue complete task_1234567890_12345 "READY_FOR_DEVELOPMENT"
-
-# Complete and auto-chain to next agent
-cmat.sh queue complete task_1234567890_12345 "READY_FOR_DEVELOPMENT" --auto-chain
-
-# Complete with blocking reason
-cmat.sh queue complete task_1234567890_12345 "BLOCKED: Missing database schema"
-```
-
-**Auto-chaining**: When `--auto-chain` is used, the system will:
-1. Validate current agent outputs
-2. Determine next agent from contract
-3. Build source path for next agent
-4. Create and start next task automatically
-
----
-
-### queue cancel
-
-Cancel a pending or active task.
-
-```bash
-cmat.sh queue cancel <task_id> [reason]
-```
-
-**Parameters**:
-- `task_id` (required) - Task ID to cancel
-- `reason` (optional) - Cancellation reason (default: "task cancelled")
-
-**Examples**:
-```bash
-# Cancel with default reason
-cmat.sh queue cancel task_1234567890_12345
-
-# Cancel with specific reason
-cmat.sh queue cancel task_1234567890_12345 "Requirements changed"
-```
-
-**Behavior**:
-- Removes task from queue (pending or active)
-- Sets agent to idle (if active)
-- Logs cancellation reason
-
----
-
-### queue cancel-all
-
-Cancel all pending and active tasks.
-
-```bash
-cmat.sh queue cancel-all [reason]
-```
-
-**Parameters**:
-- `reason` (optional) - Cancellation reason (default: "bulk cancellation")
-
-**Examples**:
-```bash
-# Cancel all tasks
-cmat.sh queue cancel-all
-
-# Cancel with reason
-cmat.sh queue cancel-all "Project scope changed"
-```
-
-**Use Cases**:
-- Reset queue when priorities change
-- Clear queue before major refactoring
-- Emergency stop of all workflows
-
----
-
-### queue fail
-
-Mark active task as failed.
-
-```bash
-cmat.sh queue fail <task_id> [error]
-```
-
-**Parameters**:
-- `task_id` (required) - Task ID to fail
-- `error` (optional) - Error message (default: "task failed")
-
-**Examples**:
-```bash
-# Fail with default error
-cmat.sh queue fail task_1234567890_12345
-
-# Fail with specific error
-cmat.sh queue fail task_1234567890_12345 "Agent execution timeout"
-```
-
-**Behavior**:
-- Moves task to `failed_tasks`
-- Sets agent to idle
-- Logs error message
+- `--auto-chain` or `true` (optional) - Automatically chain to next step if workflow
 
 ---
 
@@ -268,7 +126,7 @@ cmat.sh queue fail task_1234567890_12345 "Agent execution timeout"
 Display current queue status and agent states.
 
 ```bash
-cmat.sh queue status
+cmat queue status
 ```
 
 **Output**:
@@ -276,32 +134,19 @@ cmat.sh queue status
 === Multi-Agent Queue Status ===
 
 📋 Agent Status:
-  • requirements-analyst: idle (Last: 2025-10-24T14:30:00Z)
-  • architect: active (Last: 2025-10-24T14:45:00Z)
-  • implementer: idle (Last: never)
-  • tester: idle (Last: never)
-  • documenter: idle (Last: never)
+  • requirements-analyst: idle
+  • architect: active
+  • implementer: idle
 
 ⏳ Pending Tasks:
   • [high] Implement feature X → implementer (ID: task_123...)
-  • [normal] Document feature Y → documenter (ID: task_456...)
 
 🔄 Active Workflows:
-  • Design architecture for X → architect (Started: 2025-10-24T14:45:00Z, ID: task_789...)
-
-🔗 Integration Tasks:
-  • Sync with GitHub (Status: pending, ID: task_012...)
+  • Design architecture for X → architect (Started: 2025-11-17T14:45:00Z)
 
 ✅ Recently Completed:
-  • Analyze requirements → requirements-analyst (2025-10-24T14:30:00Z)
-  • Test feature Y → tester (2025-10-24T13:15:00Z)
+  • Analyze requirements → requirements-analyst
 ```
-
-**Use Cases**:
-- Monitor workflow progress
-- Check agent availability
-- Review recent completions
-- Identify bottlenecks
 
 ---
 
@@ -310,54 +155,12 @@ cmat.sh queue status
 List tasks from a specific queue.
 
 ```bash
-cmat.sh queue list <queue_type> [format]
+cmat queue list <queue_type> [format]
 ```
 
 **Parameters**:
-- `queue_type` (required) - Queue to list: `pending`, `active`, `completed`, `failed`, `all`
-- `format` (optional) - Output format: `json` (default), `compact`
-
-**Examples**:
-```bash
-# List pending tasks (full JSON)
-cmat.sh queue list pending
-
-# List active tasks (compact)
-cmat.sh queue list active compact
-
-# List all completed tasks
-cmat.sh queue list completed
-
-# List all queues
-cmat.sh queue list all
-```
-
-**Output Formats**:
-
-**JSON** (default):
-```json
-[
-  {
-    "id": "task_1234567890_12345",
-    "title": "Analyze requirements",
-    "assigned_agent": "requirements-analyst",
-    "priority": "high",
-    "task_type": "analysis",
-    "status": "pending",
-    "created": "2025-10-24T14:00:00Z",
-    "started": null,
-    "completed": null,
-    "runtime_seconds": null,
-    "metadata": {...}
-  }
-]
-```
-
-**Compact**:
-```
-task_1234567890_12345|Analyze requirements|requirements-analyst|high|pending
-task_1234567890_12346|Design architecture|architect|high|active
-```
+- `queue_type` (required) - Queue: `pending`, `active`, `completed`, `failed`, `all`
+- `format` (optional) - Format: `json` (default), `compact`
 
 ---
 
@@ -366,406 +169,45 @@ task_1234567890_12346|Design architecture|architect|high|active
 Update task metadata field.
 
 ```bash
-cmat.sh queue metadata <task_id> <key> <value>
+cmat queue metadata <task_id> <key> <value>
 ```
-
-**Parameters**:
-- `task_id` (required) - Task ID to update
-- `key` (required) - Metadata field name
-- `value` (required) - New value for field
 
 **Common Metadata Fields**:
+- `workflow_name` - Which workflow template is executing
+- `workflow_step` - Current step index in workflow
 - `github_issue` - GitHub issue number
-- `github_pr` - GitHub PR number
 - `jira_ticket` - Jira ticket key
-- `confluence_page` - Confluence page ID
 - `parent_task_id` - Parent task reference
-- `workflow_status` - Current workflow state
-
-**Examples**:
-```bash
-# Link to GitHub issue
-cmat.sh queue metadata task_123 github_issue "145"
-
-# Add Jira ticket
-cmat.sh queue metadata task_123 jira_ticket "PROJ-456"
-
-# Link to parent task
-cmat.sh queue metadata task_456 parent_task_id "task_123"
-```
-
----
-
-### queue preview-prompt
-
-Preview the complete prompt that would be sent to the agent for a pending task.
-
-```bash
-cmat.sh queue preview-prompt <task_id>
-```
-
-**Parameters**:
-- `task_id` (required) - ID of pending task to preview
-
-**Output**: Complete prompt including:
-- Task template with substituted variables
-- Injected skills for the agent
-- Contract status codes
-- All configuration values
-
-**Examples**:
-```bash
-# Preview prompt before starting task
-cmat.sh queue preview-prompt task_1234567890_12345
-
-# Save prompt to file for review
-cmat.sh queue preview-prompt task_123 > prompt_review.txt
-```
-
-**Use Cases**:
-- **Debugging**: Verify prompt is correct before execution
-- **Template Testing**: Check variable substitution
-- **Skills Review**: Confirm correct skills are injected
-- **Documentation**: Generate prompt examples
-
----
-
-### queue clear-finished
-
-Clear all completed and failed tasks from queue history. Preserves pending and active tasks.
-
-```bash
-cmat.sh queue clear-finished [--force]
-```
-
-**Parameters**:
-- `--force` (optional) - Skip confirmation prompt for automation
-
-**Behavior**:
-- Clears both `completed_tasks` and `failed_tasks` arrays
-- **Preserves** all pending and active tasks
-- Prompts for confirmation unless `--force` is used
-- Logs operation to queue_operations.log
-
-**Examples**:
-```bash
-# Interactive (prompts for confirmation)
-cmat.sh queue clear-finished
-
-# Force mode (no confirmation - for automation/scripts)
-cmat.sh queue clear-finished --force
-```
-
-**Best Practice - Archive Before Clearing**:
-```bash
-# Create timestamped archive
-DATE=$(date +%Y%m%d_%H%M%S)
-mkdir -p archive
-
-# Archive finished tasks
-cmat.sh queue list completed > "archive/completed_$DATE.json"
-cmat.sh queue list failed > "archive/failed_$DATE.json"
-
-# Then clear
-cmat.sh queue clear-finished
-```
-
-**Use Cases**:
-- **Maintenance**: Keep queue size manageable
-- **Performance**: Reduce JSON file size for faster operations
-- **Cleanup**: Remove old task history while preserving current work
-- **Automation**: Script-friendly with `--force` flag
 
 ---
 
 ### queue show-task-cost
 
-Display cost information for a specific task.
+Display cost in USD for a specific task.
 
 ```bash
-cmat.sh queue show-task-cost <task_id>
+cmat queue show-task-cost <task_id>
 ```
-
-**Parameters**:
-- `task_id` (required) - Task ID to get cost for
 
 **Returns**: Cost in USD (e.g., `0.0234`)
-
-**Examples**:
-```bash
-# Get cost for a specific task
-cmat.sh queue show-task-cost task_1234567890_12345
-# Output: 0.0234
-
-# Use in calculations
-COST=$(cmat.sh queue show-task-cost task_123)
-echo "Task cost: \$$COST USD"
-
-# Check if task has cost data
-COST=$(cmat.sh queue show-task-cost task_123)
-if [ "$COST" != "0.00" ]; then
-  echo "Cost tracked: \$$COST"
-else
-  echo "No cost data available"
-fi
-```
-
-**Cost Data Source**:
-- Automatically extracted from session transcripts by `on-session-end-cost.sh` hook
-- Includes input, output, cache creation, and cache read tokens
-- Calculated based on model-specific pricing (Sonnet 4.5, Haiku, Opus)
-
-**When No Cost Available**:
-- Returns `0.00` if task has no cost metadata
-- Task may have failed before completion
-- Hook may not be configured
-- Transcript may not contain usage data
 
 ---
 
 ### queue show-enhancement-cost
 
-Display total cost for all tasks related to an enhancement.
+Display total cost in USD for all tasks in an enhancement.
 
 ```bash
-cmat.sh queue show-enhancement-cost <enhancement_name>
+cmat queue show-enhancement-cost <enhancement_name>
 ```
-
-**Parameters**:
-- `enhancement_name` (required) - Enhancement name (from enhancements/ directory)
 
 **Returns**: Total cost in USD (e.g., `0.1567`)
-
-**Examples**:
-```bash
-# Get total cost for an enhancement
-cmat.sh queue show-enhancement-cost my-feature
-# Output: 0.1567
-
-# Compare costs across enhancements
-for enh in feature-a feature-b feature-c; do
-  cost=$(cmat.sh queue show-enhancement-cost $enh)
-  echo "$enh: \$$cost"
-done
-
-# Track running total during development
-TOTAL=$(cmat.sh queue show-enhancement-cost my-feature)
-echo "Current enhancement cost: \$$TOTAL USD"
-```
-
-**Cost Aggregation**:
-- Sums costs from all completed and failed tasks
-- Matches tasks by source_file containing enhancement name
-- Includes all agent tasks in the workflow chain
-- Useful for budgeting and cost analysis
-
-**Detailed Cost Breakdown**:
-```bash
-# View per-task breakdown for enhancement
-cmat.sh queue list completed | jq --arg enh "my-feature" '
-  .[] |
-  select(.source_file | contains($enh)) |
-  {
-    id,
-    agent: .assigned_agent,
-    cost: .metadata.cost_usd,
-    tokens: {
-      input: .metadata.cost_input_tokens,
-      output: .metadata.cost_output_tokens
-    }
-  }
-'
-```
 
 ---
 
 ## Workflow Commands
 
-Workflow orchestration and contract validation.
-
-### workflow validate
-
-Validate agent outputs against contract requirements.
-
-```bash
-cmat.sh workflow validate <agent> <enhancement_dir>
-```
-
-**Parameters**:
-- `agent` (required) - Agent name to validate
-- `enhancement_dir` (required) - Path to enhancement directory
-
-**Validation Checks**:
-1. ✅ Root document exists (from contract)
-2. ✅ Output directory exists
-3. ✅ Additional required files present
-4. ✅ Metadata header present (if required)
-5. ✅ All required metadata fields exist
-
-**Examples**:
-```bash
-# Validate requirements analyst output
-cmat.sh workflow validate requirements-analyst enhancements/my-feature
-
-# Output:
-# ✅ Required root document: enhancements/my-feature/requirements-analyst/analysis_summary.md
-# ✅ Metadata header present
-# ✅ Required fields: enhancement, agent, task_id, timestamp, status
-# ✅ Output validation passed
-
-# Validate architect output
-cmat.sh workflow validate architect enhancements/my-feature
-```
-
-**Exit Codes**:
-- `0` - Validation passed
-- `1` - Validation failed (missing files or invalid metadata)
-
----
-
-### workflow next-agent
-
-Determine next agent based on current agent and status.
-
-```bash
-cmat.sh workflow next-agent <agent> <status>
-```
-
-**Parameters**:
-- `agent` (required) - Current agent name
-- `status` (required) - Completion status code
-
-**Returns**: Next agent name or "UNKNOWN"
-
-**Examples**:
-```bash
-# After requirements analyst completes
-cmat.sh workflow next-agent requirements-analyst READY_FOR_DEVELOPMENT
-# Output: architect
-
-# After architect completes
-cmat.sh workflow next-agent architect READY_FOR_IMPLEMENTATION
-# Output: implementer
-
-# After implementer completes
-cmat.sh workflow next-agent implementer READY_FOR_TESTING
-# Output: tester
-
-# Blocked status
-cmat.sh workflow next-agent architect "BLOCKED: Missing API specification"
-# Output: UNKNOWN
-```
-
-**Uses**: Contract-based workflow chaining
-
----
-
-### workflow next-source
-
-Build source file path for next agent.
-
-```bash
-cmat.sh workflow next-source <enhancement> <next_agent> <current_agent>
-```
-
-**Parameters**:
-- `enhancement` (required) - Enhancement name
-- `next_agent` (required) - Next agent in workflow
-- `current_agent` (required) - Current agent
-
-**Returns**: Source file path for next agent
-
-**Examples**:
-```bash
-# Build path for architect (after requirements-analyst)
-cmat.sh workflow next-source my-feature architect requirements-analyst
-# Output: enhancements/my-feature/requirements-analyst/analysis_summary.md
-
-# Build path for implementer (after architect)
-cmat.sh workflow next-source my-feature implementer architect
-# Output: enhancements/my-feature/architect/implementation_plan.md
-```
-
-**Uses**: Automatic source path construction for chaining
-
----
-
-### workflow auto-chain
-
-Automatically create and start next workflow task.
-
-```bash
-cmat.sh workflow auto-chain <task_id> <status>
-```
-
-**Parameters**:
-- `task_id` (required) - Completed task ID
-- `status` (required) - Completion status
-
-**Process**:
-1. Validates current agent outputs
-2. Determines next agent from contract
-3. Builds source path for next agent
-4. Creates next task with inherited automation
-5. Auto-starts next task
-
-**Examples**:
-```bash
-# Chain after requirements analyst
-cmat.sh workflow auto-chain task_123 READY_FOR_DEVELOPMENT
-
-# Output:
-# 🔍 Validating outputs from requirements-analyst...
-# ✅ Output validation passed
-# 📋 Next agent: architect
-# ✅ Auto-chained to architect: task_124
-#    Source: enhancements/feature/requirements-analyst/analysis_summary.md
-#    Inherited automation: auto_complete=true, auto_chain=true
-# 🚀 Auto-starting next task...
-```
-
-**Automation**: Next task inherits `auto_complete` and `auto_chain` flags from parent
-
----
-
-### workflow template
-
-Execute predefined workflow template.
-
-```bash
-cmat.sh workflow template <template_name> [description]
-```
-
-**Parameters**:
-- `template_name` (required) - Template name from workflow_templates.json
-- `description` (optional) - Task description (default: "Workflow execution")
-
-**Built-in Templates**:
-- `standard_feature` - Full feature development workflow
-- `bug_fix` - Bug fix workflow (skip documentation)
-- `documentation_only` - Documentation update workflow
-
-**Examples**:
-```bash
-# Run standard feature workflow
-cmat.sh workflow template standard_feature "Implement user authentication"
-
-# Run bug fix workflow
-cmat.sh workflow template bug_fix "Fix login validation"
-```
-
-**Custom Templates**: Add to `.claude/queues/workflow_templates.json`
-
-
-# Workflow Template Management Commands
-
-Add this section to SCRIPTS_REFERENCE.md after the existing workflow commands section:
-
----
-
-## Workflow Template Management
-
-Manage workflow templates that define reusable agent sequences.
+Workflow template management and execution.
 
 ### workflow create
 
@@ -775,31 +217,10 @@ Create a new workflow template.
 cmat workflow create <template_name> <description>
 ```
 
-**Parameters**:
-- `template_name` (required) - Unique identifier for template (use lowercase-with-hyphens)
-- `description` (required) - Human-readable description of workflow purpose
-
 **Examples**:
 ```bash
-# Create custom workflow for quick implementations
-cmat workflow create quick-impl "Quick implementation workflow"
-
-# Create documentation-only workflow
-cmat workflow create docs-only "Documentation update workflow"
-
-# Create security review workflow
-cmat workflow create security-review "Feature with security review"
+cmat workflow create api-dev "REST API development workflow"
 ```
-
-**Output**:
-```
-✅ Created workflow template: quick-impl
-```
-
-**Notes**:
-- Template names must be unique
-- Templates start with empty steps array
-- Add steps using `workflow add-step`
 
 ---
 
@@ -813,51 +234,41 @@ cmat workflow list
 
 **Output**:
 ```
-new_feature_development - Complete workflow for implementing a new feature (5 steps)
-bugfix_workflow - Workflow for fixing bugs (4 steps)
-hotfix_workflow - Fast-track workflow for critical issues (2 steps)
-quick-impl - Quick implementation workflow (3 steps)
-docs-only - Documentation update workflow (2 steps)
+new_feature_development - Complete workflow (5 steps)
+bugfix_workflow - Bug fix workflow (4 steps)
+hotfix_workflow - Fast-track critical issues (2 steps)
+api-dev - REST API development (4 steps)
 ```
-
-**Use Cases**:
-- Discover available workflows
-- Check template step counts
-- Find appropriate workflow for task
 
 ---
 
 ### workflow show
 
-Display detailed information about a workflow template.
+Display detailed workflow template information.
 
 ```bash
 cmat workflow show <template_name>
 ```
 
-**Parameters**:
-- `template_name` (required) - Template identifier
-
-**Examples**:
-```bash
-cmat workflow show quick-impl
-```
-
 **Output**:
 ```
-Template: quick-impl
-Description: Quick implementation workflow
-Steps: 3
-Created: 2025-11-15T10:00:00Z
+Template: api-dev
+Description: REST API development workflow
+Steps: 4
 
-Steps:
-  architect → implementer → tester
+Workflow:
+  Step 0: requirements-analyst
+    Input: enhancements/{enhancement_name}/{enhancement_name}.md
+    Output: analysis.md
+    Transitions:
+      READY_FOR_DEVELOPMENT → architect (auto: true)
+
+  Step 1: architect
+    Input: {previous_step}/required_output/
+    Output: design.md
+    Transitions:
+      READY_FOR_IMPLEMENTATION → implementer (auto: true)
 ```
-
-**Use Cases**:
-- Preview workflow before using
-- Verify template structure
-- Check agent sequence
 
 ---
 
@@ -869,255 +280,189 @@ Delete a workflow template.
 cmat workflow delete <template_name>
 ```
 
-**Parameters**:
-- `template_name` (required) - Template identifier to delete
-
-**Examples**:
-```bash
-# Delete custom template
-cmat workflow delete quick-impl
-```
-
-**Output**:
-```
-✅ Deleted workflow template: quick-impl
-```
-
-**Notes**:
-- Deletion is permanent
-- Cannot delete templates currently in use by active tasks
-- Built-in templates can be deleted (be careful!)
-
 ---
 
 ### workflow add-step
 
-Add an agent step to a workflow template.
+Add a step to a workflow template.
 
 ```bash
-cmat workflow add-step <template_name> <agent> [--position=N]
+cmat workflow add-step <template_name> <agent> <input> <output> [position]
 ```
 
 **Parameters**:
 - `template_name` (required) - Template to modify
-- `agent` (required) - Agent name to add (must exist in agent_contracts.json)
-- `--position=N` (optional) - Insert at position N (0-indexed), default appends to end
+- `agent` (required) - Agent name (must exist in agents.json)
+- `input` (required) - Input path (supports `{enhancement_name}` and `{previous_step}` placeholders)
+- `output` (required) - Required output filename
+- `position` (optional) - Step position (0-indexed), default appends to end
 
 **Examples**:
 ```bash
-# Add architect to beginning
-cmat workflow add-step quick-impl architect --position=0
+# Add first step
+cmat workflow add-step my-workflow requirements-analyst \
+    "enhancements/{enhancement_name}/{enhancement_name}.md" \
+    "analysis.md"
 
-# Add implementer after architect (position 1)
-cmat workflow add-step quick-impl implementer --position=1
+# Add second step (reads from previous)
+cmat workflow add-step my-workflow architect \
+    "{previous_step}/required_output/" \
+    "design.md"
 
-# Add tester at end (no position specified)
-cmat workflow add-step quick-impl tester
+# Insert at specific position
+cmat workflow add-step my-workflow security-reviewer \
+    "{previous_step}/required_output/" \
+    "security_review.md" \
+    3
 ```
 
-**Output**:
-```
-✅ Added step to template: architect
+---
+
+### workflow edit-step
+
+Edit a step's input or output.
+
+```bash
+cmat workflow edit-step <template_name> <step_number> [input] [output]
 ```
 
-**Validation**:
-- Agent must exist in agent_contracts.json
-- Position must be valid (0 to current_step_count)
+**Parameters**:
+- `template_name` (required) - Template to modify
+- `step_number` (required) - Step number (0-indexed)
+- `input` (optional) - New input path
+- `output` (optional) - New output filename
 
 ---
 
 ### workflow remove-step
 
-Remove a step from workflow template.
+Remove a step from workflow.
 
 ```bash
 cmat workflow remove-step <template_name> <step_number>
 ```
 
+---
+
+### workflow add-transition
+
+Add a status transition to a step.
+
+```bash
+cmat workflow add-transition <template_name> <step_number> <status> <next_step> [auto_chain]
+```
+
 **Parameters**:
 - `template_name` (required) - Template to modify
-- `step_number` (required) - Step number to remove (1-indexed for user display)
+- `step_number` (required) - Step number (0-indexed)
+- `status` (required) - Status code to match
+- `next_step` (required) - Next agent name or `null` for workflow end
+- `auto_chain` (optional) - Auto-chain: `true`|`false` (default: `true`)
 
 **Examples**:
 ```bash
-# Remove step 2 (implementer)
-cmat workflow remove-step quick-impl 2
+# Add success transition
+cmat workflow add-transition my-workflow 0 READY_FOR_DEVELOPMENT architect true
 
-# After removal, remaining steps renumber automatically
+# Add workflow end transition
+cmat workflow add-transition my-workflow 2 TESTING_COMPLETE null false
+```
+
+---
+
+### workflow remove-transition
+
+Remove a status transition from a step.
+
+```bash
+cmat workflow remove-transition <template_name> <step_number> <status>
+```
+
+---
+
+### workflow list-transitions
+
+List all transitions for a step.
+
+```bash
+cmat workflow list-transitions <template_name> <step_number>
 ```
 
 **Output**:
 ```
-✅ Removed step 2 (implementer) from template
+Transitions for step 0:
+  READY_FOR_DEVELOPMENT → architect (auto_chain: true)
+  BLOCKED:* → END (auto_chain: false)
 ```
-
-**Notes**:
-- Steps are numbered starting from 1 for user display
-- Remaining steps automatically renumber after removal
 
 ---
 
-### workflow list-steps
+### workflow validate
 
-List all steps in a workflow template.
+Validate a workflow template.
 
 ```bash
-cmat workflow list-steps <template_name>
+cmat workflow validate <template_name>
+```
+
+**Checks**:
+- All agents exist in agents.json
+- All steps have input and required_output defined
+- All transition targets exist
+- No circular dependencies
+
+---
+
+### workflow start
+
+Start a workflow from the beginning.
+
+```bash
+cmat workflow start <workflow_name> <enhancement_name>
 ```
 
 **Parameters**:
-- `template_name` (required) - Template to list
+- `workflow_name` (required) - Template identifier
+- `enhancement_name` (required) - Enhancement name (must have spec file)
 
 **Examples**:
 ```bash
-cmat workflow list-steps quick-impl
+# Start standard feature workflow
+cmat workflow start new_feature_development user-profiles
+
+# Start custom workflow
+cmat workflow start api-dev payment-endpoint
 ```
 
-**Output**:
-```
-Steps in 'quick-impl':
-  1. architect
-  2. implementer
-  3. tester
-```
-
-**Use Cases**:
-- View current step sequence
-- Determine step numbers for removal
-- Verify step order
+**Behavior**:
+1. Validates workflow template
+2. Verifies input file exists
+3. Creates first task with workflow metadata
+4. Sets `workflow_name` and `workflow_step: 0` in metadata
+5. Auto-starts first task
 
 ---
 
-### workflow show-step
+### workflow validate-output
 
-Display details of a specific step in a workflow template.
-
-```bash
-cmat workflow show-step <template_name> <step_number>
-```
-
-**Parameters**:
-- `template_name` (required) - Template identifier
-- `step_number` (required) - Step number (1-indexed)
-
-**Examples**:
-```bash
-# Show details of step 2
-cmat workflow show-step quick-impl 2
-```
-
-**Output**:
-```
-Step 2 of 'quick-impl':
-  AGENT: implementer
-  TASK: Execute implementer
-  DESCRIPTION: Implements features based on architectural specifications, writes production-quality code
-```
-
-**Use Cases**:
-- Understand what a step does
-- Verify agent assignment
-- Check step configuration
-
----
-
-## Workflow Template Usage Examples
-
-### Creating a Custom Workflow from Scratch
+Validate agent output structure (used internally by hook).
 
 ```bash
-# 1. Create template
-cmat workflow create api-development "REST API development workflow"
-
-# 2. Add steps in order
-cmat workflow add-step api-development requirements-analyst
-cmat workflow add-step api-development architect
-cmat workflow add-step api-development implementer
-cmat workflow add-step api-development tester
-cmat workflow add-step api-development documenter
-
-# 3. View result
-cmat workflow show api-development
-
-# Output:
-# Template: api-development
-# Description: REST API development workflow
-# Steps: 5
-# Steps:
-#   requirements-analyst → architect → implementer → tester → documenter
-```
-
-### Modifying an Existing Template
-
-```bash
-# View current steps
-cmat workflow list-steps api-development
-
-# Remove documenter (step 5)
-cmat workflow remove-step api-development 5
-
-# Verify
-cmat workflow show api-development
-# Now shows 4 steps
-```
-
-### Creating Specialized Workflows
-
-```bash
-# Quick implementation (skip requirements)
-cmat workflow create quick-impl "Quick implementation workflow"
-cmat workflow add-step quick-impl architect
-cmat workflow add-step quick-impl implementer
-cmat workflow add-step quick-impl tester
-
-# Documentation only
-cmat workflow create docs-only "Documentation update"
-cmat workflow add-step docs-only requirements-analyst
-cmat workflow add-step docs-only documenter
-
-# Security-focused
-cmat workflow create secure-feature "Feature with security review"
-cmat workflow add-step secure-feature requirements-analyst
-cmat workflow add-step secure-feature architect
-cmat workflow add-step secure-feature implementer
-cmat workflow add-step secure-feature security-reviewer
-cmat workflow add-step secure-feature tester
-cmat workflow add-step secure-feature documenter
-```
-
-### Inspecting Workflow Steps
-
-```bash
-# List all templates
-cmat workflow list
-
-# Pick one to inspect
-cmat workflow show new_feature_development
-
-# View specific step
-cmat workflow show-step new_feature_development 3
-
-# List all steps
-cmat workflow list-steps new_feature_development
+cmat workflow validate-output <agent> <enhancement_dir> <required_output>
 ```
 
 ---
 
-## Integration with Task Creation
+### workflow get-task-type
 
-Workflow templates are referenced when creating tasks. The UI (MultiAgentUI) will:
+Get task type for an agent based on its role.
 
-1. Call `cmat workflow list` to populate workflow dropdown
-2. User selects a template
-3. UI calls `cmat workflow show <template>` to preview steps
-4. UI creates tasks based on template steps
-5. Each task references the template in metadata
-
-**Future Enhancement**: Direct template execution from CLI:
 ```bash
-# Not yet implemented - for future versions
-cmat workflow execute <template_name> <enhancement_name>
+cmat workflow get-task-type <agent>
 ```
+
+**Returns**: Task type (`analysis`, `technical_analysis`, `implementation`, `testing`, `documentation`, `integration`)
+
 ---
 
 ## Skills Commands
@@ -1129,26 +474,7 @@ Skills management and prompt generation.
 Display all available skills.
 
 ```bash
-cmat.sh skills list
-```
-
-**Output**: Complete skills.json content with all 14+ skills
-
-**Example Output**:
-```json
-{
-  "version": "1.0.0",
-  "skills": [
-    {
-      "name": "Requirements Elicitation",
-      "skill-directory": "requirements-elicitation",
-      "category": "analysis",
-      "required_tools": ["Read", "Write", "Grep"],
-      "description": "Extract and clarify requirements..."
-    },
-    ...
-  ]
-}
+cmat skills list
 ```
 
 ---
@@ -1158,28 +484,10 @@ cmat.sh skills list
 Get skills assigned to a specific agent.
 
 ```bash
-cmat.sh skills get <agent-name>
+cmat skills get <agent-name>
 ```
-
-**Parameters**:
-- `agent-name` (required) - Agent name (e.g., "requirements-analyst")
 
 **Returns**: JSON array of skill directories
-
-**Examples**:
-```bash
-# Get requirements analyst skills
-cmat.sh skills get requirements-analyst
-# Output: ["requirements-elicitation", "user-story-writing", "bug-triage"]
-
-# Get architect skills
-cmat.sh skills get architect
-# Output: ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"]
-
-# Get implementer skills
-cmat.sh skills get implementer
-# Output: ["error-handling", "code-refactoring", "sql-development"]
-```
 
 ---
 
@@ -1188,33 +496,8 @@ cmat.sh skills get implementer
 Load and display a skill's content.
 
 ```bash
-cmat.sh skills load <skill-directory>
+cmat skills load <skill-directory>
 ```
-
-**Parameters**:
-- `skill-directory` (required) - Skill directory name
-
-**Returns**: Skill SKILL.md content (without frontmatter)
-
-**Examples**:
-```bash
-# Load requirements elicitation skill
-cmat.sh skills load requirements-elicitation
-
-# Load API design skill
-cmat.sh skills load api-design
-
-# Load test patterns skill
-cmat.sh skills load test-design-patterns
-```
-
-**Output**: Complete skill definition including:
-- Purpose
-- When to Use
-- Key Capabilities
-- Approach
-- Examples
-- Best Practices
 
 ---
 
@@ -1223,65 +506,8 @@ cmat.sh skills load test-design-patterns
 Build complete skills section for agent prompt.
 
 ```bash
-cmat.sh skills prompt <agent-name>
+cmat skills prompt <agent-name>
 ```
-
-**Parameters**:
-- `agent-name` (required) - Agent name
-
-**Returns**: Complete skills section ready for prompt injection
-
-**Example**:
-```bash
-# Build skills section for requirements analyst
-cmat.sh skills prompt requirements-analyst
-
-# Output:
-################################################################################
-## SPECIALIZED SKILLS AVAILABLE
-################################################################################
-
-You have access to the following specialized skills...
-
----
-
-# Requirements Elicitation
-[Complete skill content...]
-
----
-
-# User Story Writing
-[Complete skill content...]
-
----
-
-# Bug Triage
-[Complete skill content...]
-
----
-
-**Using Skills**: Apply the above skills as appropriate...
-```
-
-**Uses**: Automatically injected into agent prompts during task execution
-
----
-
-### skills test
-
-Test all skills system functions.
-
-```bash
-cmat.sh skills test
-```
-
-**Tests**:
-1. Lists all skills from skills.json
-2. Gets skills for requirements-analyst
-3. Loads sample skill
-4. Builds prompt section for requirements-analyst
-
-**Output**: Test results showing system functionality
 
 ---
 
@@ -1294,40 +520,8 @@ External system synchronization.
 Create integration task for external system sync.
 
 ```bash
-cmat.sh integration add <workflow_status> <source_file> <previous_agent> [parent_task_id]
+cmat integration add <workflow_status> <source_file> <previous_agent> [parent_task_id]
 ```
-
-**Parameters**:
-- `workflow_status` (required) - Status that triggered integration
-- `source_file` (required) - Source file to sync
-- `previous_agent` (required) - Agent that created the status
-- `parent_task_id` (optional) - Parent task reference
-
-**Trigger Statuses**:
-- `READY_FOR_DEVELOPMENT` → Create GitHub issue, Jira ticket
-- `READY_FOR_IMPLEMENTATION` → Update status, add labels
-- `READY_FOR_TESTING` → Create pull request
-- `TESTING_COMPLETE` → Post test results
-- `DOCUMENTATION_COMPLETE` → Close issue, publish docs
-
-**Examples**:
-```bash
-# Create integration after requirements
-cmat.sh integration add \
-  "READY_FOR_DEVELOPMENT" \
-  "enhancements/feature/requirements-analyst/analysis_summary.md" \
-  "requirements-analyst" \
-  "task_123"
-
-# Create integration after testing
-cmat.sh integration add \
-  "TESTING_COMPLETE" \
-  "enhancements/feature/tester/test_summary.md" \
-  "tester" \
-  "task_456"
-```
-
-**Note**: Integration tasks are created automatically by the hook system when enabled
 
 ---
 
@@ -1336,26 +530,7 @@ cmat.sh integration add \
 Synchronize specific completed task to external systems.
 
 ```bash
-cmat.sh integration sync <task_id>
-```
-
-**Parameters**:
-- `task_id` (required) - Completed task ID to sync
-
-**Process**:
-1. Retrieves task details
-2. Creates integration task
-3. Syncs to GitHub (if configured)
-4. Syncs to Jira/Confluence (if configured)
-
-**Examples**:
-```bash
-# Sync specific task
-cmat.sh integration sync task_1234567890_12345
-
-# Output:
-# 🔗 Creating integration task for: task_1234567890_12345
-# ✅ Integration task created: task_1234567890_67890
+cmat integration sync <task_id>
 ```
 
 ---
@@ -1365,30 +540,8 @@ cmat.sh integration sync task_1234567890_12345
 Synchronize all unsynced completed tasks.
 
 ```bash
-cmat.sh integration sync-all
+cmat integration sync-all
 ```
-
-**Process**:
-1. Scans completed tasks
-2. Identifies tasks needing integration
-3. Creates integration tasks for each
-
-**Examples**:
-```bash
-# Sync all unsynced tasks
-cmat.sh integration sync-all
-
-# Output:
-# 🔍 Scanning for tasks requiring integration...
-# 🔗 Creating integration for task_123 (READY_FOR_DEVELOPMENT)
-# 🔗 Creating integration for task_456 (TESTING_COMPLETE)
-# ✅ Created 2 integration tasks
-```
-
-**Use Cases**:
-- Bulk sync after system setup
-- Catch up on missed integrations
-- Manual trigger when auto-integration disabled
 
 ---
 
@@ -1401,25 +554,7 @@ Agent operations and configuration.
 List all available agents from agents.json.
 
 ```bash
-cmat.sh agents list
-```
-
-**Output**: Complete agents.json content
-
-**Example Output**:
-```json
-{
-  "agents": [
-    {
-      "name": "Requirements Analyst",
-      "agent-file": "requirements-analyst",
-      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
-      "skills": ["requirements-elicitation", "user-story-writing", "bug-triage"],
-      "description": "Analyzes project requirements..."
-    },
-    ...
-  ]
-}
+cmat agents list
 ```
 
 ---
@@ -1429,73 +564,69 @@ cmat.sh agents list
 Generate agents.json from agent markdown frontmatter.
 
 ```bash
-cmat.sh agents generate-json
-```
-
-**Process**:
-1. Scans all `.claude/agents/*.md` files
-2. Extracts YAML frontmatter
-3. Generates `.claude/agents/agents.json`
-
-**Examples**:
-```bash
-# Regenerate after modifying agent files
-cmat.sh agents generate-json
-
-# Output:
-# ✓ Generated .claude/agents/agents.json
+cmat agents generate-json
 ```
 
 **When to Use**:
 - After editing agent .md files
 - After adding new agents
 - After changing agent skills assignments
-- To sync agents.json with source files
 
 ---
 
-## Utility Commands
+## Common Workflows
 
-### version
-
-Show version and system information.
+### Create and Start a Workflow
 
 ```bash
-cmat.sh version
+# 1. Create workflow template
+cmat workflow create my-workflow "Custom development workflow"
+
+# 2. Add steps
+cmat workflow add-step my-workflow requirements-analyst \
+    "enhancements/{enhancement_name}/{enhancement_name}.md" \
+    "analysis.md"
+
+cmat workflow add-step my-workflow architect \
+    "{previous_step}/required_output/" \
+    "design.md"
+
+cmat workflow add-step my-workflow implementer \
+    "{previous_step}/required_output/" \
+    "implementation.md"
+
+# 3. Add transitions
+cmat workflow add-transition my-workflow 0 READY_FOR_DEVELOPMENT architect true
+cmat workflow add-transition my-workflow 1 READY_FOR_IMPLEMENTATION implementer true
+cmat workflow add-transition my-workflow 2 READY_FOR_TESTING null false
+
+# 4. Validate
+cmat workflow validate my-workflow
+
+# 5. Create enhancement spec
+mkdir -p enhancements/my-feature
+cat > enhancements/my-feature/my-feature.md << 'EOF'
+# My Feature
+## Description
+Feature description here
+EOF
+
+# 6. Start workflow
+cmat workflow start my-workflow my-feature
 ```
 
-**Output**:
-```
-cmat v4.0.0
-Claude Multi-Agent Template System
-
-Dependencies:
-  ✓ jq v1.7.1
-  ✓ claude v0.8.5
-  ✓ bash v5.2.26
-  ○ git v2.43.0 (optional)
-
-Environment:
-  Project Root: /path/to/project
-  Queue File: .claude/queues/task_queue.json
-  Contracts: .claude/agents/agent_contracts.json
-  Skills: .claude/skills/skills.json
-  Tasks: 2 pending, 1 active, 15 completed
-  Agents: 7 defined
-  Skills: 14 available
-```
-
----
-
-### help
-
-Show help message with command overview.
+### Monitor Running Workflow
 
 ```bash
-cmat.sh help
-```
+# Check status
+cmat queue status
 
-**Output**: Command categories, common examples, and documentation links
+# View logs
+tail -f enhancements/my-feature/logs/*.log
+
+# Check completed tasks
+cmat queue list completed | jq '.[-3:]'
+```
 
 ---
 
@@ -1512,17 +643,8 @@ Control automatic integration task creation.
 
 **Examples**:
 ```bash
-# Disable integration prompts
-export AUTO_INTEGRATE="never"
-cmat.sh queue start task_123
-
-# Always integrate automatically
-export AUTO_INTEGRATE="always"
-cmat.sh queue start task_456
-
-# Prompt for each (default)
-export AUTO_INTEGRATE="prompt"
-cmat.sh queue start task_789
+export AUTO_INTEGRATE="never"   # Disable during testing
+export AUTO_INTEGRATE="always"  # Full automation
 ```
 
 ---
@@ -1534,163 +656,43 @@ All commands follow standard exit code conventions:
 - `0` - Success
 - `1` - Error (invalid arguments, task not found, validation failed, etc.)
 
-**Examples**:
-```bash
-# Check exit code
-cmat.sh queue start task_123
-if [ $? -eq 0 ]; then
-    echo "Task started successfully"
-else
-    echo "Task start failed"
-fi
-
-# Use in conditional
-if cmat.sh workflow validate architect enhancements/feature; then
-    echo "Validation passed"
-fi
-```
-
 ---
 
-## Common Workflows
+## Output Structure (v5.0)
 
-### Manual Single-Agent Task
-```bash
-# 1. Create manual task
-TASK_ID=$(cmat.sh queue add \
-  "Analyze requirements" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/feature/feature.md" \
-  "Initial analysis" \
-  false \
-  false)
+Agents now use standardized directory structure:
 
-# 2. Start task
-cmat.sh queue start $TASK_ID
-
-# 3. Monitor
-cmat.sh queue status
-
-# 4. Manual completion (prompted)
-# Agent completes, you approve status, decide whether to chain
+```
+enhancements/{enhancement_name}/{agent}/
+├── required_output/
+│   └── {workflow-specified-filename}
+└── optional_output/
+    └── [any additional files]
 ```
 
-### Fully Automated Workflow
-```bash
-# 1. Create fully automated task
-TASK_ID=$(cmat.sh queue add \
-  "Complete feature" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/feature/feature.md" \
-  "Full workflow" \
-  true \
-  true)
-
-# 2. Start and let it run
-cmat.sh queue start $TASK_ID
-
-# 3. Monitor progress
-watch -n 5 'cmat.sh queue status'
-
-# System automatically:
-# - Completes each agent
-# - Validates outputs
-# - Chains to next agent
-# - Repeats until workflow done
-```
-
-### Integration Sync
-```bash
-# Enable integration
-export AUTO_INTEGRATE="always"
-
-# Create task (integration auto-triggered)
-TASK_ID=$(cmat.sh queue add ...)
-cmat.sh queue start $TASK_ID
-
-# Or manually sync after
-cmat.sh integration sync $TASK_ID
-```
-
-### Skills Exploration
-```bash
-# List all skills
-cmat.sh skills list
-
-# Check agent skills
-cmat.sh skills get architect
-
-# Read a skill
-cmat.sh skills load api-design
-
-# See what gets injected
-cmat.sh skills prompt architect | less
-```
-
-### Validation and Debugging
-```bash
-# Validate outputs before chaining
-cmat.sh workflow validate architect enhancements/feature
-
-# Check what next agent would be
-cmat.sh workflow next-agent architect READY_FOR_IMPLEMENTATION
-
-# Check source path
-cmat.sh workflow next-source feature implementer architect
-
-# View logs
-tail -f enhancements/feature/logs/architect_*.log
-```
-
----
-
-## Troubleshooting
-
-### "Command not found: cmat.sh"
-Use full path from project root: `.claude/scripts/cmat.sh`
-
-### "jq: command not found"
-Install jq: `brew install jq` (macOS) or `apt-get install jq` (Linux)
-
-### "Queue file not found"
-Initialize: `cmat.sh queue status`
-
-### "Agent not found in contracts"
-Verify: `jq '.agents | keys' .claude/agents/agent_contracts.json`
-
-### "Skills not loading"
-Check: `cmat.sh skills test`
-
-### "Validation failing"
-Debug: `cmat.sh workflow validate <agent> <enhancement>`
-
-### "Auto-chain not working"
-Check task flags: `cmat.sh queue list active | jq '.[] | {id, auto_chain}'`
+**Key Changes**:
+- Workflows specify the required output filename
+- Agents write to `required_output/` and `optional_output/` directories
+- No hardcoded filenames in agent definitions
 
 ---
 
 ## Quick Tips
 
 1. **Always run from project root** (directory containing `.claude/`)
-2. **Use full automation** (`true true`) for standard workflows
-3. **Validate outputs** before manual chaining
+2. **Use workflows** (`cmat workflow start`) for structured development
+3. **Validate templates** before using them
 4. **Check logs** in `enhancements/*/logs/` when debugging
 5. **Use `watch`** to monitor long-running workflows
 6. **Set AUTO_INTEGRATE** to avoid repeated prompts
-7. **Test skills** with `cmat.sh skills test`
 
 ---
 
 ## Further Reading
 
-- **[INSTALLATION.md](INSTALLATION.md)** - Setup and installation
-- **[.claude/WORKFLOW_GUIDE.md](.claude/WORKFLOW_GUIDE.md)** - Workflow patterns
+- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns and best practices
+- **[WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
 - **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system documentation
-- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting to your project
-- **[.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json)** - Agent specifications
+- **[INSTALLATION.md](INSTALLATION.md)** - Setup and installation
 
 ---

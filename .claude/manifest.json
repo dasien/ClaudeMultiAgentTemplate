@@ -1,5 +1,5 @@
 {
-  "version": "4.1.4",
+  "version": "5.0.0",
   "name": "Claude Multi-Agent Template",
   "description": "Installation manifest - all listed items are required",
   "structure": {
@@ -17,6 +17,7 @@
         "tester.md"
       ],
       "docs": [
+        "ENHANCEMENT_GUIDE.md",
         "INTEGRATION_GUIDE.md",
         "MCP_INTEGRATION_QUICKSTART.md",
         "QUEUE_SYSTEM_GUIDE.md",
@@ -25,6 +26,11 @@
         "TASK_PROMPT_DEFAULTS.md",
         "WORKFLOW_GUIDE.md",
         "WORKFLOW_TEMPLATE_GUIDE.md"
+      ],
+      "enhancement-templates": [
+        "bugfix_template.md",
+        "enhancement_template_lg.md",
+        "enhancement_template_sm.md"
       ],
       "hooks": [
         "on-subagent-stop.sh",
@@ -41,7 +47,6 @@
       "queues": [
         "task_queue.json",
         "task_queue_empty.json",
-        "workflow_states.json",
         "workflow_templates.json"
       ],
       "models": [

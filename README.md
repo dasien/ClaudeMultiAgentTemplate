@@ -1,12 +1,12 @@
 # Claude Multi-Agent Development Template
 
-A contract-based multi-agent development workflow system using Claude Code. This template provides specialized AI agents with formal contracts, automated validation, intelligent workflow chaining, and a comprehensive skills system.
+A workflow-based multi-agent development system using Claude Code. This template provides specialized AI agents orchestrated by customizable workflow templates with automated validation and comprehensive skills.
 
-**Version**: 4.1.4 
+**Version**: 5.0.0
 
 ## 🎯 What Is This?
 
-This template provides a multi-agent system that breaks down software development into specialized roles, each handled by a dedicated Claude agent with formal contracts defining inputs, outputs, and workflow transitions:
+This template provides a multi-agent system that breaks down software development into specialized roles, orchestrated by flexible workflow templates:
 
 - **Requirements Analyst**: Analyzes user needs and creates implementation plans
 - **Architect**: Designs system architecture and technical specifications
@@ -21,100 +21,89 @@ This template provides a multi-agent system that breaks down software developmen
 **Skills System**:
 - 14+ specialized skills providing domain expertise
 - Automatically injected into agent prompts
-- Organized by category (analysis, architecture, implementation, testing, documentation, ui-design, database)
+- Organized by category (analysis, architecture, implementation, testing, documentation)
 
 ## ✨ Features
 
-### Core System
-- 🤖 **7 Specialized Agents** - Clear responsibilities defined by formal contracts
-- 📜 **Agent Contracts** - Formal specifications for inputs, outputs, and statuses
-- ✅ **Output Validation** - Automatic validation before workflow progression
-- 🔄 **Automated Workflows** - Contract-based intelligent task chaining
-- 📋 **Task Queue System** - Organize and track work across agents
-- 📊 **Workflow Patterns** - Predefined patterns for common scenarios
-- 🔍 **State Machine** - Formal state definitions and valid transitions
-- 🧠 **Skills System** - Domain expertise in reusable skill modules
+### Core System (v5.0)
+- 🤖 **7 Specialized Agents** - Clear responsibilities, reusable across workflows
+- 📋 **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
+- ✅ **Output Validation** - Automatic validation of required outputs
+- 🔄 **Automated Workflows** - Template-driven intelligent task chaining
+- 📊 **Task Queue System** - Organize and track work
+- 🧠 **Skills System** - Domain expertise in reusable modules
+- 🎯 **Flexible Orchestration** - Same agent, different workflows, different behavior
 
 ### Quality & Tracking
 - 📝 **Metadata Headers** - All outputs are self-documenting and traceable
 - 🧪 **Comprehensive Logging** - Agent execution logged for analysis
-- 💰 **Cost Tracking** - Automatic tracking of token usage and costs per task
+- 💰 **Cost Tracking** - Automatic token usage and cost tracking per task
 - 🔗 **Cross-Platform Sync** - GitHub and Jira/Confluence integration
-- 🎯 **Contract Validation** - Outputs validated against formal specifications
-- 🏗️ **Modular Architecture** - Clean separation of concerns in script design
+- 🗂️ **Modular Architecture** - Clean separation of concerns
 
-### Example & Documentation
-- 🐍 **Example Application** - Sample Python CLI app with full enhancement workflow
-- 📚 **Complete Documentation** - Guides for every aspect of the system
+## 🆕 What's New in v5.0
 
-## 🆕 What's New
+### Workflow-Based Orchestration
 
-### Cost Tracking (v4.1.0) ✅
+**Before**: Agents defined their own workflow position and next steps
+**After**: Workflows define everything - agents are reusable components
 
-Automatic cost tracking for all agent tasks:
-
-- **Automatic Extraction**: Session end hook captures token usage from transcripts
-- **Per-Task Tracking**: Input, output, cache creation, and cache read tokens
-- **Model-Aware Pricing**: Supports Sonnet 4.5, Haiku, and Opus pricing models
-- **Cost Aggregation**: View costs by task or enhancement
-- **Detailed Logging**: Cost information appended to task logs
-
-```bash
-# View cost for specific task
-cmat.sh queue show-task-cost <task_id>
-
-# View total cost for an enhancement
-cmat.sh queue show-enhancement-cost <enhancement_name>
+```json
+// Workflow template defines orchestration
+{
+  "agent": "architect",
+  "input": "{previous_step}/required_output/",
+  "required_output": "design.md",
+  "on_status": {
+    "READY_FOR_IMPLEMENTATION": {
+      "next_step": "implementer",
+      "auto_chain": true
+    }
+  }
+}
 ```
 
-### Modular Script Architecture ✅
+### Benefits
 
-Complete refactoring of the script system:
+✅ **Flexibility** - Same agent in different workflows with different inputs/outputs
+✅ **User Control** - Create/modify workflows via CLI
+✅ **Simplicity** - Workflows are single source of truth
+✅ **Reusability** - Agents are truly pluggable components
+✅ **Custom Status Codes** - Workflows define what status codes mean
 
-- **New Command Structure**: `cmat.sh <category> <command>` (git-like interface)
-- **Organized Scripts**: Separated into queue, workflow, skills, integration, agent commands
-- **Shared Utilities**: Common functions in reusable library
-- **Better Maintainability**: Each script has single, clear responsibility
+### Standardized Output Structure
 
-```bash
-cmat.sh queue add "Task" "agent" ...
-cmat.sh workflow validate ...
-cmat.sh skills list
+All agents now use convention-based directories:
+```
+enhancements/{enhancement}/{ agent}/
+├── required_output/
+│   └── {workflow-specified-file}
+└── optional_output/
+    └── [additional files]
 ```
 
-### Skills System ✅
+### Simplified Agent Definitions
 
-Comprehensive skills providing specialized knowledge to agents:
-
-- **14 Built-in Skills**: Requirements elicitation, API design, code refactoring, test patterns, etc.
-- **Auto-injection**: Skills automatically added to agent prompts
-- **Category Organization**: Analysis, architecture, implementation, testing, documentation, UI design, database
-- **Extensible**: Easy to add custom skills for your domain
-- **Agent Assignment**: Each agent has appropriate skills for their role
-
-### Script Organization ✅
-```
-.claude/scripts/
-├── cmat.sh                    # Main command launcher
-├── queue-commands.sh          # Task queue operations
-├── workflow-commands.sh       # Workflow orchestration
-├── skills-commands.sh         # Skills management
-├── integration-commands.sh    # External system sync
-├── agent-commands.sh          # Agent operations
-└── common-commands.sh         # Shared utilities
+Agents now focus purely on capabilities:
+```json
+{
+  "name": "Architect",
+  "role": "technical_design",
+  "tools": [...],
+  "skills": [...],
+  "validations": {
+    "metadata_required": true
+  }
+}
 ```
 
-### Key Improvements
+No more input/output/status specifications in agents!
 
-- ✅ **Single Command Entry Point**: `cmat.sh` for all operations
-- ✅ **Skills System**: Domain expertise automatically available to agents
-- ✅ **Modular Design**: Easy to maintain and extend
-- ✅ **Better Organization**: Clear separation of concerns
-- ✅ **Improved Testing**: Each component testable independently
+---
 
 ## 🚀 Quick Start
 
-### 1. Install the Template
+### 1. Install
 ```bash
 # Copy .claude directory to your project
 cp -r ClaudeMultiAgentTemplate/.claude /path/to/your/project/
@@ -124,544 +113,379 @@ chmod +x /path/to/your/project/.claude/scripts/*.sh
 chmod +x /path/to/your/project/.claude/hooks/*.sh
 ```
 
-### 2. Configure Claude Code
-
-Create `.claude/settings.local.json`:
-```json
-{
-  "hooks": {
-    "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh"
-  }
-}
-```
-
-### 3. Customize for Your Project
-
-Edit agent files in `.claude/agents/` and update skills in `.claude/skills/` to match your:
-- Programming languages and frameworks
-- Coding standards and conventions
-- Testing requirements
-- Documentation standards
-- Domain-specific expertise
-
-See [INSTALLATION.md](INSTALLATION.md) for detailed setup and [CUSTOMIZATION.md](CUSTOMIZATION.md) for adaptation guidance.
-
-### 4. Test the System
-
-**Quick Test with Demo Enhancement**:
+### 2. Test
 ```bash
-# Navigate to project root
-cd /path/to/your/project
+# List available workflows
+cmat workflow list
 
-# Set environment to skip integration prompts
-export AUTO_INTEGRATE="never"
+# Create test enhancement
+mkdir -p enhancements/test
+echo "# Test" > enhancements/test/test.md
 
-# Create fully automated task
-TASK_ID=$(cmat.sh queue add \
-  "Demo test - requirements analysis" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/demo-test/demo-test.md" \
-  "Analyze requirements for demo test enhancement" \
-  true \
-  true)
+# Start workflow
+cmat workflow start new_feature_development test
 
-# Start and watch it run through entire workflow automatically
-cmat.sh queue start $TASK_ID
-
-# The system will:
-# 1. Run requirements-analyst → Create analysis_summary.md
-# 2. Validate output and metadata header
-# 3. Auto-create architect task with skills
-# 4. Auto-start architect → Create implementation_plan.md
-# 5. Validate and auto-chain to implementer
-# 6. Continue through tester → documenter
-# 7. Complete with all outputs validated
-
-# Verify results
-ls enhancements/demo-test/
+# Monitor
+cmat queue status
 ```
 
-**Automation Levels**:
-```bash
-# Fully Manual (prompts for everything)
-cmat.sh queue add "..." "..." "..." "..." "..." "..." false false
+### 3. Customize
+See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
 
-# Semi-Automated (auto-complete but manual chain)
-cmat.sh queue add "..." "..." "..." "..." "..." "..." true false
-
-# Fully Automated (runs entire workflow hands-off) ⭐
-cmat.sh queue add "..." "..." "..." "..." "..." "..." true true
-```
+---
 
 ## 📁 Project Structure
+
 ```
 your-project/
-├── .claude/                      # Multi-agent system (v4.0)
-│   ├── scripts/                  # Command scripts (NEW v3.0)
+├── .claude/                      # Multi-agent system (v5.0)
+│   ├── scripts/                  # Command scripts
 │   │   ├── cmat.sh              # Main command launcher
 │   │   ├── queue-commands.sh     # Queue operations
-│   │   ├── workflow-commands.sh  # Workflow orchestration
+│   │   ├── workflow-commands.sh  # Workflow management
 │   │   ├── skills-commands.sh    # Skills management
 │   │   ├── integration-commands.sh # External sync
-│   │   ├── agent-commands.sh     # Agent operations
-│   │   └── common-commands.sh    # Shared utilities
+│   │   └── agent-commands.sh     # Agent operations
 │   ├── agents/                   # Agent definitions
-│   │   ├── requirements-analyst.md
-│   │   ├── architect.md
-│   │   ├── implementer.md
-│   │   ├── tester.md
-│   │   ├── documenter.md
-│   │   ├── github-integration-coordinator.md
-│   │   ├── atlassian-integration-coordinator.md
-│   │   └── agents.json
-│   ├── skills/                   # Skills system (NEW v3.0)
-│   │   ├── skills.json           # Skills registry
-│   │   ├── requirements-elicitation/
-│   │   ├── user-story-writing/
-│   │   ├── bug-triage/
-│   │   ├── api-design/
-│   │   ├── architecture-patterns/
-│   │   ├── error-handling/
-│   │   ├── code-refactoring/
-│   │   ├── test-design-patterns/
-│   │   ├── test-coverage/
-│   │   ├── technical-writing/
-│   │   ├── api-documentation/
-│   │   ├── desktop-ui-design/
-│   │   ├── web-ui-design/
-│   │   └── sql-development/
+│   │   ├── *.md                 # Agent specifications
+│   │   ├── agents.json          # Agent registry
+│   │   └── generate_agents_json.sh
+│   ├── skills/                   # Skills system
+│   │   ├── skills.json          # Skills registry
+│   │   └── */SKILL.md           # 14+ skills
 │   ├── hooks/                    # Workflow automation
-│   │   ├── on-subagent-stop.sh  # Enhanced with validation
+│   │   ├── on-subagent-stop.sh  # Workflow orchestration
 │   │   └── on-session-end-cost.sh # Cost tracking
 │   ├── queues/                   # Task management
 │   │   ├── task_queue.json
 │   │   └── workflow_templates.json
-│   ├── mcp-servers/             # MCP configuration (optional)
-│   │   ├── github-config.json
-│   │   ├── atlassian-config.json
-│   │   └── [configuration guides]
-│   ├── logs/                    # System logs
-│   │   └── queue_operations.log
-│   ├── agent_contracts.json     # Agent specifications
-│   ├── workflow_states.json     # State machine definitions
-│   ├── WORKFLOW_GUIDE.md        # Workflow patterns and commands
-│   ├── INTEGRATION_GUIDE.md     # GitHub/Jira integration
-│   ├── TASK_PROMPT_DEFAULTS.md  # Agent prompt templates
-│   └── settings.local.json      # Claude Code configuration
+│   └── docs/                     # Documentation
 ├── enhancements/                # Feature requests
 │   └── feature-name/
 │       ├── feature-name.md           # Enhancement spec
 │       ├── requirements-analyst/
+│       │   ├── required_output/
+│       │   └── optional_output/
 │       ├── architect/
-│       ├── implementer/
-│       ├── tester/
-│       ├── documenter/
-│       └── logs/                     # All agent logs
-├── README.md                    # This file
-├── INSTALLATION.md              # Setup instructions
-├── CUSTOMIZATION.md             # Customization guide
-├── SKILL_TEMPLATE.md           # Template for creating skills (NEW v3.0)
+│       │   ├── required_output/
+│       │   └── optional_output/
+│       └── logs/
 └── [your project files]
 ```
 
-## 🏗️ System Architecture
+---
 
-The multi-agent system follows a contract-based architecture where all behavior is formally specified.
+## 🗂️ System Architecture
 
-### Core Components
+### Workflow-Based Design
 
-**cmat.sh** (Command Launcher):
-- Single entry point for all operations
-- Routes commands to specialized subsystems
-- Git-like command structure: `cmat.sh <category> <command>`
+```
+Workflow Template
+  │
+  ├─ Step 0: requirements-analyst
+  │    ├─ input: "enhancement spec file"
+  │    ├─ required_output: "analysis.md"
+  │    └─ on_status:
+  │         └─ READY_FOR_DEVELOPMENT → Step 1
+  │
+  ├─ Step 1: architect
+  │    ├─ input: "step 0 outputs"
+  │    ├─ required_output: "design.md"
+  │    └─ on_status:
+  │         └─ READY_FOR_IMPLEMENTATION → Step 2
+  │
+  └─ ... (continues through workflow)
+```
 
-**agent_contracts.json** (Source of Truth):
-- Defines 7 specialized agents
-- Specifies exact input/output requirements
-- Declares success/failure status codes
-- Maps workflow transitions (next_agents)
-- Enforces output structure via validation
+**Task Metadata** carries workflow context:
+```json
+{
+  "workflow_name": "new_feature_development",
+  "workflow_step": 0
+}
+```
 
-**workflow_states.json** (State Machine):
-- Defines 11 workflow states
-- Specifies valid state transitions
-- Identifies terminal vs. transitional states
-- Flags integration trigger points
-
-**Skills System** (Domain Expertise):
-- 14 built-in skills covering common development tasks
-- Automatically injected into agent prompts
-- Organized by category for easy discovery
-- Extensible for domain-specific knowledge
-
-**Command Scripts** (Modular Operations):
-- `queue-commands.sh` - Task lifecycle management
-- `workflow-commands.sh` - Contract validation and chaining
-- `skills-commands.sh` - Skills management
-- `integration-commands.sh` - External system sync
-- `agent-commands.sh` - Agent invocation
-
-**on-subagent-stop.sh** (Hook Orchestration):
-- Detects agent completion status
-- Triggers output validation
-- Handles integration task creation
-- Manages auto-chaining
+**Hook** orchestrates using workflow:
+1. Extract status from agent output
+2. Get workflow context from task metadata
+3. Check if status in current step's `on_status`
+4. If yes → create next task (step + 1)
+5. If no → stop workflow
 
 ### Agent Specialization
 
-Each agent has a **single, well-defined responsibility**:
-
-| Agent | Role | Primary Function | Skills |
+| Agent | Role | Responsibilities | Skills |
 |-------|------|------------------|--------|
-| requirements-analyst | analysis | What needs to be built | Requirements Elicitation, User Story Writing, Bug Triage |
-| architect | technical_design | How to build it (design) | API Design, Architecture Patterns, UI Design |
-| implementer | implementation | Build it (code) | Error Handling, Code Refactoring, SQL Development |
-| tester | testing | Validate it works | Test Design Patterns, Test Coverage, Bug Triage |
-| documenter | documentation | Explain how to use it | Technical Writing, API Documentation |
-| github-integration-coordinator | integration | Sync with GitHub | (none) |
-| atlassian-integration-coordinator | integration | Sync with Jira/Confluence | (none) |
+| requirements-analyst | analysis | What to build | Requirements Elicitation, User Stories, Bug Triage |
+| architect | technical_design | How to build it | API Design, Architecture Patterns, UI Design |
+| implementer | implementation | Build it | Error Handling, Code Refactoring, SQL |
+| tester | testing | Validate it | Test Patterns, Coverage, Bug Triage |
+| documenter | documentation | Document it | Technical Writing, API Docs |
 
-## 🔄 Development Workflow
+---
 
-### Standard Feature Development
+## 📄 Development Workflow
+
+### Example: Standard Feature Development
+
 ```
-1. Requirements Analyst
-   └─> Analyzes requirements, creates plan
-       └─> Skills: Requirements Elicitation, User Story Writing
-       └─> Status: READY_FOR_DEVELOPMENT
-       └─> Output: requirements-analyst/analysis_summary.md
-       └─> Validation: ✓ File exists, ✓ Metadata header present
+1. requirements-analyst (Step 0)
+   Input:  enhancements/feature/feature.md
+   Output: enhancements/feature/requirements-analyst/required_output/analysis_summary.md
+   Status: READY_FOR_DEVELOPMENT
+   → Triggers: architect (Step 1)
 
-2. Architect
-   └─> Designs architecture and technical specs
-       └─> Skills: API Design, Architecture Patterns
-       └─> Status: READY_FOR_IMPLEMENTATION
-       └─> Output: architect/implementation_plan.md
-       └─> Validation: ✓ File exists, ✓ Metadata header present
+2. architect (Step 1)
+   Input:  enhancements/feature/requirements-analyst/required_output/
+   Output: enhancements/feature/architect/required_output/implementation_plan.md
+   Status: READY_FOR_IMPLEMENTATION
+   → Triggers: implementer (Step 2)
 
-3. Implementer
-   └─> Writes production code
-       └─> Skills: Error Handling, Code Refactoring
-       └─> Status: READY_FOR_TESTING
-       └─> Output: implementer/test_plan.md
-       └─> Validation: ✓ File exists, ✓ Metadata header present
+3. implementer (Step 2)
+   Input:  enhancements/feature/architect/required_output/
+   Output: enhancements/feature/implementer/required_output/implementation_summary.md
+   Status: READY_FOR_TESTING
+   → Triggers: tester (Step 3)
 
-4. Tester
-   └─> Creates and runs test suite
-       └─> Skills: Test Design Patterns, Test Coverage
-       └─> Status: TESTING_COMPLETE
-       └─> Output: tester/test_summary.md
-       └─> Validation: ✓ File exists, ✓ Metadata header present
+4. tester (Step 3)
+   Input:  enhancements/feature/implementer/required_output/
+   Output: enhancements/feature/tester/required_output/test_summary.md
+   Status: TESTING_COMPLETE
+   → Triggers: documenter (Step 4)
 
-5. Documenter (optional)
-   └─> Updates documentation
-       └─> Skills: Technical Writing, API Documentation
-       └─> Status: DOCUMENTATION_COMPLETE
-       └─> Output: documenter/documentation_summary.md
-       └─> Validation: ✓ File exists, ✓ Metadata header present
+5. documenter (Step 4)
+   Input:  enhancements/feature/tester/required_output/
+   Output: enhancements/feature/documenter/required_output/documentation_summary.md
+   Status: DOCUMENTATION_COMPLETE
+   → Workflow complete
 ```
 
-See [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for other workflow patterns.
+---
 
 ## 📚 Documentation
 
-### Getting Started (Essential Reading)
-- **[README.md](README.md)** - This file - Overview, architecture, quick start
-- **[INSTALLATION.md](INSTALLATION.md)** - Step-by-step setup and verification
-- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting template to your project
-- **[SKILL_TEMPLATE.md](SKILL_TEMPLATE.md)** - Template for creating new skills
+### Getting Started
+- **[README.md](README.md)** - This file - Overview and architecture
+- **[INSTALLATION.md](INSTALLATION.md)** - Setup and verification
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick start
+- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting to your project
 
-### System Reference (For Daily Use)
-- **[.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns, commands, best practices
-- **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Complete cmat.sh command reference (NEW v3.0)
-- **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system documentation (NEW v3.0)
-- **[.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json)** - Agent specifications
-- **[.claude/queues/workflow_states.json](.claude/queues/workflow_states.json)** - State machine definitions
+### System Reference
+- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns
+- **[WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
+- **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Complete command reference
+- **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system
+- **[agents.json](.claude/agents/agents.json)** - Agent definitions
+- **[workflow_templates.json](.claude/queues/workflow_templates.json)** - Workflow storage
 
-### Advanced Topics (As Needed)
-- **[.claude/INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration setup
-- **[.claude/TASK_PROMPT_DEFAULTS.md](.claude/docs/TASK_PROMPT_DEFAULTS.md)** - Agent prompt templates
-- **Individual agent `.md` files** - Complete specifications for each agent
+### Advanced Topics
+- **[INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration
+- **[MCP_CONFIGURATION_GUIDE.md](.claude/mcp-servers/MCP_CONFIGURATION_GUIDE.md)** - MCP setup
+- **[MIGRATION_v4_to_v5.md](MIGRATION_v4_to_v5.md)** - Upgrade from v4.x
 
-## ⚠️ SECURITY WARNING
-
-**CRITICAL: Never commit API credentials to version control!**
-
-The MCP configuration files in `.claude/mcp-servers/` are templates that use environment variables for credentials.
-
-See [.claude/mcp-servers/SECURITY_README.md](.claude/mcp-servers/SECURITY_README.md) for security best practices.
-
-## 🧪 Example Project
-
-This template includes a working Python CLI task manager as a demonstration:
-
-- **Source**: `src/task_manager.py` - Simple task management CLI
-- **Tests**: `tests/test_task_manager.py` - Comprehensive test suite
-- **Demo Enhancement**: `enhancements/demo-test/` - Minimal test for verification
-- **Full Enhancement**: `enhancements/add-json-export/` - Complete workflow example
-
-Run the example:
-```bash
-# Try the task manager
-python src/task_manager.py add "Test task" -d "Testing the app"
-python src/task_manager.py list
-
-# Run tests
-python -m unittest discover tests
-```
-
-## 🎓 Learning Resources
-
-### For First-Time Users
-
-1. **Read** this README - Understand the system
-2. **Install** following [INSTALLATION.md](INSTALLATION.md) - Set up in your project
-3. **Review** [.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json) - See agent specs
-4. **Study** [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Learn workflow patterns
-5. **Explore** [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Understand the skills system
-6. **Try** `enhancements/demo-test/` - Simple test enhancement
-7. **Explore** `enhancements/add-json-export/` - Full workflow example
-8. **Customize** per [CUSTOMIZATION.md](CUSTOMIZATION.md) - Adapt to your needs
-
-### Key Concepts
-
-- **Agent Contracts**: Formal specifications (JSON) define agent behavior
-- **Output Validation**: System validates outputs before chaining to next agent
-- **Metadata Headers**: Every document is self-documenting with YAML frontmatter
-- **Status Codes**: Trigger workflow transitions and next agent selection
-- **State Machine**: Defines valid workflow states and transitions
-- **Skills**: Domain expertise automatically provided to agents
-- **Hook Automation**: Detects completion, validates, and suggests next steps
-- **Enhancement-First**: Start with clear requirements document
+---
 
 ## 🛠️ Requirements
 
-- **Claude Code** - This template is designed for use with Claude Code
-- **bash** - For scripts and queue management
-- **jq** - For JSON processing (install via `brew install jq` or package manager)
+- **Claude Code** - Multi-agent orchestration platform
+- **bash** - Shell scripting
+- **jq** - JSON processing
 
 Optional:
-- **Python 3.7+** - For the example project (not required for template itself)
 - **Node.js 16+** - For MCP servers (GitHub/Jira integration)
+
+---
 
 ## 🔧 Command Reference
 
-### Queue Commands
+### Workflow Commands (NEW in v5.0)
 ```bash
-cmat.sh queue add <title> <agent> <priority> <type> <source> <desc> [auto_complete] [auto_chain]
-cmat.sh queue start <task_id>
-cmat.sh queue complete <task_id> [result] [--auto-chain]
-cmat.sh queue cancel <task_id> [reason]
-cmat.sh queue cancel-all [reason]
-cmat.sh queue fail <task_id> [error]
-cmat.sh queue status
-cmat.sh queue list <pending|active|completed|failed|all> [json|compact]
-cmat.sh queue metadata <task_id> <key> <value>
-cmat.sh queue preview-prompt <task_id>
-cmat.sh queue clear-finished [--force]
-cmat.sh queue init [--force]
-cmat.sh queue show-task-cost <task_id>
-cmat.sh queue show-enhancement-cost <enhancement_name>
+cmat workflow create <n> <desc>         # Create template
+cmat workflow list                      # List all workflows
+cmat workflow show <n>                  # Show workflow details
+cmat workflow start <workflow> <enh>    # Start workflow
+cmat workflow add-step <n> <agent> <input> <o>
+cmat workflow add-transition <n> <step> <status> <next>
+cmat workflow validate <n>              # Validate template
 ```
 
-### Workflow Commands
+### Queue Commands
 ```bash
-cmat.sh workflow validate <agent> <enhancement_dir>
-cmat.sh workflow next-agent <agent> <status>
-cmat.sh workflow next-source <enhancement> <next_agent> <current_agent>
-cmat.sh workflow auto-chain <task_id> <status>
-cmat.sh workflow template <template_name> [description]
+cmat queue status                       # View status
+cmat queue list <type>                  # List tasks
+cmat queue show-task-cost <id>          # View task cost
+cmat queue show-enhancement-cost <n>    # View enhancement cost
 ```
 
 ### Skills Commands
 ```bash
-cmat.sh skills list
-cmat.sh skills get <agent-name>
-cmat.sh skills load <skill-directory>
-cmat.sh skills prompt <agent-name>
-cmat.sh skills test
+cmat skills list                        # List all skills
+cmat skills get <agent>                 # Get agent skills
+cmat skills load <skill>                # View skill content
 ```
 
-### Integration Commands
-```bash
-cmat.sh integration add <status> <source> <agent> [parent_task_id]
-cmat.sh integration sync <task_id>
-cmat.sh integration sync-all
-```
+See [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) for complete documentation.
 
-### Agent Commands
-```bash
-cmat.sh agents list
-cmat.sh agents generate-json
-```
-
-### Utility Commands
-```bash
-cmat.sh version
-cmat.sh help
-```
-
-See [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) for complete command documentation.
-
-## 📖 How It Works
-
-### Real Example: demo-test Enhancement
-
-Starting from `enhancements/demo-test/demo-test.md`, the system automatically:
-
-#### 1. Requirements Analyst Creates Output
-```markdown
 ---
-enhancement: demo-test
-agent: requirements-analyst
-task_id: task_1234567890_12345
-timestamp: 2025-10-24T14:30:00Z
-status: READY_FOR_DEVELOPMENT
----
-
-# Analysis Summary
-[Requirements analysis content...]
-
-**Skills Applied**:
-- ✅ requirements-elicitation: Extracted functional requirements
-- ✅ user-story-writing: Created user stories with acceptance criteria
-```
-
-Location: `enhancements/demo-test/requirements-analyst/analysis_summary.md`
-
-#### 2. System Validates
-```bash
-🔍 Validating outputs from requirements-analyst...
-  ✓ Root document exists: analysis_summary.md
-  ✓ Metadata header present
-  ✓ Required fields: enhancement, agent, task_id, timestamp, status
-✅ Output validation passed
-```
-
-#### 3. System Determines Next Agent
-```bash
-📋 Consulting agent_contracts.json:
-  Current agent: requirements-analyst
-  Current status: READY_FOR_DEVELOPMENT
-  Next agent: architect (from contract)
-
-✅ Auto-chained to architect: task_1234567890_12346
-   Source: enhancements/demo-test/requirements-analyst/analysis_summary.md
-   Inherited automation: auto_complete=true, auto_chain=true
-
-🚀 Auto-starting next task...
-```
-
-#### 4. Workflow Continues Automatically
-
-With skills injected at each phase:
-- **Architect** (with API Design, Architecture Patterns skills) → `READY_FOR_IMPLEMENTATION`
-- **Implementer** (with Error Handling, Code Refactoring skills) → `READY_FOR_TESTING`
-- **Tester** (with Test Design Patterns, Test Coverage skills) → `TESTING_COMPLETE`
-- **Documenter** (with Technical Writing, API Documentation skills) → `DOCUMENTATION_COMPLETE`
 
 ## 🎯 Skills System
 
-### Built-in Skills
+### Built-in Skills (14+)
 
-**Analysis** (3 skills):
-- Requirements Elicitation
-- User Story Writing
-- Bug Triage
-
-**Architecture** (2 skills):
-- API Design
-- System Architecture Patterns
-
-**Implementation** (2 skills):
-- Error Handling Strategies
-- Code Refactoring
-
-**Testing** (2 skills):
-- Test Design Patterns
-- Test Coverage Analysis
-
-**Documentation** (2 skills):
-- Technical Writing
-- API Documentation
-
-**UI Design** (2 skills):
-- Desktop UI Design
-- Web UI Design
-
-**Database** (1 skill):
-- SQL Development
+**Analysis**: Requirements Elicitation, User Story Writing, Bug Triage
+**Architecture**: API Design, Architecture Patterns  
+**Implementation**: Error Handling, Code Refactoring, SQL Development
+**Testing**: Test Design Patterns, Test Coverage
+**Documentation**: Technical Writing, API Documentation
+**UI Design**: Desktop UI, Web UI
 
 ### Managing Skills
 ```bash
-# List all available skills
-cmat.sh skills list
-
-# See which skills an agent has
-cmat.sh skills get requirements-analyst
-
-# View a skill's content
-cmat.sh skills load requirements-elicitation
-
-# Test skills system
-cmat.sh skills test
+cmat skills list                # All skills
+cmat skills get architect       # Agent's skills
+cmat skills load api-design     # Skill content
 ```
 
 ### Creating Custom Skills
 
-See [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) for the template and [SKILLS_GUIDE.md](SKILLS_GUIDE.md) for complete documentation.
+1. Create skill directory with SKILL.md
+2. Register in skills.json
+3. Assign to agents
+4. Regenerate: `cmat agents generate-json`
 
-Quick example:
+See [SKILLS_GUIDE.md](SKILLS_GUIDE.md) for complete guide.
+
+---
+
+## 📖 How It Works
+
+### Workflow Execution Example
+
 ```bash
-# 1. Create skill directory
-mkdir -p .claude/skills/my-custom-skill
+# 1. User starts workflow
+cmat workflow start new_feature_development user-auth
 
-# 2. Create SKILL.md using template
-cp SKILL_TEMPLATE.md .claude/skills/my-custom-skill/SKILL.md
-# Edit to define your skill
+# 2. System creates first task
+Task created:
+  - agent: requirements-analyst
+  - input: enhancements/user-auth/user-auth.md
+  - metadata: {workflow_name: "new_feature_development", workflow_step: 0}
 
-# 3. Add to skills.json
-# Edit .claude/skills/skills.json
+# 3. Agent executes and outputs status
+Status: READY_FOR_DEVELOPMENT
 
-# 4. Assign to agents
-# Edit agent .md frontmatter: skills: [..., "my-custom-skill"]
+# 4. Hook processes completion
+- Validates: required_output/analysis_summary.md exists
+- Checks workflow step 0 on_status["READY_FOR_DEVELOPMENT"]
+- Finds: next_step = "architect", auto_chain = true
+- Creates: New task for architect (step 1)
+- Starts: New task automatically
 
-# 5. Regenerate agents.json
-cmat.sh agents generate-json
+# 5. Process repeats
+architect → implementer → tester → documenter
+Each step validates and chains to next
 ```
+
+### Status Transition Rules
+
+**Simple Rule**: If agent's output status matches an entry in the step's `on_status` map → continue. Otherwise → stop.
+
+**Example**:
+```json
+{
+  "on_status": {
+    "READY_FOR_IMPLEMENTATION": {"next_step": "implementer", "auto_chain": true}
+  }
+}
+```
+
+- Agent outputs `READY_FOR_IMPLEMENTATION` → Creates implementer task
+- Agent outputs `BLOCKED: Missing API spec` → Stops workflow (not in on_status)
+- Agent outputs `NEEDS_RESEARCH` → Stops workflow (not in on_status)
+
+---
+
+## 🧪 Example Project
+
+This template includes a working Python CLI task manager:
+
+- **Source**: `src/task_manager.py` - Simple task management CLI
+- **Tests**: `tests/test_task_manager.py` - Comprehensive test suite
+- **Demo Enhancement**: `enhancements/demo-test/` - Minimal workflow test
+
+---
+
+## 🎓 Learning Path
+
+### For First-Time Users
+
+1. **Install** - [INSTALLATION.md](INSTALLATION.md)
+2. **Quick Start** - [QUICKSTART.md](QUICKSTART.md) - 5 minute test
+3. **Understand Workflows** - [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)
+4. **Learn Templates** - [WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)
+5. **Explore Skills** - [SKILLS_GUIDE.md](SKILLS_GUIDE.md)
+6. **Customize** - [CUSTOMIZATION.md](CUSTOMIZATION.md)
+
+### Key Concepts
+
+- **Workflow Templates**: Define agent sequences and orchestration
+- **Output Directories**: Standardized `required_output/` and `optional_output/`
+- **Status Transitions**: Workflows define what each status means
+- **Task Metadata**: Carries workflow context (workflow_name, workflow_step)
+- **Skills**: Domain expertise automatically provided to agents
+- **Validation**: Outputs validated before workflow continues
+
+---
 
 ## 🤝 Contributing
 
-This template is designed to be adapted to your needs. Suggested improvements:
-
-- Additional specialized agents for your domain
-- Custom workflow templates
+Suggested improvements:
+- Additional workflow patterns
 - Domain-specific skills
-- Project-specific automation
-- Integration with CI/CD systems
-- Additional example projects in other languages
+- Custom agents for specialized tasks
+- Integration with additional platforms
 
-## 📝 License
+---
 
-This template is provided as-is for use in your projects. Adapt and modify freely.
+## 📋 Quick Reference
+
+### Start a Workflow
+```bash
+# Create enhancement spec
+mkdir -p enhancements/feature
+echo "# Feature" > enhancements/feature/feature.md
+
+# Start workflow
+cmat workflow start new_feature_development feature
+```
+
+### Create Custom Workflow
+```bash
+cmat workflow create my-workflow "Description"
+cmat workflow add-step my-workflow <agent> <input> <o>
+cmat workflow add-transition my-workflow <step> <status> <next>
+cmat workflow start my-workflow <enhancement>
+```
+
+### Monitor
+```bash
+cmat queue status              # Current status
+cmat queue list completed      # Completed tasks
+```
+
+---
 
 ## 🔗 Links
 
 - **Claude Code**: https://claude.ai/code
-- **Claude Skills Docs**: https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview
-- **Skills Best Practices**: https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices
-- **Complete Documentation**: See `.claude/` directory for all guides
+- **Complete Documentation**: See `.claude/docs/` directory
 
 ---
 
-**Ready to get started?** See [INSTALLATION.md](INSTALLATION.md) for step-by-step setup.
+**Ready to start?** See [QUICKSTART.md](QUICKSTART.md) for a 5-minute walkthrough.
 
-**Need to customize?** See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
+**Need help?** See [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) for patterns and [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) for commands.
 
-**Want to understand workflows?** See [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for patterns and commands.
-
-**Creating skills?** See [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) and [SKILLS_GUIDE.md](SKILLS_GUIDE.md).
+**Want to customize?** See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
 
 ---

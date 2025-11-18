@@ -1,360 +1,143 @@
 # Quick Start Guide
 
-This document describes the process to get up and running with the Claude Multi-Agent Template v4.0.
+Get up and running with the Claude Multi-Agent Template v5.0 in 5 minutes.
 
-## Step 1: Verify Installation
+## 1. Verify Installation
+
 ```bash
-# Navigate to your project root
+# Navigate to project root
 cd /path/to/your/project
 
-# Verify cmat.sh is installed
-.claude/scripts/cmat.sh version
+# Check version
+cmat version
 
-# Should show:
-# cmat v4.0.0
-# Dependencies: ✓ jq, ✓ claude, ✓ bash
-# Environment info with paths and counts
+# Should show: cmat v5.0.0
 ```
 
-## Step 2: Verify Skills System
+## 2. List Available Workflows
+
 ```bash
-# Check skills are available
-.claude/scripts/cmat.sh skills list
-
-# Should show 14 skills
-
-# Verify agents have skills
-.claude/scripts/cmat.sh skills get requirements-analyst
-# Should show: ["requirements-elicitation", "user-story-writing", "bug-triage"]
+cmat workflow list
 ```
 
-## Step 3: Test the Queue System
-```bash
-# Check queue status (creates initial queue files if needed)
-.claude/scripts/cmat.sh queue status
-
-# Should show:
-# - Agent statuses (all idle)
-# - Empty pending/active/completed queues
+**Output**:
+```
+new_feature_development - Complete workflow (5 steps)
+bugfix_workflow - Bug fix workflow (4 steps)
+hotfix_workflow - Fast-track critical issues (2 steps)
 ```
 
-## Step 4: Try It Out!
+## 3. Create Enhancement Spec
 
-### Create Your First Task
 ```bash
-# Set environment to skip integration prompts
-export AUTO_INTEGRATE="never"
-
-# Create a simple manual task
-TASK_ID=$(cmat.sh queue add \
-  "Test the system" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/demo-test/demo-test.md" \
-  "Testing the multi-agent system" \
-  false \
-  false)
-
-echo "Created task: $TASK_ID"
-```
-
-### Start the Task
-```bash
-# Start the task
-cmat.sh queue start $TASK_ID
-
-# The agent will:
-# 1. Read its role definition
-# 2. Receive specialized skills (requirements-elicitation, user-story-writing, bug-triage)
-# 3. Process the enhancement specification
-# 4. Create analysis output
-# 5. Output READY_FOR_DEVELOPMENT status
-```
-
-### Monitor Progress
-```bash
-# Check queue status
-cmat.sh queue status
-
-# When complete, verify output was created
-ls enhancements/demo-test/requirements-analyst/
-
-# Should show: analysis_summary.md
-
-# Check if skills were used
-grep "Skills Applied" enhancements/demo-test/requirements-analyst/analysis_summary.md
-```
-
-### View the Log
-```bash
-# Find the log file
-ls enhancements/demo-test/logs/
-
-# View the log
-cat enhancements/demo-test/logs/requirements-analyst_*.log
-
-# Check for:
-# - Skills section in prompt
-# - Agent applying skills
-# - Status: READY_FOR_DEVELOPMENT
-```
-
-## Step 5: Try Automated Workflow
-
-Now try with full automation:
-```bash
-# Create fully automated task (auto-complete + auto-chain)
-TASK_ID=$(cmat.sh queue add \
-  "Automated workflow test" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/demo-test/demo-test.md" \
-  "Test automated workflow with skills" \
-  true \
-  true)
-
-# Start it and let it run
-cmat.sh queue start $TASK_ID
-
-# The system will automatically:
-# 1. Run requirements-analyst with skills → READY_FOR_DEVELOPMENT
-# 2. Validate outputs
-# 3. Create architect task (inherits automation)
-# 4. Auto-start architect with skills → READY_FOR_IMPLEMENTATION
-# 5. Continue through implementer → tester → documenter
-# 6. Complete entire workflow hands-free!
-
-# Monitor progress
-watch -n 5 'cmat.sh queue status'
-# Press Ctrl+C to exit watch
-
-# After completion, verify all phases
-ls enhancements/demo-test/
-# Should show: requirements-analyst/, architect/, implementer/, tester/, documenter/, logs/
-```
-
-## Step 6: Explore Skills
-```bash
-# View all available skills
-cmat.sh skills list
-
-# Load and read a specific skill
-cmat.sh skills load api-design
-
-# See which skills an agent uses
-cmat.sh skills get architect
-# Shows: ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"]
-
-# Preview what gets injected into architect's prompt
-cmat.sh skills prompt architect | head -50
-```
-
-## Common First-Time Issues
-
-### "Command not found: cmat.sh"
-
-**Solution**: Use full path from project root
-```bash
-# Make sure you're in project root
-pwd
-# Should show: /path/to/your/project
-
-# Use full path
-.claude/scripts/cmat.sh queue status
-
-# Not just: cmat.sh queue status
-```
-
-### "jq: command not found"
-
-**Solution**: Install jq
-```bash
-# macOS
-brew install jq
-
-# Linux
-sudo apt-get install jq
-
-# Verify
-jq --version
-```
-
-### "Queue file not found"
-
-**Solution**: Run status to initialize
-```bash
-# This creates the queue file
-cmat.sh queue status
-
-# Or copy empty template
-cp .claude/queues/task_queue_empty.json .claude/queues/task_queue.json
-```
-
-### "Skills not appearing in prompts"
-
-**Solution**: Verify skills setup
-```bash
-# Check skills.json exists
-cat .claude/skills/skills.json | jq '.skills | length'
-# Should show: 14
-
-# Check agents have skills in frontmatter
-grep "^skills:" .claude/agents/requirements-analyst.md
-
-# Regenerate agents.json
-cmat.sh agents generate-json
-
-# Verify agents.json has skills
-jq '.agents[0].skills' .claude/agents/agents.json
-# Should show array, not null
-```
-
-### "Workflow not auto-chaining"
-
-**Solution**: Check auto_chain flag
-```bash
-# Verify task has auto_chain: true
-cmat.sh queue list pending | jq '.[] | {id, auto_chain}'
-
-# Check hook is executing
-tail -20 .claude/logs/queue_operations.log
-# Should show TASK_COMPLETED and TASK_ADDED for chain
-```
-
-### "Permission denied" on Scripts
-
-**Solution**: Make scripts executable
-```bash
-chmod +x .claude/scripts/*.sh
-chmod +x .claude/hooks/*.sh
-
-# Verify
-ls -l .claude/scripts/*.sh
-# Should show: -rwxr-xr-x
-```
-
-## What's Next?
-
-Now that installation is verified, you can:
-
-### Learn the System
-
-- **Read** [README.md](README.md) - System overview
-- **Study** [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Workflow patterns
-- **Review** [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) - Complete command reference
-- **Explore** [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Skills system documentation
-
-### Customize for Your Project
-
-- **Edit** agent definitions in `.claude/agents/`
-- **Update** project-specific sections
-- **Add** custom skills for your domain
-- **Configure** workflows for your team
-
-See [CUSTOMIZATION.md](CUSTOMIZATION.md) for detailed guidance.
-
-### Try Real Work
-
-- **Create** your first enhancement specification
-- **Run** a full workflow
-- **Review** outputs from each agent
-- **Observe** how skills are applied
-
-### Set Up Integration (Optional)
-
-- **Configure** GitHub MCP server
-- **Configure** Atlassian MCP server  
-- **Test** external synchronization
-
-See [.claude/INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md) for setup.
-
-## Quick Command Reference
-```bash
-# Queue operations
-cmat.sh queue add <title> <agent> <priority> <type> <source> <desc> [auto_complete] [auto_chain]
-cmat.sh queue start <task_id>
-cmat.sh queue status
-cmat.sh queue list <all|pending|active|completed|failed>
-
-# Workflow operations
-cmat.sh workflow validate <agent> <enhancement_dir>
-cmat.sh workflow auto-chain <task_id> <status>
-
-# Skills operations
-cmat.sh skills list
-cmat.sh skills get <agent>
-cmat.sh skills prompt <agent>
-
-# Integration operations
-cmat.sh integration sync <task_id>
-cmat.sh integration sync-all
-
-# Utility
-cmat.sh version
-cmat.sh help
-```
-
-For complete command documentation, see [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md).
-
-## Example: Complete Feature Development
-
-Here's a complete example from start to finish:
-```bash
-# 1. Create enhancement specification
-mkdir -p enhancements/add-search
-cat > enhancements/add-search/add-search.md << 'EOF'
-# Add Search Feature
+mkdir -p enhancements/my-feature
+cat > enhancements/my-feature/my-feature.md << 'EOF'
+# My Feature
 
 ## Description
-Add search functionality to the task manager.
+Add new functionality.
 
 ## Acceptance Criteria
-- Search by title or description
-- Case-insensitive search
-- Return matching tasks
+- Feature implemented
+- Tests passing
+- Documented
 
-## Technical Notes
-- Extend existing list command
-- Add --search flag
+## Notes
+Testing the multi-agent system.
 EOF
-
-# 2. Create initial requirements task (fully automated)
-TASK_ID=$(cmat.sh queue add \
-  "Add search - requirements" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/add-search/add-search.md" \
-  "Analyze search feature requirements" \
-  true \
-  true)
-
-# 3. Start and let it run
-cmat.sh queue start $TASK_ID
-
-# 4. Monitor progress
-cmat.sh queue status
-
-# 5. After completion, review outputs
-tree enhancements/add-search/
-# Should show all 5 agent outputs + logs
-
-# 6. Check skill usage
-grep -r "Skills Applied" enhancements/add-search/
 ```
 
-## Need Help?
+## 4. Start Workflow
 
-- **Documentation**: Check `.claude/*.md` files for detailed information
-- **Examples**: Study `enhancements/demo-test/` and `enhancements/add-json-export/`
-- **Logs**: Review `enhancements/*/logs/` for agent execution details
-- **Queue Logs**: Check `.claude/logs/queue_operations.log` for system activity
-- **Command Help**: Run `cmat.sh help` for usage
+```bash
+cmat workflow start new_feature_development my-feature
+```
+
+**The system will**:
+1. Create first task (requirements-analyst, step 0)
+2. Add workflow metadata to task
+3. Auto-start task
+4. After completion, auto-chain to next step
+5. Continue through all 5 steps automatically
+
+## 5. Monitor Progress
+
+```bash
+# Check status
+cmat queue status
+
+# View logs
+tail -f enhancements/my-feature/logs/*.log
+```
+
+## 6. Verify Results
+
+```bash
+# Check output structure
+ls enhancements/my-feature/
+
+# Should see:
+# requirements-analyst/required_output/
+# architect/required_output/
+# implementer/required_output/
+# tester/required_output/
+# documenter/required_output/
+# logs/
+```
 
 ---
 
-**Installation verified!** You're ready to use the multi-agent development system with skills.
+## Create Custom Workflow
 
-Start with the demo-test enhancement, then create your own!
+```bash
+# 1. Create template
+cmat workflow create my-workflow "My custom workflow"
+
+# 2. Add steps
+cmat workflow add-step my-workflow requirements-analyst \
+    "enhancements/{enhancement_name}/{enhancement_name}.md" \
+    "analysis.md"
+
+cmat workflow add-step my-workflow implementer \
+    "{previous_step}/required_output/" \
+    "code.md"
+
+# 3. Add transitions
+cmat workflow add-transition my-workflow 0 READY_FOR_DEVELOPMENT implementer true
+cmat workflow add-transition my-workflow 1 READY_FOR_TESTING null false
+
+# 4. Use it
+cmat workflow start my-workflow test-feature
+```
+
+---
+
+## Quick Commands
+
+```bash
+# Workflows
+cmat workflow list                      # Show all workflows
+cmat workflow show <name>               # Show workflow details
+cmat workflow start <workflow> <enh>    # Start workflow
+
+# Queue
+cmat queue status                       # Show current status
+cmat queue list completed               # Show completed tasks
+
+# Skills
+cmat skills list                        # Show all skills
+cmat skills get <agent>                 # Show agent's skills
+```
+
+---
+
+## Next Steps
+
+- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Learn workflow patterns
+- **[WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
+- **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - All commands
+- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapt to your project
+
+---
+
+**You're ready!** Start with `cmat workflow start` and let the system guide you through development.

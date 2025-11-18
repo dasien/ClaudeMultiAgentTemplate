@@ -15,13 +15,48 @@ yaml_to_json() {
     local filename="$1"
     local name=""
     local description=""
-    local model=""
+    local role=""
     local tools_json="[]"
     local skills_json="[]"
-    local in_tools=false
+    local validations_json="{}"
+    local in_validations=false
 
     # Parse YAML frontmatter
     while IFS= read -r line; do
+        # Check if we're entering validations block
+        if [[ "$line" =~ ^validations:[[:space:]]*$ ]]; then
+            in_validations=true
+            continue
+        fi
+
+        # If we hit another top-level key, exit validations block
+        if [[ "$line" =~ ^[a-z_]+:[[:space:]] ]] && [ "$in_validations" = true ]; then
+            in_validations=false
+        fi
+
+        # Parse validation fields (indented lines)
+        if [ "$in_validations" = true ] && [[ "$line" =~ ^[[:space:]]+([^:]+):[[:space:]]*(.*) ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+
+            # Handle different value types
+            if [[ "$value" =~ ^(true|false)$ ]]; then
+                # Boolean
+                validations_json=$(echo "$validations_json" | jq --arg k "$key" --argjson v "$value" '. + {($k): $v}')
+            elif [[ "$value" =~ ^[0-9]+$ ]]; then
+                # Number
+                validations_json=$(echo "$validations_json" | jq --arg k "$key" --argjson v "$value" '. + {($k): $v}')
+            elif [[ "$value" =~ ^\[.*\]$ ]]; then
+                # Array
+                validations_json=$(echo "$validations_json" | jq --arg k "$key" --argjson v "$value" '. + {($k): $v}')
+            else
+                # String (remove quotes if present)
+                value=$(echo "$value" | sed 's/^["'\'']\(.*\)["'\'']$/\1/')
+                validations_json=$(echo "$validations_json" | jq --arg k "$key" --arg v "$value" '. + {($k): $v}')
+            fi
+            continue
+        fi
+
         # Check if this is the tools line with array
         if [[ "$line" =~ ^tools:[[:space:]]*\[.*\][[:space:]]*$ ]]; then
             # Extract array directly
@@ -36,8 +71,8 @@ yaml_to_json() {
             continue
         fi
 
-        # Check for key: value format
-        if [[ "$line" =~ ^[[:space:]]*([^:]+):[[:space:]]*(.*)[[:space:]]*$ ]]; then
+        # Check for key: value format (top-level only)
+        if [[ "$line" =~ ^[[:space:]]*([^:]+):[[:space:]]*(.*)[[:space:]]*$ ]] && [ "$in_validations" = false ]; then
             key="${BASH_REMATCH[1]}"
             value="${BASH_REMATCH[2]}"
 
@@ -51,21 +86,28 @@ yaml_to_json() {
                 description)
                     description="$value"
                     ;;
-                model)
-                    model="$value"
+                role)
+                    role="$value"
                     ;;
             esac
         fi
     done
 
-    # Output JSON with skills field
+    # If validations is empty, set default
+    if [ "$validations_json" = "{}" ]; then
+        validations_json='{"metadata_required": true}'
+    fi
+
+    # Output JSON with role and validations
     cat <<EOF
   {
     "name": "$name",
     "agent-file": "$filename",
+    "role": "$role",
     "tools": $tools_json,
     "skills": $skills_json,
-    "description": "$description"
+    "description": "$description",
+    "validations": $validations_json
   }
 EOF
 }

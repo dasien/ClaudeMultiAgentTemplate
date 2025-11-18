@@ -1,68 +1,8 @@
 #!/usr/bin/env bash
 ################################################################################
 # Script Name: workflow-commands.sh
-# Description: Workflow orchestration and contract-based validation
-#              Manages agent contracts, output validation, workflow chaining,
-#              workflow template CRUD operations, and determines workflow
-#              transitions based on agent contracts
-# Author: Brian Gentry
-# Created: 2025
-#
-# Usage: cmat workflow <command> [OPTIONS]
-#
-# Commands:
-#   validate <agent> <enhancement_dir>
-#       Validate agent outputs against contract requirements
-#   next-agent <agent> <status>
-#       Determine next agent based on current agent and status code
-#   next-source <enhancement> <next_agent> <current_agent>
-#       Build source file path for next agent in workflow
-#   auto-chain <task_id> <status>
-#       Automatically create and start next workflow task
-#   template <template_name> [description]
-#       Execute predefined workflow template
-#   get-contract <agent>
-#       Retrieve agent contract from agent_contracts.json
-#
-#   Workflow Template Management:
-#   create <template_name> <description>
-#       Create new workflow template
-#   list
-#       List all workflow templates
-#   show <template_name>
-#       Display template details and steps
-#   delete <template_name>
-#       Delete workflow template
-#   add-step <template_name> <agent> [--position=N]
-#       Add agent step to template
-#   remove-step <template_name> <step_number>
-#       Remove step from template by number
-#   list-steps <template_name>
-#       List all steps in template
-#   show-step <template_name> <step_number>
-#       Show details of specific step
-#
-# Contract Validation:
-#   - Checks required output files exist
-#   - Validates metadata headers (5 required fields)
-#   - Verifies output directory structure
-#   - Confirms additional required files present
-#
-# Status Codes:
-#   READY_FOR_DEVELOPMENT, READY_FOR_IMPLEMENTATION, READY_FOR_TESTING,
-#   TESTING_COMPLETE, DOCUMENTATION_COMPLETE, INTEGRATION_COMPLETE,
-#   BLOCKED: <reason>
-#
-# Dependencies:
-#   - common-commands.sh (sourced)
-#   - queue-commands.sh (called for task operations)
-#   - agent_contracts.json (contract definitions)
-#   - workflow_templates.json (template storage)
-#   - jq (JSON processor)
-#
-# Exit Codes:
-#   0 - Success or validation passed
-#   1 - Validation failed or agent not found
+# Description: Workflow orchestration and template management
+#              Updated for workflow-based orchestration (v5.0.0)
 ################################################################################
 
 set -euo pipefail
@@ -75,161 +15,93 @@ source "$SCRIPT_DIR/common-commands.sh"
 readonly WORKFLOW_TEMPLATES_FILE="$PROJECT_ROOT/.claude/queues/workflow_templates.json"
 
 #############################################################################
-# CONTRACT OPERATIONS
+# VALIDATION OPERATIONS
 #############################################################################
-
-get_agent_contract() {
-    local agent="$1"
-
-    if [ ! -f "$CONTRACTS_FILE" ]; then
-        echo "Error: Agent contracts file not found: $CONTRACTS_FILE" >&2
-        return 1
-    fi
-
-    local contract
-    contract=$(jq -r ".agents[\"$agent\"]" "$CONTRACTS_FILE" 2>/dev/null)
-
-    if [ "$contract" = "null" ] || [ -z "$contract" ]; then
-        echo "Error: Agent not found in contracts: $agent" >&2
-        return 1
-    fi
-
-    echo "$contract"
-    return 0
-}
 
 validate_agent_outputs() {
     local agent="$1"
     local enhancement_dir="$2"
+    local required_output_filename="$3"
 
-    local contract
-    contract=$(get_agent_contract "$agent")
-    if [ $? -ne 0 ]; then
+    # Get agent definition from agents.json
+    local agent_def
+    agent_def=$(jq -r ".agents[] | select(.[\"agent-file\"] == \"$agent\")" "$AGENTS_DIR/agents.json")
+
+    if [ -z "$agent_def" ] || [ "$agent_def" = "null" ]; then
+        echo "❌ Agent not found in agents.json: $agent"
         return 1
     fi
 
-    local output_dir root_doc
-    output_dir=$(echo "$contract" | jq -r '.outputs.output_directory')
-    root_doc=$(echo "$contract" | jq -r '.outputs.root_document')
+    # Check if metadata is required for this agent
+    local metadata_required
+    metadata_required=$(echo "$agent_def" | jq -r '.validations.metadata_required // true')
 
-    # Check root document (critical for workflow handoff)
-    local root_path="$enhancement_dir/$output_dir/$root_doc"
-    if [ ! -f "$root_path" ]; then
-        echo "❌ Required root document missing: $root_path"
+    local required_dir="$enhancement_dir/$agent/required_output"
+    local required_file="$required_dir/$required_output_filename"
+
+    # Check required directory exists
+    if [ ! -d "$required_dir" ]; then
+        echo "❌ Required output directory missing: $required_dir"
         return 1
     fi
 
-    # Check additional required files
-    local additional_files
-    additional_files=$(echo "$contract" | jq -r '.outputs.additional_required[]' 2>/dev/null)
-    if [ -n "$additional_files" ]; then
-        while IFS= read -r file; do
-            if [ -n "$file" ]; then
-                local file_path="$enhancement_dir/$output_dir/$file"
-                if [ ! -f "$file_path" ]; then
-                    echo "❌ Required file missing: $file_path"
-                    return 1
-                fi
-            fi
-        done <<< "$additional_files"
+    # Check required file exists
+    if [ ! -f "$required_file" ]; then
+        echo "❌ Required output file missing: $required_file"
+        return 1
     fi
 
-    # Validate metadata header if required
-    if [ "$(echo "$contract" | jq -r '.metadata_required')" = "true" ]; then
-        if ! grep -q "^---$" "$root_path"; then
-            echo "❌ Missing required metadata header in $root_path"
+    # Check metadata header if required
+    if [ "$metadata_required" = "true" ]; then
+        if ! grep -q "^---$" "$required_file"; then
+            echo "❌ Missing metadata header in: $required_file"
             return 1
         fi
 
-        # Check for required fields
+        # Validate required metadata fields
         local missing_fields=()
-
-        if ! grep -q "^enhancement:" "$root_path"; then
-            missing_fields+=("enhancement")
-        fi
-
-        if ! grep -q "^agent:" "$root_path"; then
-            missing_fields+=("agent")
-        fi
-
-        if ! grep -q "^task_id:" "$root_path"; then
-            missing_fields+=("task_id")
-        fi
-
-        if ! grep -q "^timestamp:" "$root_path"; then
-            missing_fields+=("timestamp")
-        fi
-
-        if ! grep -q "^status:" "$root_path"; then
-            missing_fields+=("status")
-        fi
+        grep -q "^enhancement:" "$required_file" || missing_fields+=("enhancement")
+        grep -q "^agent:" "$required_file" || missing_fields+=("agent")
+        grep -q "^task_id:" "$required_file" || missing_fields+=("task_id")
+        grep -q "^timestamp:" "$required_file" || missing_fields+=("timestamp")
+        grep -q "^status:" "$required_file" || missing_fields+=("status")
 
         if [ ${#missing_fields[@]} -gt 0 ]; then
-            echo "❌ Metadata missing required fields in $root_path: ${missing_fields[*]}"
+            echo "❌ Metadata missing required fields: ${missing_fields[*]}"
             return 1
         fi
     fi
 
-    echo "✅ Output validation passed: $root_path"
+    echo "✅ Output validation passed: $required_file"
     return 0
 }
 
-determine_next_agent() {
-    local current_agent="$1"
-    local status="$2"
+agent_exists() {
+    local agent="$1"
 
-    local contract
-    contract=$(get_agent_contract "$current_agent")
-    if [ $? -ne 0 ]; then
-        echo "UNKNOWN"
+    local exists
+    exists=$(jq -r ".agents[] | select(.[\"agent-file\"] == \"$agent\") | .name" "$AGENTS_DIR/agents.json")
+
+    if [ -z "$exists" ]; then
         return 1
     fi
 
-    # Check success statuses
-    local next_agents
-    next_agents=$(echo "$contract" | \
-        jq -r ".statuses.success[] | select(.code == \"$status\") | .next_agents[]" 2>/dev/null)
-
-    if [ -n "$next_agents" ]; then
-        echo "$next_agents" | head -1
-        return 0
-    fi
-
-    echo "UNKNOWN"
-    return 1
-}
-
-build_next_source() {
-    local enhancement_name="$1"
-    local next_agent="$2"
-    local current_agent="$3"
-
-    local current_contract
-    current_contract=$(get_agent_contract "$current_agent")
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
-    local output_dir root_doc
-    output_dir=$(echo "$current_contract" | jq -r '.outputs.output_directory')
-    root_doc=$(echo "$current_contract" | jq -r '.outputs.root_document')
-
-    echo "enhancements/$enhancement_name/$output_dir/$root_doc"
     return 0
 }
 
 get_task_type_for_agent() {
     local agent="$1"
 
-    local contract
-    contract=$(get_agent_contract "$agent")
-    if [ $? -ne 0 ]; then
+    local agent_def
+    agent_def=$(jq -r ".agents[] | select(.[\"agent-file\"] == \"$agent\")" "$AGENTS_DIR/agents.json")
+
+    if [ -z "$agent_def" ] || [ "$agent_def" = "null" ]; then
         echo "unknown"
         return 0
     fi
 
     local role
-    role=$(echo "$contract" | jq -r '.role')
+    role=$(echo "$agent_def" | jq -r '.role // "unknown"')
 
     case "$role" in
         "analysis") echo "analysis" ;;
@@ -244,119 +116,8 @@ get_task_type_for_agent() {
     return 0
 }
 
-auto_chain() {
-    local task_id="$1"
-    local status="$2"
-
-    # Get task details
-    local task
-    task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
-
-    if [ -z "$task" ] || [ "$task" = "null" ]; then
-        echo "❌ Task not found in completed tasks: $task_id"
-        return 1
-    fi
-
-    local agent source_file parent_auto_complete parent_auto_chain parent_enhancement_title
-    agent=$(echo "$task" | jq -r '.assigned_agent')
-    source_file=$(echo "$task" | jq -r '.source_file')
-    parent_auto_complete=$(echo "$task" | jq -r '.auto_complete // false')
-    parent_auto_chain=$(echo "$task" | jq -r '.auto_chain // false')
-    parent_enhancement_title=$(echo "$task" | jq -r '.metadata.enhancement_title // "Not part of an Enhancement"')
-
-    # Extract enhancement name
-    local enhancement_name enhancement_dir
-    enhancement_name=$(extract_enhancement_name "$source_file")
-    enhancement_dir="enhancements/$enhancement_name"
-
-    # Validate current agent outputs
-    echo "🔍 Validating outputs from $agent..."
-    if ! validate_agent_outputs "$agent" "$enhancement_dir"; then
-        echo "❌ Cannot chain: Required outputs missing"
-        return 1
-    fi
-
-    # Determine next agent
-    local next_agent
-    next_agent=$(determine_next_agent "$agent" "$status")
-
-    if [ "$next_agent" = "UNKNOWN" ]; then
-        echo "ℹ️  No automatic next agent for status: $status"
-        return 0
-    fi
-
-    # Build next source file path
-    local next_source
-    next_source=$(build_next_source "$enhancement_name" "$next_agent" "$agent")
-
-    # Verify next source exists
-    if [ ! -f "$next_source" ]; then
-        echo "❌ Cannot chain: Next source file missing: $next_source"
-        return 1
-    fi
-
-    # Build next task details
-    local next_title next_desc task_type
-    next_title="Process $enhancement_name with $next_agent"
-    next_desc="Continue workflow for $enhancement_name following $agent completion"
-    task_type=$(get_task_type_for_agent "$next_agent")
-
-    # Create next task - inherit automation settings and enhancement_title
-    local new_task_id
-    new_task_id=$("$SCRIPT_DIR/queue-commands.sh" add \
-        "$next_title" \
-        "$next_agent" \
-        "high" \
-        "$task_type" \
-        "$next_source" \
-        "$next_desc" \
-        "$parent_auto_complete" \
-        "$parent_auto_chain" \
-        "$parent_enhancement_title")
-
-    echo "✅ Auto-chained to $next_agent: $new_task_id"
-    echo "   Source: $next_source"
-    echo "   Inherited automation: auto_complete=$parent_auto_complete, auto_chain=$parent_auto_chain"
-    echo ""
-    echo "🚀 Auto-starting next task..."
-
-    # Auto-start the task
-    "$SCRIPT_DIR/queue-commands.sh" start "$new_task_id"
-
-    return $?
-}
-
-run_workflow_template() {
-    local workflow_name="$1"
-    local task_description="${2:-Workflow execution}"
-
-    local workflow_exists
-    workflow_exists=$(jq -r ".workflow_chains | has(\"$workflow_name\")" "$QUEUE_FILE")
-    if [ "$workflow_exists" != "true" ]; then
-        echo "Error: Workflow '$workflow_name' not found"
-        return 1
-    fi
-
-    echo "Starting workflow: $workflow_name"
-
-    # Get first step(s) of workflow
-    local first_step
-    first_step=$(jq -r ".workflow_chains[\"$workflow_name\"].steps[0]" "$QUEUE_FILE")
-
-    if [[ $first_step == \[* ]]; then
-        # Parallel execution
-        echo "Parallel execution detected"
-        jq -r ".workflow_chains[\"$workflow_name\"].steps[0][]" "$QUEUE_FILE" | while read -r agent; do
-            "$SCRIPT_DIR/queue-commands.sh" add "Workflow: $workflow_name" "$agent" "high" "" "" "$task_description"
-        done
-    else
-        # Sequential execution
-        "$SCRIPT_DIR/queue-commands.sh" add "Workflow: $workflow_name" "$first_step" "high" "" "" "$task_description"
-    fi
-}
-
 #############################################################################
-# WORKFLOW TEMPLATE MANAGEMENT
+# TEMPLATE MANAGEMENT
 #############################################################################
 
 create_workflow_template() {
@@ -370,7 +131,7 @@ create_workflow_template() {
 
     # Check if template already exists
     local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
+    exists=$(jq -r ".workflows | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
     if [ "$exists" = "true" ]; then
         echo "❌ Error: Template '$template_name' already exists" >&2
         return 1
@@ -386,11 +147,10 @@ create_workflow_template() {
     jq --arg name "$template_name" \
        --arg desc "$description" \
        --arg ts "$timestamp" \
-       '.templates[$name] = {
+       '.workflows[$name] = {
            name: $desc,
            description: $desc,
-           steps: [],
-           created: $ts
+           steps: []
        }' "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
 
     mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
@@ -407,7 +167,7 @@ list_workflow_templates() {
     fi
 
     # Display templates with name, description, and step count
-    jq -r '.templates | to_entries[] |
+    jq -r '.workflows | to_entries[] |
         "\(.key) - \(.value.description) (\(.value.steps | length) steps)"' \
         "$WORKFLOW_TEMPLATES_FILE"
 }
@@ -422,7 +182,7 @@ show_workflow_template() {
 
     # Check if template exists
     local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
+    exists=$(jq -r ".workflows | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
     if [ "$exists" != "true" ]; then
         echo "❌ Error: Template '$template_name' not found" >&2
         return 1
@@ -430,29 +190,49 @@ show_workflow_template() {
 
     # Get template details
     local template
-    template=$(jq -r ".templates[\"$template_name\"]" "$WORKFLOW_TEMPLATES_FILE")
+    template=$(jq -r ".workflows[\"$template_name\"]" "$WORKFLOW_TEMPLATES_FILE")
 
-    local description created steps_count
+    local description steps_count
     description=$(echo "$template" | jq -r '.description')
-    created=$(echo "$template" | jq -r '.created // "unknown"')
     steps_count=$(echo "$template" | jq -r '.steps | length')
 
     echo "Template: $template_name"
     echo "Description: $description"
     echo "Steps: $steps_count"
-    echo "Created: $created"
     echo ""
-    echo "Steps:"
+    echo "Workflow:"
 
     if [ "$steps_count" -eq 0 ]; then
         echo "  (no steps defined)"
     else
-        # Display steps as arrow chain
-        local step_names
-        step_names=$(echo "$template" | jq -r '.steps[].agent' | tr '\n' ' → ')
-        # Remove trailing arrow
-        step_names=${step_names% → }
-        echo "  $step_names"
+        # Display steps with transitions
+        local i=0
+        while [ $i -lt $steps_count ]; do
+            local step agent input output
+            step=$(echo "$template" | jq -r ".steps[$i]")
+            agent=$(echo "$step" | jq -r '.agent')
+            input=$(echo "$step" | jq -r '.input')
+            output=$(echo "$step" | jq -r '.required_output')
+
+            echo "  Step $i: $agent"
+            echo "    Input: $input"
+            echo "    Output: $output"
+
+            # Show transitions
+            local statuses
+            statuses=$(echo "$step" | jq -r '.on_status | keys[]' 2>/dev/null)
+            if [ -n "$statuses" ]; then
+                echo "    Transitions:"
+                while IFS= read -r status; do
+                    local next_step auto_chain
+                    next_step=$(echo "$step" | jq -r ".on_status[\"$status\"].next_step // null")
+                    auto_chain=$(echo "$step" | jq -r ".on_status[\"$status\"].auto_chain // false")
+                    echo "      $status → ${next_step:-END} (auto: $auto_chain)"
+                done <<< "$statuses"
+            fi
+            echo ""
+            ((i++))
+        done
     fi
 }
 
@@ -466,7 +246,7 @@ delete_workflow_template() {
 
     # Check if template exists
     local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
+    exists=$(jq -r ".workflows | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
     if [ "$exists" != "true" ]; then
         echo "❌ Error: Template '$template_name' not found" >&2
         return 1
@@ -476,7 +256,7 @@ delete_workflow_template() {
     temp_file=$(mktemp)
 
     jq --arg name "$template_name" \
-       'del(.templates[$name])' "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
+       'del(.workflows[$name])' "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
 
     mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
 
@@ -485,73 +265,101 @@ delete_workflow_template() {
     return 0
 }
 
+#############################################################################
+# STEP MANAGEMENT
+#############################################################################
+
 add_step_to_template() {
     local template_name="$1"
     local agent="$2"
-    local position="${3:-}"
-
-    if [ ! -f "$WORKFLOW_TEMPLATES_FILE" ]; then
-        echo "Error: Workflow templates file not found: $WORKFLOW_TEMPLATES_FILE" >&2
-        return 1
-    fi
-
-    # Check if template exists
-    local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
-    if [ "$exists" != "true" ]; then
-        echo "❌ Error: Template '$template_name' not found" >&2
-        return 1
-    fi
+    local input="$3"
+    local output="$4"
+    local position="${5:-}"
 
     # Validate agent exists
-    local agent_exists
-    agent_exists=$(jq -r ".agents | has(\"$agent\")" "$CONTRACTS_FILE" 2>/dev/null || echo "false")
-    if [ "$agent_exists" != "true" ]; then
-        echo "❌ Error: Agent '$agent' not found in agent_contracts.json" >&2
+    if ! agent_exists "$agent"; then
+        echo "❌ Error: Agent '$agent' not found in agents.json" >&2
         return 1
     fi
-
-    # Get agent details from contracts
-    local agent_contract agent_desc task_type
-    agent_contract=$(get_agent_contract "$agent")
-    agent_desc=$(echo "$agent_contract" | jq -r '.description')
-    task_type=$(get_task_type_for_agent "$agent")
 
     # Build step object
     local step_object
     step_object=$(jq -n \
         --arg agent "$agent" \
-        --arg task "Execute $agent" \
-        --arg desc "$agent_desc" \
+        --arg input "$input" \
+        --arg output "$output" \
         '{
             agent: $agent,
-            task: $task,
-            description: $desc
+            input: $input,
+            required_output: $output,
+            on_status: {}
         }')
 
+    # Add to workflow template
     local temp_file
     temp_file=$(mktemp)
 
     if [ -n "$position" ]; then
-        # Insert at specific position (0-indexed)
         jq --arg name "$template_name" \
            --argjson step "$step_object" \
            --argjson pos "$position" \
-           '.templates[$name].steps |= (.[0:$pos] + [$step] + .[$pos:])' \
+           '.workflows[$name].steps |= (.[0:$pos] + [$step] + .[$pos:])' \
            "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
     else
-        # Append to end
         jq --arg name "$template_name" \
            --argjson step "$step_object" \
-           '.templates[$name].steps += [$step]' \
+           '.workflows[$name].steps += [$step]' \
            "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
     fi
 
     mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
 
     log_operation "TEMPLATE_STEP_ADDED" "Template: $template_name, Agent: $agent"
-    echo "✅ Added step to template: $agent"
-    return 0
+    echo "✅ Added step: $agent"
+    echo "   Input: $input"
+    echo "   Output: $output"
+}
+
+edit_step() {
+    local template_name="$1"
+    local step_number="$2"
+    local new_input="${3:-}"
+    local new_output="${4:-}"
+
+    local step_index=$((step_number - 1))
+
+    if [ -z "$new_input" ] && [ -z "$new_output" ]; then
+        echo "❌ Error: Must provide at least input or output to edit" >&2
+        return 1
+    fi
+
+    local temp_file
+    temp_file=$(mktemp)
+
+    # Build jq update expression
+    local jq_updates=".workflows[\"$template_name\"].steps[$step_index]"
+    if [ -n "$new_input" ]; then
+        jq_updates="$jq_updates | .input = \"$new_input\""
+    fi
+    if [ -n "$new_output" ]; then
+        jq_updates="$jq_updates | .required_output = \"$new_output\""
+    fi
+
+    # Apply update
+    local updated_step
+    updated_step=$(jq "$jq_updates" "$WORKFLOW_TEMPLATES_FILE")
+
+    # Replace entire file with update
+    jq --argjson updated "$updated_step" \
+       --arg name "$template_name" \
+       --argjson idx "$step_index" \
+       '.workflows[$name].steps[$idx] = $updated' \
+       "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
+
+    mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
+
+    log_operation "TEMPLATE_STEP_EDITED" "Template: $template_name, Step: $step_number"
+    echo "✅ Updated step $step_number"
 }
 
 remove_step_from_template() {
@@ -563,14 +371,6 @@ remove_step_from_template() {
         return 1
     fi
 
-    # Check if template exists
-    local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
-    if [ "$exists" != "true" ]; then
-        echo "❌ Error: Template '$template_name' not found" >&2
-        return 1
-    fi
-
     # Validate step number
     if ! [[ "$step_number" =~ ^[0-9]+$ ]]; then
         echo "❌ Error: Step number must be a positive integer" >&2
@@ -579,7 +379,7 @@ remove_step_from_template() {
 
     # Get steps count
     local steps_count
-    steps_count=$(jq -r ".templates[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
+    steps_count=$(jq -r ".workflows[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
 
     # Convert to 0-indexed
     local index=$((step_number - 1))
@@ -591,14 +391,14 @@ remove_step_from_template() {
 
     # Get agent name before removing (for logging)
     local agent
-    agent=$(jq -r ".templates[\"$template_name\"].steps[$index].agent" "$WORKFLOW_TEMPLATES_FILE")
+    agent=$(jq -r ".workflows[\"$template_name\"].steps[$index].agent" "$WORKFLOW_TEMPLATES_FILE")
 
     local temp_file
     temp_file=$(mktemp)
 
     jq --arg name "$template_name" \
        --argjson idx "$index" \
-       '.templates[$name].steps |= del(.[$idx])' \
+       '.workflows[$name].steps |= del(.[$idx])' \
        "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
 
     mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
@@ -618,7 +418,7 @@ list_template_steps() {
 
     # Check if template exists
     local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
+    exists=$(jq -r ".workflows | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
     if [ "$exists" != "true" ]; then
         echo "❌ Error: Template '$template_name' not found" >&2
         return 1
@@ -627,19 +427,19 @@ list_template_steps() {
     echo "Steps in '$template_name':"
 
     local steps_count
-    steps_count=$(jq -r ".templates[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
+    steps_count=$(jq -r ".workflows[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
 
     if [ "$steps_count" -eq 0 ]; then
         echo "  (no steps defined)"
         return 0
     fi
 
-    # List steps with numbers (1-indexed for user display)
+    # List steps with numbers (0-indexed to match array)
     local i=0
     while [ $i -lt $steps_count ]; do
         local agent
-        agent=$(jq -r ".templates[\"$template_name\"].steps[$i].agent" "$WORKFLOW_TEMPLATES_FILE")
-        echo "  $((i + 1)). $agent"
+        agent=$(jq -r ".workflows[\"$template_name\"].steps[$i].agent" "$WORKFLOW_TEMPLATES_FILE")
+        echo "  $i. $agent"
         ((i++))
     done
 }
@@ -655,7 +455,7 @@ show_template_step() {
 
     # Check if template exists
     local exists
-    exists=$(jq -r ".templates | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
+    exists=$(jq -r ".workflows | has(\"$template_name\")" "$WORKFLOW_TEMPLATES_FILE")
     if [ "$exists" != "true" ]; then
         echo "❌ Error: Template '$template_name' not found" >&2
         return 1
@@ -663,28 +463,263 @@ show_template_step() {
 
     # Validate step number
     if ! [[ "$step_number" =~ ^[0-9]+$ ]]; then
-        echo "❌ Error: Step number must be a positive integer" >&2
+        echo "❌ Error: Step number must be a non-negative integer" >&2
         return 1
     fi
 
     # Get steps count
     local steps_count
-    steps_count=$(jq -r ".templates[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
+    steps_count=$(jq -r ".workflows[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
 
-    # Convert to 0-indexed
-    local index=$((step_number - 1))
-
-    if [ "$index" -lt 0 ] || [ "$index" -ge "$steps_count" ]; then
-        echo "❌ Error: Step number $step_number is out of range (1-$steps_count)" >&2
+    if [ "$step_number" -lt 0 ] || [ "$step_number" -ge "$steps_count" ]; then
+        echo "❌ Error: Step number $step_number is out of range (0-$((steps_count-1)))" >&2
         return 1
     fi
 
     # Get step details
     local step
-    step=$(jq -r ".templates[\"$template_name\"].steps[$index]" "$WORKFLOW_TEMPLATES_FILE")
+    step=$(jq -r ".workflows[\"$template_name\"].steps[$step_number]" "$WORKFLOW_TEMPLATES_FILE")
 
     echo "Step $step_number of '$template_name':"
-    echo "$step" | jq -r 'to_entries[] | "  \(.key | ascii_upcase): \(.value)"'
+    echo "$step" | jq '.'
+}
+
+#############################################################################
+# TRANSITION MANAGEMENT
+#############################################################################
+
+add_transition() {
+    local template_name="$1"
+    local step_number="$2"
+    local status_code="$3"
+    local next_step="$4"
+    local auto_chain="${5:-true}"
+
+    local step_index="$step_number"
+
+    local temp_file
+    temp_file=$(mktemp)
+
+    jq --arg name "$template_name" \
+       --argjson idx "$step_index" \
+       --arg status "$status_code" \
+       --arg next "$next_step" \
+       --arg auto "$auto_chain" \
+       '.workflows[$name].steps[$idx].on_status[$status] = {
+           next_step: ($next | if . == "null" then null else . end),
+           auto_chain: ($auto == "true")
+       }' "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
+
+    mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
+
+    log_operation "TRANSITION_ADDED" "Template: $template_name, Step: $step_number, Status: $status_code → $next_step"
+    echo "✅ Added transition: $status_code → ${next_step:-END} (auto: $auto_chain)"
+}
+
+remove_transition() {
+    local template_name="$1"
+    local step_number="$2"
+    local status_code="$3"
+
+    local step_index="$step_number"
+
+    local temp_file
+    temp_file=$(mktemp)
+
+    jq --arg name "$template_name" \
+       --argjson idx "$step_index" \
+       --arg status "$status_code" \
+       'del(.workflows[$name].steps[$idx].on_status[$status])' \
+       "$WORKFLOW_TEMPLATES_FILE" > "$temp_file"
+
+    mv "$temp_file" "$WORKFLOW_TEMPLATES_FILE"
+
+    log_operation "TRANSITION_REMOVED" "Template: $template_name, Step: $step_number, Status: $status_code"
+    echo "✅ Removed transition: $status_code"
+}
+
+list_transitions() {
+    local template_name="$1"
+    local step_number="$2"
+
+    local step_index="$step_number"
+
+    echo "Transitions for step $step_number:"
+    jq -r --arg name "$template_name" \
+          --argjson idx "$step_index" \
+          '.workflows[$name].steps[$idx].on_status | to_entries[] |
+           "  \(.key) → \(.value.next_step // "END") (auto_chain: \(.value.auto_chain))"' \
+          "$WORKFLOW_TEMPLATES_FILE"
+}
+
+#############################################################################
+# WORKFLOW VALIDATION
+#############################################################################
+
+validate_workflow() {
+    local template_name="$1"
+
+    echo "Validating workflow: $template_name"
+
+    local errors=0
+
+    # Check workflow exists
+    if ! jq -e ".workflows[\"$template_name\"]" "$WORKFLOW_TEMPLATES_FILE" >/dev/null 2>&1; then
+        echo "❌ Workflow not found: $template_name"
+        return 1
+    fi
+
+    local steps
+    steps=$(jq -r ".workflows[\"$template_name\"].steps | length" "$WORKFLOW_TEMPLATES_FILE")
+
+    if [ "$steps" -eq 0 ]; then
+        echo "❌ Workflow has no steps"
+        return 1
+    fi
+
+    for ((i=0; i<steps; i++)); do
+        local step
+        step=$(jq -r ".workflows[\"$template_name\"].steps[$i]" "$WORKFLOW_TEMPLATES_FILE")
+
+        local agent input output transitions
+        agent=$(echo "$step" | jq -r '.agent')
+        input=$(echo "$step" | jq -r '.input')
+        output=$(echo "$step" | jq -r '.required_output')
+        transitions=$(echo "$step" | jq -r '.on_status | length')
+
+        echo "Step $i: $agent"
+
+        # Validate agent exists
+        if ! agent_exists "$agent"; then
+            echo "  ❌ Agent not found: $agent"
+            ((errors++))
+        fi
+
+        # Validate input defined
+        if [ -z "$input" ] || [ "$input" = "null" ]; then
+            echo "  ❌ No input defined"
+            ((errors++))
+        fi
+
+        # Validate output defined
+        if [ -z "$output" ] || [ "$output" = "null" ]; then
+            echo "  ❌ No required_output defined"
+            ((errors++))
+        fi
+
+        # Validate has transitions
+        if [ "$transitions" -eq 0 ]; then
+            echo "  ⚠️  Warning: No transitions defined"
+        fi
+
+        # Validate transition targets exist
+        local next_steps
+        next_steps=$(echo "$step" | jq -r '.on_status[].next_step // empty')
+        while IFS= read -r next_step; do
+            if [ -n "$next_step" ] && [ "$next_step" != "null" ]; then
+                # Check if next step agent exists in agents.json
+                if ! agent_exists "$next_step"; then
+                    echo "  ❌ Transition references non-existent agent: $next_step"
+                    ((errors++))
+                fi
+            fi
+        done <<< "$next_steps"
+    done
+
+    if [ $errors -eq 0 ]; then
+        echo ""
+        echo "✅ Workflow validation passed"
+        return 0
+    else
+        echo ""
+        echo "❌ Validation failed with $errors errors"
+        return 1
+    fi
+}
+
+#############################################################################
+# WORKFLOW EXECUTION
+#############################################################################
+
+start_workflow() {
+    local workflow_name="$1"
+    local enhancement_name="$2"
+
+    # Validate workflow exists
+    if ! jq -e ".workflows[\"$workflow_name\"]" "$WORKFLOW_TEMPLATES_FILE" >/dev/null 2>&1; then
+        echo "❌ Workflow not found: $workflow_name"
+        return 1
+    fi
+
+    # Validate workflow before starting
+    echo "🔍 Validating workflow..."
+    if ! validate_workflow "$workflow_name"; then
+        echo "❌ Workflow validation failed - cannot start"
+        return 1
+    fi
+
+    # Get first step
+    local first_step
+    first_step=$(jq -r ".workflows[\"$workflow_name\"].steps[0]" "$WORKFLOW_TEMPLATES_FILE")
+
+    if [ -z "$first_step" ] || [ "$first_step" = "null" ]; then
+        echo "❌ Workflow has no steps"
+        return 1
+    fi
+
+    local agent input
+    agent=$(echo "$first_step" | jq -r '.agent')
+    input=$(echo "$first_step" | jq -r '.input')
+
+    # Resolve input path
+    input="${input//\{enhancement_name\}/$enhancement_name}"
+
+    # Verify input exists
+    if [ ! -f "$input" ] && [ ! -d "$input" ]; then
+        echo "❌ Input file/directory not found: $input"
+        echo "   Expected: $input"
+        return 1
+    fi
+
+    # Get task type from agent role
+    local task_type
+    task_type=$(get_task_type_for_agent "$agent")
+
+    echo ""
+    echo "🚀 Starting workflow: $workflow_name"
+    echo "   Enhancement: $enhancement_name"
+    echo "   First step: $agent (step 0)"
+    echo "   Input: $input"
+    echo ""
+
+    # Create first task
+    local task_id
+    task_id=$("$SCRIPT_DIR/queue-commands.sh" add \
+        "Workflow: $workflow_name - $enhancement_name" \
+        "$agent" \
+        "high" \
+        "$task_type" \
+        "$input" \
+        "Workflow: $workflow_name, Step 0" \
+        "true" \
+        "true" \
+        "$enhancement_name")
+
+    if [ -z "$task_id" ]; then
+        echo "❌ Failed to create task"
+        return 1
+    fi
+
+    # Add workflow metadata
+    "$SCRIPT_DIR/queue-commands.sh" metadata "$task_id" "workflow_name" "$workflow_name"
+    "$SCRIPT_DIR/queue-commands.sh" metadata "$task_id" "workflow_step" "0"
+
+    echo "✅ Created task: $task_id"
+    echo ""
+    echo "Starting task..."
+
+    # Start the task
+    "$SCRIPT_DIR/queue-commands.sh" start "$task_id"
 }
 
 #############################################################################
@@ -692,55 +727,22 @@ show_template_step() {
 #############################################################################
 
 case "${1:-}" in
-    "validate")
-        if [ $# -lt 3 ]; then
-            echo "Usage: cmat workflow validate <agent> <enhancement_dir>"
-            exit 1
-        fi
-        validate_agent_outputs "$2" "$3"
-        ;;
-
-    "next-agent")
-        if [ $# -lt 3 ]; then
-            echo "Usage: cmat workflow next-agent <agent> <status>"
-            exit 1
-        fi
-        determine_next_agent "$2" "$3"
-        ;;
-
-    "next-source")
+    "validate-output")
         if [ $# -lt 4 ]; then
-            echo "Usage: cmat workflow next-source <enhancement> <next_agent> <current_agent>"
+            echo "Usage: cmat workflow validate-output <agent> <enhancement_dir> <required_output>"
             exit 1
         fi
-        build_next_source "$2" "$3" "$4"
+        validate_agent_outputs "$2" "$3" "$4"
         ;;
 
-    "auto-chain")
-        if [ $# -lt 3 ]; then
-            echo "Usage: cmat workflow auto-chain <task_id> <status>"
-            exit 1
-        fi
-        auto_chain "$2" "$3"
-        ;;
-
-    "template")
+    "get-task-type")
         if [ $# -lt 2 ]; then
-            echo "Usage: cmat workflow template <template_name> [description]"
+            echo "Usage: cmat workflow get-task-type <agent>"
             exit 1
         fi
-        run_workflow_template "$2" "${3:-Workflow execution}"
+        get_task_type_for_agent "$2"
         ;;
 
-    "get-contract")
-        if [ $# -lt 2 ]; then
-            echo "Usage: cmat workflow get-contract <agent>"
-            exit 1
-        fi
-        get_agent_contract "$2"
-        ;;
-
-    # Template management commands
     "create")
         if [ $# -lt 3 ]; then
             echo "Usage: cmat workflow create <template_name> <description>" >&2
@@ -770,21 +772,24 @@ case "${1:-}" in
         ;;
 
     "add-step")
-        if [ $# -lt 3 ]; then
-            echo "Usage: cmat workflow add-step <template_name> <agent> [--position=N]" >&2
+        if [ $# -lt 5 ]; then
+            echo "Usage: cmat workflow add-step <template_name> <agent> <input> <output> [position]" >&2
             exit 1
         fi
-        # Parse optional --position flag
-        position=""
-        if [ $# -ge 4 ] && [[ "$4" =~ ^--position= ]]; then
-            position="${4#--position=}"
+        add_step_to_template "$2" "$3" "$4" "$5" "${6:-}"
+        ;;
+
+    "edit-step")
+        if [ $# -lt 3 ]; then
+            echo "Usage: cmat workflow edit-step <template_name> <step_num> [input] [output]" >&2
+            exit 1
         fi
-        add_step_to_template "$2" "$3" "$position"
+        edit_step "$2" "$3" "${4:-}" "${5:-}"
         ;;
 
     "remove-step")
         if [ $# -lt 3 ]; then
-            echo "Usage: cmat workflow remove-step <template_name> <step_number>" >&2
+            echo "Usage: cmat workflow remove-step <template_name> <step_num>" >&2
             exit 1
         fi
         remove_step_from_template "$2" "$3"
@@ -800,15 +805,82 @@ case "${1:-}" in
 
     "show-step")
         if [ $# -lt 3 ]; then
-            echo "Usage: cmat workflow show-step <template_name> <step_number>" >&2
+            echo "Usage: cmat workflow show-step <template_name> <step_num>" >&2
             exit 1
         fi
         show_template_step "$2" "$3"
         ;;
 
+    "add-transition")
+        if [ $# -lt 5 ]; then
+            echo "Usage: cmat workflow add-transition <template_name> <step_num> <status> <next_step> [auto_chain]" >&2
+            echo "  next_step: agent name or 'null' for workflow end" >&2
+            echo "  auto_chain: true|false (default: true)" >&2
+            exit 1
+        fi
+        add_transition "$2" "$3" "$4" "$5" "${6:-true}"
+        ;;
+
+    "remove-transition")
+        if [ $# -lt 4 ]; then
+            echo "Usage: cmat workflow remove-transition <template_name> <step_num> <status>" >&2
+            exit 1
+        fi
+        remove_transition "$2" "$3" "$4"
+        ;;
+
+    "list-transitions")
+        if [ $# -lt 3 ]; then
+            echo "Usage: cmat workflow list-transitions <template_name> <step_num>" >&2
+            exit 1
+        fi
+        list_transitions "$2" "$3"
+        ;;
+
+    "validate")
+        if [ $# -lt 2 ]; then
+            echo "Usage: cmat workflow validate <template_name>" >&2
+            exit 1
+        fi
+        validate_workflow "$2"
+        ;;
+
+    "start")
+        if [ $# -lt 3 ]; then
+            echo "Usage: cmat workflow start <workflow_name> <enhancement_name>" >&2
+            exit 1
+        fi
+        start_workflow "$2" "$3"
+        ;;
+
     *)
         echo "Unknown workflow command: ${1:-}" >&2
-        echo "Usage: cmat workflow <validate|next-agent|next-source|auto-chain|template|get-contract|create|list|show|delete|add-step|remove-step|list-steps|show-step>" >&2
+        echo "" >&2
+        echo "Template Management:" >&2
+        echo "  create <name> <description>    Create new workflow template" >&2
+        echo "  list                            List all templates" >&2
+        echo "  show <name>                     Show template details" >&2
+        echo "  delete <name>                   Delete template" >&2
+        echo "  validate <name>                 Validate template structure" >&2
+        echo "" >&2
+        echo "Step Management:" >&2
+        echo "  add-step <name> <agent> <input> <output> [pos]" >&2
+        echo "  edit-step <name> <step> [input] [output]" >&2
+        echo "  remove-step <name> <step>" >&2
+        echo "  list-steps <name>" >&2
+        echo "  show-step <name> <step>" >&2
+        echo "" >&2
+        echo "Transition Management:" >&2
+        echo "  add-transition <name> <step> <status> <next> [auto]" >&2
+        echo "  remove-transition <name> <step> <status>" >&2
+        echo "  list-transitions <name> <step>" >&2
+        echo "" >&2
+        echo "Execution:" >&2
+        echo "  start <workflow_name> <enhancement_name>" >&2
+        echo "" >&2
+        echo "Utilities:" >&2
+        echo "  validate-output <agent> <dir> <file>" >&2
+        echo "  get-task-type <agent>" >&2
         exit 1
         ;;
 esac

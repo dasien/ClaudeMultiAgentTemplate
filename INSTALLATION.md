@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide will walk you through installing and configuring the Claude Multi-Agent Template in your project.
+This guide will walk you through installing and configuring the Claude Multi-Agent Template v5.0 in your project.
 
 ## Prerequisites
 
@@ -17,6 +17,7 @@ Optional (for testing the example):
 ## Installation Steps
 
 ### Step 1: Copy Template Files
+
 ```bash
 # Navigate to your project root
 cd /path/to/your/project
@@ -27,32 +28,51 @@ cp -r /path/to/ClaudeMultiAgentTemplate/.claude ./
 # Make scripts executable
 chmod +x .claude/scripts/*.sh
 chmod +x .claude/hooks/*.sh
+chmod +x .claude/agents/generate_agents_json.sh
 ```
 
 ### Step 2: Create enhancements Directory
+
 ```bash
 # Create enhancements directory structure
 mkdir -p enhancements
 
 # Optional: Copy example enhancements for reference
 cp -r /path/to/ClaudeMultiAgentTemplate/enhancements/demo-test ./enhancements/
-cp -r /path/to/ClaudeMultiAgentTemplate/enhancements/add-json-export ./enhancements/
 ```
 
 ### Step 3: Configure Claude Code
 
-Create `.claude/settings.local.json`:
+Create `.claude/settings.json` (or `.claude/settings.local.json`):
 ```json
 {
   "hooks": {
-    "on_subagent_stop": ".claude/hooks/on-subagent-stop.sh"
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/on-subagent-stop.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/on-session-end-cost.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
-**Note**: Hook configuration may vary by Claude Code version. Consult Claude Code documentation if this doesn't work.
-
 ### Step 4: Verify Installation
+
 ```bash
 # Check that scripts are executable
 ls -l .claude/scripts/
@@ -60,40 +80,30 @@ ls -l .claude/scripts/
 # Should show: -rwxr-xr-x for *.sh files
 
 # Verify cmat command works
-.claude/scripts/cmat.sh version
+.claude/scripts/cmat version
 
 # Should show:
-# cmat v4.0.0
-# Claude Multi-Agent Template System
+# cmat v5.0.0
 # Dependencies: ✓ jq, ✓ claude, ✓ bash
-# Project paths and counts
-
-# Check queue system
-.claude/scripts/cmat.sh queue status
-
-# Should show: agent statuses and empty queues
 ```
 
-### Step 5: Verify Skills System
+### Step 5: Verify Agents and Workflows
+
 ```bash
-# List available skills
-.claude/scripts/cmat.sh skills list
+# Check agents
+cmat agents list | jq '.agents[] | {name, role, validations}'
 
-# Should show 14 skills
+# Should show 7 agents with role and validations
 
-# Test skills system
-.claude/scripts/cmat.sh skills test
+# Check workflows
+cmat workflow list
 
-# Should show:
-# - Skills data
-# - Requirements analyst skills
-# - Sample skill content
-# - Skills prompt preview
+# Should show 6 built-in workflows
 ```
 
 ### Step 6: Customize for Your Project
 
-Before using the template, customize it for your project:
+Before using the template, customize it:
 
 1. **Edit agent files** in `.claude/agents/` to specify:
    - Your programming language(s)
@@ -101,108 +111,95 @@ Before using the template, customize it for your project:
    - Your coding standards
    - Your documentation format
 
-2. **Update project-specific sections** in each agent file (search for `[**NOTE TO TEMPLATE USER**]`)
+2. **Create custom workflows** for your common patterns
 
-3. **Customize or add skills** as needed for your domain
+3. **Add custom skills** for your domain
 
 See [CUSTOMIZATION.md](CUSTOMIZATION.md) for detailed instructions.
 
+---
+
 ## Verification
 
-Test that everything is working:
+### Test 1: Basic Workflow
 
-### Test Queue System
 ```bash
-# Create a test file
-echo "# Test Enhancement" > enhancements/test.md
+# Create simple test workflow
+cmat workflow create test-install "Installation test"
 
-# Add a test task
-TASK_ID=$(cmat.sh queue add \
-  "Test task" \
-  "requirements-analyst" \
-  "normal" \
-  "analysis" \
-  "enhancements/test.md" \
-  "Testing queue system" \
-  false \
-  false)
+cmat workflow add-step test-install requirements-analyst \
+    "enhancements/{enhancement_name}/{enhancement_name}.md" \
+    "test.md"
 
-echo "Created task: $TASK_ID"
+cmat workflow add-transition test-install 0 READY_FOR_DEVELOPMENT null false
 
-# Check status
-cmat.sh queue status
+# Validate
+cmat workflow validate test-install
 
-# You should see the task in pending_tasks
+# Create test enhancement
+mkdir -p enhancements/test-install
+cat > enhancements/test-install/test-install.md << 'EOF'
+# Test Installation
 
-# Clean up
-cmat.sh queue cancel $TASK_ID
+## Description
+Verify system is working.
+
+## Acceptance Criteria
+- Agent processes this file
+- Creates required_output/ directory
+- Generates test.md with metadata
+EOF
+
+# Run workflow
+cmat workflow start test-install test-install
 ```
 
-### Test Skills Integration
+### Test 2: Verify Output Structure
+
 ```bash
-# Verify skills are assigned to agents
-cmat.sh skills get requirements-analyst
+# Check directory structure
+ls -la enhancements/test-install/requirements-analyst/
+
+# Should see:
+# required_output/
+# optional_output/ (maybe)
+
+# Check required file
+cat enhancements/test-install/requirements-analyst/required_output/test.md
+
+# Should have metadata header:
+# ---
+# enhancement: test-install
+# agent: requirements-analyst
+# ...
+# ---
+```
+
+### Test 3: Verify Skills
+
+```bash
+# Check skills available
+cmat skills list | jq '.skills | length'
+# Should show 14
+
+# Check agent skills
+cmat skills get requirements-analyst
 # Should show: ["requirements-elicitation", "user-story-writing", "bug-triage"]
-
-cmat.sh skills get architect
-# Should show: ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"]
-
-# Test skills prompt generation
-cmat.sh skills prompt requirements-analyst | head -30
-# Should show skills section with all assigned skills
 ```
 
-### Test Complete Workflow
-
-Run the demo enhancement to verify the entire system:
-```bash
-# Set environment to skip integration prompts
-export AUTO_INTEGRATE="never"
-
-# Create fully automated workflow task
-TASK_ID=$(cmat.sh queue add \
-  "Demo test - full workflow" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/demo-test/demo-test.md" \
-  "Test complete workflow with skills" \
-  true \
-  true)
-
-# Start it
-cmat.sh queue start $TASK_ID
-
-# Watch it run through entire workflow:
-# Requirements → Architecture → Implementation → Testing → Documentation
-
-# Monitor progress
-watch -n 5 'cmat.sh queue status'
-
-# After completion, verify all outputs
-ls enhancements/demo-test/
-# Should show directories for all 5 agents plus logs/
-
-# Verify skills were used
-grep -r "Skills Applied" enhancements/demo-test/*/
-```
+---
 
 ## Common First-Time Issues
 
-### "Command not found: cmat.sh"
+### "Command not found: cmat"
 
-**Solution**: Use full path or ensure you're in project root
+**Solution**: Use full path or create alias
 ```bash
-# Check current directory
-pwd
-
-# Should show your project directory
-
 # Use full path
-.claude/scripts/cmat.sh version
+.claude/scripts/cmat version
 
-# Or create alias (optional)
-alias cmat='.claude/scripts/cmat.sh'
+# Or create alias
+alias cmat='.claude/scripts/cmat'
 ```
 
 ### "jq: command not found"
@@ -212,186 +209,87 @@ alias cmat='.claude/scripts/cmat.sh'
 # macOS
 brew install jq
 
-# Ubuntu/Debian
+# Linux
 sudo apt-get install jq
-
-# Verify
-jq --version
 ```
 
-### "Queue file not found"
+### "Workflow template not found"
 
-**Solution**: Initialize queue by running status
+**Solution**: Check workflow_templates.json is present
 ```bash
-# This creates initial queue files
-cmat.sh queue status
-
-# Or copy the empty template
-cp .claude/queues/task_queue_empty.json .claude/queues/task_queue.json
+ls .claude/queues/workflow_templates.json
+cmat workflow list
 ```
 
-### "Skills not loading"
+### "Agent not found in agents.json"
 
-**Solution**: Verify skills directory structure
+**Solution**: Regenerate agents.json
 ```bash
-# Check skills exist
-ls .claude/skills/
-
-# Verify skills.json
-cat .claude/skills/skills.json | jq '.skills | length'
-# Should show: 14
-
-# Check individual skill
-ls .claude/skills/requirements-elicitation/SKILL.md
+cd .claude/agents
+./generate_agents_json.sh
 ```
 
-### "Agent not found in contracts"
+### "Permission denied"
 
-**Solution**: Verify agent_contracts.json
+**Solution**: Make scripts executable
 ```bash
-# Check contracts file exists
-ls .claude/agents/agent_contracts.json
-
-# List all agents in contracts
-jq '.agents | keys' .claude/agents/agent_contracts.json
-```
-
-### "Hooks not executing"
-
-**Solution**: 
-1. Verify hooks are executable: `ls -l .claude/hooks/`
-2. Check `settings.local.json` has correct paths
-3. Verify bash is available: `which bash`
-
-## Advanced Setup
-
-### Creating an Alias
-
-For convenience, add to your `~/.bashrc` or `~/.zshrc`:
-```bash
-# If you work on one project
-alias cmat='/path/to/your/project/.claude/scripts/cmat.sh'
-
-# If you work on multiple projects, use function
-cmat() {
-    if [ -f ".claude/scripts/cmat.sh" ]; then
-        .claude/scripts/cmat.sh "$@"
-    else
-        echo "Error: Not in a CMAT project (no .claude/scripts/cmat.sh found)"
-        return 1
-    fi
-}
-```
-
-Then reload: `source ~/.bashrc`
-
-Now you can just use: `cmat queue status`
-
-### Setting Up Integration
-
-For GitHub/Jira integration:
-
-1. Follow [.claude/mcp-servers/MCP_INTEGRATION_QUICKSTART.md](.claude/mcp-servers/MCP_INTEGRATION_QUICKSTART.md)
-2. Configure MCP servers
-3. Set environment variables for tokens
-4. Test with: `cmat.sh integration sync-all`
-
-### Custom Skills
-
-To add domain-specific skills:
-
-1. Use [SKILL_TEMPLATE.md](SKILL_TEMPLATE.md) as guide
-2. Create skill directory and SKILL.md
-3. Add to `.claude/skills/skills.json`
-4. Assign to relevant agents
-5. Regenerate: `cmat.sh agents generate-json`
-
-See [SKILLS_GUIDE.md](SKILLS_GUIDE.md) for complete instructions.
-
-## Post-Installation Checklist
-
-After installation, verify:
-
-- [ ] `cmat.sh version` shows v4.0.0 and all dependencies
-- [ ] `cmat.sh queue status` works without errors
-- [ ] `cmat.sh skills list` shows 14 skills
-- [ ] Agent files customized for your project
-- [ ] Skills assigned appropriately to agents
-- [ ] Hook configuration in settings.local.json
-- [ ] Demo test enhancement runs successfully
-- [ ] All 5 agent phases complete in workflow
-- [ ] Skills appear in agent logs
-- [ ] Agents document skill usage
-
-## Troubleshooting Installation
-
-### Permission Errors
-```bash
-# Make all scripts executable
 chmod +x .claude/scripts/*.sh
 chmod +x .claude/hooks/*.sh
-
-# Verify
-ls -l .claude/**/*.sh
 ```
-
-### Path Issues
-
-All commands must be run from **project root** (the directory containing `.claude/`):
-```bash
-# Check you're in the right place
-ls .claude/
-# Should show: scripts/ agents/ skills/ hooks/ queues/ etc.
-
-# Always run cmat.sh from project root
-.claude/scripts/cmat.sh queue status
-```
-
-### JSON Parse Errors
-```bash
-# Validate all JSON files
-jq '.' .claude/queues/task_queue.json
-jq '.' .claude/agents/agent_contracts.json
-jq '.' .claude/skills/skills.json
-jq '.' .claude/agents/agents.json
-
-# Any errors will show the line number
-```
-
-### Skills Not Appearing
-```bash
-# Verify agents.json has skills field
-jq '.agents[0] | keys' .claude/agents/agents.json
-# Should include "skills" in the list
-
-# Regenerate agents.json from .md files
-cmat.sh agents generate-json
-
-# Verify skills field populated
-jq '.agents[] | {name: .name, skills: .skills}' .claude/agents/agents.json
-```
-
-## Next Steps
-
-1. ✅ Read [README.md](README.md) - Understand the system overview
-2. ✅ Review [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Learn workflow patterns
-3. ✅ Read [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Understand the skills system
-4. ✅ Study [.claude/agents/agent_contracts.json](.claude/agents/agent_contracts.json) - See agent specifications
-5. ✅ Review [CUSTOMIZATION.md](CUSTOMIZATION.md) - Adapt to your project
-6. ✅ Try `enhancements/demo-test/` - Run simple test
-7. ✅ Explore `enhancements/add-json-export/` - Full workflow example
-8. ✅ Create your first enhancement!
-
-## Getting Help
-
-- **Command Reference**: [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) - All cmat.sh commands
-- **Skills Guide**: [SKILLS_GUIDE.md](SKILLS_GUIDE.md) - Skills system documentation
-- **Workflow Patterns**: [.claude/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Detailed workflows
-- **Example Code**: Study `enhancements/add-json-export/` for working example
-- **Logs**: Review `.claude/logs/` and `enhancements/*/logs/` for execution details
 
 ---
 
-**Installation complete!** You're ready to start using the multi-agent development system with skills.
+## What's Next?
 
-For your first task, try running the demo-test enhancement to see the complete workflow in action.
+Now that installation is verified:
+
+### Learn the System
+
+- **Read** [README.md](README.md) - System overview
+- **Study** [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) - Workflow patterns
+- **Review** [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) - Command reference
+- **Explore** [WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md) - Template management
+
+### Customize
+
+- **Edit** agent definitions
+- **Create** custom workflows
+- **Add** custom skills
+- **Configure** integrations (optional)
+
+### Try Real Work
+
+- **Create** your first enhancement
+- **Run** a complete workflow
+- **Review** outputs from each agent
+
+---
+
+## Quick Command Reference
+
+```bash
+# Workflow operations
+cmat workflow list
+cmat workflow start <workflow> <enhancement>
+cmat workflow validate <workflow>
+
+# Queue operations
+cmat queue status
+cmat queue list <type>
+
+# Skills operations
+cmat skills list
+cmat skills get <agent>
+
+# Utilities
+cmat version
+cmat help
+```
+
+For complete documentation, see [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md).
+
+---
+
+**Installation complete!** You're ready to use the multi-agent development system.
+
+Start with a simple test workflow, then create your own custom workflows for your project patterns.

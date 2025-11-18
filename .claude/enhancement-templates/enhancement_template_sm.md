@@ -1,6 +1,9 @@
 ---
-slug: simple-feature
+slug: feature-name-here
 status: NEW
+created: YYYY-MM-DD
+author: Your Name
+priority: low|medium|high|critical
 ---
 
 # Enhancement: [Title]

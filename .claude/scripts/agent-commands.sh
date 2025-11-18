@@ -51,6 +51,44 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common-commands.sh"
 
 #############################################################################
+# HELPER FUNCTIONS
+#############################################################################
+
+# Helper function to get workflow state from task metadata
+get_workflow_state() {
+    local task_id="$1"
+
+    # Get task from queue (check all queues: pending, active, completed)
+    local task
+    task=$(jq -r "
+        (.pending_tasks[] // empty),
+        (.active_workflows[] // empty),
+        (.completed_tasks[] // empty) |
+        select(.id == \"$task_id\")
+    " "$QUEUE_FILE" 2>/dev/null)
+
+    if [ -z "$task" ] || [ "$task" = "null" ]; then
+        return 1
+    fi
+
+    # Extract workflow metadata
+    local workflow_name workflow_step
+    workflow_name=$(echo "$task" | jq -r '.metadata.workflow_name // empty')
+    workflow_step=$(echo "$task" | jq -r '.metadata.workflow_step // empty')
+
+    # Return workflow state as JSON
+    if [ -n "$workflow_name" ]; then
+        jq -n \
+            --arg name "$workflow_name" \
+            --arg step "$workflow_step" \
+            '{
+                workflow_name: $name,
+                current_step_index: ($step | tonumber)
+            }'
+    fi
+}
+
+#############################################################################
 # TEMPLATE OPERATIONS
 #############################################################################
 
@@ -122,27 +160,14 @@ invoke_agent() {
         return 1
     fi
 
-    # Get agent contract information
-    local agent_contract
-    agent_contract=$("$SCRIPT_DIR/workflow-commands.sh" get-contract "$agent" 2>/dev/null || echo "{}")
-
-    local root_document output_directory
-    root_document=$(echo "$agent_contract" | jq -r '.outputs.root_document // "output.md"')
-    output_directory=$(echo "$agent_contract" | jq -r '.outputs.output_directory // "output"')
-
-    # Extract status codes from contract
-    local success_statuses failure_pattern
-    success_statuses=$(echo "$agent_contract" | jq -r '[.statuses.success[].code] | join(" or ")' 2>/dev/null || echo "")
-    failure_pattern=$(echo "$agent_contract" | jq -r '.statuses.failure[0].pattern // .statuses.failure[0].code // "BLOCKED: <reason>"' 2>/dev/null || echo "BLOCKED: <reason>")
-
     # Extract enhancement name
     local enhancement_name enhancement_dir
     enhancement_name=$(extract_enhancement_name "$source_file")
     enhancement_dir="enhancements/$enhancement_name"
 
     # Validate source file exists
-    if [ ! -f "$source_file" ]; then
-        echo "Error: Source file not found: $source_file"
+    if [ ! -f "$source_file" ] && [ ! -d "$source_file" ]; then
+        echo "Error: Source file or directory not found: $source_file"
         return 1
     fi
 
@@ -168,6 +193,48 @@ invoke_agent() {
         template="${template}${skills_section}"
     fi
 
+    # Get workflow context to extract expected statuses and required output
+    local workflow_state expected_statuses workflow_output
+    workflow_state=$(get_workflow_state "$task_id" 2>/dev/null)
+
+    if [ -n "$workflow_state" ] && [ "$workflow_state" != "null" ]; then
+        # Get workflow name and current step
+        local workflow_name current_step_index
+        workflow_name=$(echo "$workflow_state" | jq -r '.workflow_name')
+        current_step_index=$(echo "$workflow_state" | jq -r '.current_step_index')
+
+        # Load workflow definition
+        local workflow step
+        workflow=$(jq -r ".workflows[\"$workflow_name\"]" "$WORKFLOW_TEMPLATES_FILE" 2>/dev/null)
+        step=$(echo "$workflow" | jq -r ".steps[$current_step_index]" 2>/dev/null)
+
+        if [ -n "$step" ] && [ "$step" != "null" ]; then
+            # Get required output filename from workflow step
+            workflow_output=$(echo "$step" | jq -r '.required_output // "output.md"')
+
+            # Extract expected statuses from on_status keys
+            expected_statuses=$(echo "$step" | jq -r '.on_status | keys | map("- `" + . + "`") | join("\n")')
+        fi
+    fi
+
+    # If no workflow context or no expected statuses, use generic message
+    if [ -z "$expected_statuses" ]; then
+        expected_statuses="(No workflow-defined statuses - output any appropriate status)"
+    fi
+
+    # Determine input instruction based on source_file type
+    local input_instruction
+    if [ -f "$source_file" ]; then
+        input_instruction="Read and process this file: $source_file"
+    elif [ -d "$source_file" ]; then
+        input_instruction="Read and process all files in this directory: $source_file"
+    else
+        input_instruction="Input: $source_file"
+    fi
+
+    # Get required output filename from workflow or use default
+    local required_output_filename="${workflow_output:-output.md}"
+
     # Substitute variables
     local prompt="$template"
     prompt="${prompt//\$\{agent\}/$agent}"
@@ -176,12 +243,11 @@ invoke_agent() {
     prompt="${prompt//\$\{task_description\}/$task_description}"
     prompt="${prompt//\$\{task_id\}/$task_id}"
     prompt="${prompt//\$\{task_type\}/$task_type}"
-    prompt="${prompt//\$\{root_document\}/$root_document}"
-    prompt="${prompt//\$\{output_directory\}/$output_directory}"
     prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
     prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
-    prompt="${prompt//\$\{success_statuses\}/$success_statuses}"
-    prompt="${prompt//\$\{failure_pattern\}/$failure_pattern}"
+    prompt="${prompt//\$\{input_instruction\}/$input_instruction}"
+    prompt="${prompt//\$\{required_output_filename\}/$required_output_filename}"
+    prompt="${prompt//\$\{expected_statuses\}/$expected_statuses}"
 
     local start_time start_timestamp
     start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -194,8 +260,7 @@ invoke_agent() {
     echo "Task ID: $task_id" | tee -a "$log_file"
     echo "Source File: $source_file" | tee -a "$log_file"
     echo "Enhancement: $enhancement_name" | tee -a "$log_file"
-    echo "Output Directory: $output_directory" | tee -a "$log_file"
-    echo "Root Document: $root_document" | tee -a "$log_file"
+    echo "Required Output: $required_output_filename" | tee -a "$log_file"
     echo "Log: $log_file" | tee -a "$log_file"
     echo "Cost Tracking: ENABLED (SessionEnd hook)" | tee -a "$log_file"
     echo "" | tee -a "$log_file"
@@ -222,7 +287,6 @@ invoke_agent() {
     export CMAT_ENHANCEMENT="$enhancement_name"
 
     # Invoke Claude Code with bypass permissions in background to capture PID
-    # claude --permission-mode bypassPermissions "$prompt" 2>&1 | tee -a "$log_file"
     claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1 &
 
     local claude_pid=$!

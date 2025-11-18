@@ -1,43 +1,69 @@
 {
-  "templates": {
+  "version": "2.0.0",
+  "description": "Workflow templates with input/output specifications and status transitions",
+  "workflows": {
     "new_feature_development": {
       "name": "New Feature Development",
       "description": "Complete workflow for implementing a new feature",
       "steps": [
         {
           "agent": "requirements-analyst",
-          "task": "Analyze feature requirements",
-          "description": "Break down feature requirements into implementable components",
-          "estimated_duration": "1-2 hours",
-          "deliverables": ["Feature specification", "Implementation plan", "Technical constraints"]
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "analysis_summary.md",
+          "on_status": {
+            "READY_FOR_DEVELOPMENT": {
+              "next_step": "architect",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "architect",
-          "task": "Design system architecture",
-          "description": "Design technical architecture and specifications",
-          "estimated_duration": "2-3 hours",
-          "deliverables": ["Architecture design", "API specifications", "Integration plan"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "implementation_plan.md",
+          "on_status": {
+            "READY_FOR_IMPLEMENTATION": {
+              "next_step": "implementer",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "implementer",
-          "task": "Implement feature code",
-          "description": "Write production code based on architectural design",
-          "estimated_duration": "4-6 hours",
-          "deliverables": ["Production code", "Code documentation", "Integration complete"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "implementation_summary.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            },
+            "READY_FOR_INTEGRATION": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "tester",
-          "task": "Comprehensive testing",
-          "description": "Test all components and integration points",
-          "estimated_duration": "2-3 hours",
-          "deliverables": ["Test suite", "Test results", "Quality validation"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "test_summary.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": "documenter",
+              "auto_chain": false
+            }
+          }
         },
         {
           "agent": "documenter",
-          "task": "Update documentation",
-          "description": "Document new feature for users and developers",
-          "estimated_duration": "1-2 hours",
-          "deliverables": ["User documentation", "API documentation", "Examples"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "documentation_summary.md",
+          "on_status": {
+            "DOCUMENTATION_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
         }
       ]
     },
@@ -47,31 +73,47 @@
       "steps": [
         {
           "agent": "requirements-analyst",
-          "task": "Analyze bug report",
-          "description": "Understand bug scope, impact, and root cause",
-          "estimated_duration": "30 minutes",
-          "deliverables": ["Root cause analysis", "Fix strategy"]
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "bug_analysis.md",
+          "on_status": {
+            "READY_FOR_DEVELOPMENT": {
+              "next_step": "architect",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "architect",
-          "task": "Design fix approach",
-          "description": "Design solution that prevents similar issues",
-          "estimated_duration": "30 minutes",
-          "deliverables": ["Fix design", "Prevention strategy"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "fix_design.md",
+          "on_status": {
+            "READY_FOR_IMPLEMENTATION": {
+              "next_step": "implementer",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "implementer",
-          "task": "Implement bug fix",
-          "description": "Implement fix following architectural design",
-          "estimated_duration": "1-2 hours",
-          "deliverables": ["Fixed code", "Regression prevention"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "fix_summary.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "tester",
-          "task": "Validate fix",
-          "description": "Ensure bug is fixed and no regressions introduced",
-          "estimated_duration": "1 hour",
-          "deliverables": ["Test validation", "Regression test results"]
+          "input": "{previous_step}/required_output/",
+          "required_output": "validation_summary.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
         }
       ]
     },
@@ -81,17 +123,25 @@
       "steps": [
         {
           "agent": "implementer",
-          "task": "Implement hotfix",
-          "description": "Quick fix for critical issues",
-          "estimated_duration": "1-2 hours",
-          "priority": "critical"
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "hotfix_summary.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "tester",
-          "task": "Emergency validation",
-          "description": "Critical path testing only",
-          "estimated_duration": "30 minutes",
-          "priority": "critical"
+          "input": "{previous_step}/required_output/",
+          "required_output": "emergency_validation.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
         }
       ]
     },
@@ -101,27 +151,47 @@
       "steps": [
         {
           "agent": "tester",
-          "task": "Profile current performance",
-          "description": "Establish baseline performance metrics",
-          "estimated_duration": "1 hour"
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "performance_baseline.md",
+          "on_status": {
+            "BASELINE_COMPLETE": {
+              "next_step": "architect",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "architect",
-          "task": "Design optimization strategy",
-          "description": "Identify bottlenecks and design improvements",
-          "estimated_duration": "1-2 hours"
+          "input": "{previous_step}/required_output/",
+          "required_output": "optimization_strategy.md",
+          "on_status": {
+            "READY_FOR_IMPLEMENTATION": {
+              "next_step": "implementer",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "implementer",
-          "task": "Implement optimizations",
-          "description": "Improve performance based on architectural guidance",
-          "estimated_duration": "3-4 hours"
+          "input": "{previous_step}/required_output/",
+          "required_output": "optimization_summary.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "tester",
-          "task": "Validate improvements",
-          "description": "Measure performance gains and ensure stability",
-          "estimated_duration": "1-2 hours"
+          "input": "{previous_step}/required_output/",
+          "required_output": "performance_results.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
         }
       ]
     },
@@ -131,21 +201,36 @@
       "steps": [
         {
           "agent": "requirements-analyst",
-          "task": "Audit documentation needs",
-          "description": "Identify gaps and outdated information",
-          "estimated_duration": "1 hour"
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "documentation_audit.md",
+          "on_status": {
+            "READY_FOR_DOCUMENTATION": {
+              "next_step": "documenter",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "documenter",
-          "task": "Update documentation",
-          "description": "Update docs, examples, and guides",
-          "estimated_duration": "2-4 hours"
+          "input": "{previous_step}/required_output/",
+          "required_output": "documentation_updates.md",
+          "on_status": {
+            "DOCUMENTATION_COMPLETE": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "tester",
-          "task": "Validate documentation accuracy",
-          "description": "Test examples and verify technical accuracy",
-          "estimated_duration": "1 hour"
+          "input": "{previous_step}/required_output/",
+          "required_output": "documentation_validation.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
         }
       ]
     },
@@ -155,27 +240,47 @@
       "steps": [
         {
           "agent": "architect",
-          "task": "Design refactoring strategy",
-          "description": "Plan refactoring approach and design improvements",
-          "estimated_duration": "1-2 hours"
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "refactoring_strategy.md",
+          "on_status": {
+            "READY_FOR_IMPLEMENTATION": {
+              "next_step": "implementer",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "implementer",
-          "task": "Implement refactoring",
-          "description": "Refactor code following architectural guidance",
-          "estimated_duration": "3-5 hours"
+          "input": "{previous_step}/required_output/",
+          "required_output": "refactoring_summary.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "tester",
-          "task": "Regression testing",
-          "description": "Ensure refactoring didn't break functionality",
-          "estimated_duration": "1-2 hours"
+          "input": "{previous_step}/required_output/",
+          "required_output": "regression_test_results.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": "documenter",
+              "auto_chain": true
+            }
+          }
         },
         {
           "agent": "documenter",
-          "task": "Update technical documentation",
-          "description": "Update docs to reflect new code structure",
-          "estimated_duration": "1 hour"
+          "input": "{previous_step}/required_output/",
+          "required_output": "technical_documentation.md",
+          "on_status": {
+            "DOCUMENTATION_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
         }
       ]
     }

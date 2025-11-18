@@ -1,283 +1,251 @@
 #!/bin/bash
 
 ################################################################################
-# on-subagent-stop.sh - Enhanced Subagent Completion Hook
+# on-subagent-stop.sh - Workflow-Driven Orchestration Hook
 #
-# Manages workflow transitions with contract-based validation and integration
+# Manages workflow transitions using workflow templates and task metadata
 #
-# Version: 4.0.0 - Updated to use cmat command structure
+# Version: 5.0.0 - Simplified workflow-based orchestration
 ################################################################################
 
 set -euo pipefail
 
 # Initialize cmat command
-CMAT=".claude/scripts/cmat"
+CMAT=".claude/scripts/cmat.sh"
 
 # Read the subagent output from stdin
 SUBAGENT_OUTPUT=$(cat)
 
 ################################################################################
-# Detect completion status from agent output
+# Extract completion status from agent output
 ################################################################################
 
-SUBAGENT_STATUS=""
+# Extract the status line (agent should output: "Status: SOME_STATUS" or just "SOME_STATUS")
+SUBAGENT_STATUS=$(echo "$SUBAGENT_OUTPUT" | grep -oE "Status:[[:space:]]*[A-Z_:]+" | sed 's/Status:[[:space:]]*//' | head -1)
 
-# Check for all possible status codes
-if echo "$SUBAGENT_OUTPUT" | grep -q "READY_FOR_DEVELOPMENT"; then
-    SUBAGENT_STATUS="READY_FOR_DEVELOPMENT"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "READY_FOR_IMPLEMENTATION"; then
-    SUBAGENT_STATUS="READY_FOR_IMPLEMENTATION"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "READY_FOR_TESTING"; then
-    SUBAGENT_STATUS="READY_FOR_TESTING"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "READY_FOR_INTEGRATION"; then
-    SUBAGENT_STATUS="READY_FOR_INTEGRATION"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "TESTING_COMPLETE"; then
-    SUBAGENT_STATUS="TESTING_COMPLETE"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "DOCUMENTATION_COMPLETE"; then
-    SUBAGENT_STATUS="DOCUMENTATION_COMPLETE"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "INTEGRATION_COMPLETE"; then
-    SUBAGENT_STATUS="INTEGRATION_COMPLETE"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "INTEGRATION_FAILED"; then
-    SUBAGENT_STATUS="INTEGRATION_FAILED"
-elif echo "$SUBAGENT_OUTPUT" | grep -q "BLOCKED:"; then
-    SUBAGENT_STATUS=$(echo "$SUBAGENT_OUTPUT" | grep -o "BLOCKED:.*" | head -1)
+# If not found in that format, try to find common status patterns
+if [ -z "$SUBAGENT_STATUS" ]; then
+    SUBAGENT_STATUS=$(echo "$SUBAGENT_OUTPUT" | grep -oE "(READY_FOR_[A-Z_]+|[A-Z_]+_COMPLETE|BLOCKED:[^*]*|NEEDS_[A-Z_:]+|BASELINE_[A-Z_]+|INTEGRATION_[A-Z_]+)" | head -1)
 fi
 
 echo "=== AGENT WORKFLOW TRANSITION ==="
-echo "Detected Status: $SUBAGENT_STATUS"
+echo "Detected Status: ${SUBAGENT_STATUS:-UNKNOWN}"
 echo
 
+# If no status detected, cannot proceed
+if [ -z "$SUBAGENT_STATUS" ]; then
+    echo "⚠️  No status detected in agent output"
+    echo "Agent must output a status code"
+    exit 0
+fi
+
 ################################################################################
-# Process workflow transition if status detected
+# Process workflow transition
 ################################################################################
 
-if [ -n "$SUBAGENT_STATUS" ] && [ -x "$CMAT" ]; then
+if [ -x "$CMAT" ]; then
     # Find the current active task
     CURRENT_TASK_ID=$(jq -r '.active_workflows[0].id' .claude/queues/task_queue.json 2>/dev/null)
 
-    if [ -n "$CURRENT_TASK_ID" ] && [ "$CURRENT_TASK_ID" != "null" ]; then
-        # Get task details
-        TASK=$(jq -r ".active_workflows[] | select(.id == \"$CURRENT_TASK_ID\")" .claude/queues/task_queue.json)
-        AGENT=$(echo "$TASK" | jq -r '.assigned_agent')
-        SOURCE_FILE=$(echo "$TASK" | jq -r '.source_file')
-        AUTO_CHAIN=$(echo "$TASK" | jq -r '.auto_chain // false')
-        ENHANCEMENT_TITLE=$(echo "$TASK" | jq -r '.metadata.enhancement_title // "Not part of an Enhancement"')
+    if [ -z "$CURRENT_TASK_ID" ] || [ "$CURRENT_TASK_ID" = "null" ]; then
+        echo "⚠️  No active task found"
+        exit 0
+    fi
 
-        # Extract enhancement name
-        ENHANCEMENT_NAME=$(echo "$SOURCE_FILE" | sed -E 's|^enhancements/([^/]+)/.*|\1|')
-        ENHANCEMENT_DIR="enhancements/$ENHANCEMENT_NAME"
+    # Get task details
+    TASK=$(jq -r ".active_workflows[] | select(.id == \"$CURRENT_TASK_ID\")" .claude/queues/task_queue.json)
+    AGENT=$(echo "$TASK" | jq -r '.assigned_agent')
+    SOURCE_FILE=$(echo "$TASK" | jq -r '.source_file')
+    AUTO_CHAIN=$(echo "$TASK" | jq -r '.auto_chain // false')
+    ENHANCEMENT_TITLE=$(echo "$TASK" | jq -r '.metadata.enhancement_title // ""')
 
-        ########################################################################
-        # Handle Integration Agent Completions Differently
-        ########################################################################
+    # Get workflow context from task metadata
+    WORKFLOW_NAME=$(echo "$TASK" | jq -r '.metadata.workflow_name // ""')
+    WORKFLOW_STEP=$(echo "$TASK" | jq -r '.metadata.workflow_step // ""')
 
-        if [ "$AGENT" = "integration-coordinator" ] || \
-           [ "$AGENT" = "github-integration-coordinator" ] || \
-           [ "$AGENT" = "atlassian-integration-coordinator" ]; then
+    # Extract enhancement name
+    ENHANCEMENT_NAME=$(echo "$SOURCE_FILE" | sed -E 's|^enhancements/([^/]+)/.*|\1|')
+    ENHANCEMENT_DIR="enhancements/$ENHANCEMENT_NAME"
 
-            if [ "$SUBAGENT_STATUS" = "INTEGRATION_COMPLETE" ]; then
-                # Mark integration task complete
-                "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
-                echo "✅ Integration task completed successfully"
+    echo "Agent: $AGENT"
+    echo "Enhancement: $ENHANCEMENT_NAME"
+    echo "Workflow: ${WORKFLOW_NAME:-none}"
+    echo "Step: ${WORKFLOW_STEP:-none}"
+    echo
 
-                # Get integration details
-                TASK_DETAILS=$(jq -r ".completed_tasks[-1] | select(.assigned_agent | contains(\"integration\"))" .claude/queues/task_queue.json 2>/dev/null)
+    ########################################################################
+    # Validate Agent Outputs
+    ########################################################################
 
-                if [ -n "$TASK_DETAILS" ]; then
-                    PARENT_TASK=$(echo "$TASK_DETAILS" | jq -r '.metadata.parent_task_id // empty')
-                    WORKFLOW_STATUS=$(echo "$TASK_DETAILS" | jq -r '.metadata.workflow_status // empty')
+    if [ -n "$WORKFLOW_NAME" ] && [ -n "$WORKFLOW_STEP" ]; then
+        # Load workflow template to get required output
+        WORKFLOW=$(jq -r ".workflows[\"$WORKFLOW_NAME\"]" .claude/queues/workflow_templates.json 2>/dev/null)
 
-                    if [ -n "$PARENT_TASK" ] && [ "$PARENT_TASK" != "null" ]; then
-                        echo "📋 Integrated for workflow status: $WORKFLOW_STATUS"
-                        echo "🔗 Parent task: $PARENT_TASK"
+        if [ -n "$WORKFLOW" ] && [ "$WORKFLOW" != "null" ]; then
+            CURRENT_STEP=$(echo "$WORKFLOW" | jq -r ".steps[$WORKFLOW_STEP]")
+            REQUIRED_OUTPUT=$(echo "$CURRENT_STEP" | jq -r '.required_output // ""')
+
+            if [ -n "$REQUIRED_OUTPUT" ]; then
+                echo "🔍 Validating outputs..."
+
+                # Check required output exists
+                REQUIRED_FILE="$ENHANCEMENT_DIR/$AGENT/required_output/$REQUIRED_OUTPUT"
+
+                if [ ! -f "$REQUIRED_FILE" ]; then
+                    echo "❌ Required output file missing: $REQUIRED_FILE"
+                    "$CMAT" queue fail "$CURRENT_TASK_ID" "Output validation failed: $REQUIRED_OUTPUT not found"
+                    exit 1
+                fi
+
+                # Check metadata header if agent requires it
+                AGENT_DEF=$(jq -r ".agents[] | select(.[\"agent-file\"] == \"$AGENT\")" .claude/agents/agents.json)
+                METADATA_REQUIRED=$(echo "$AGENT_DEF" | jq -r '.validations.metadata_required // true')
+
+                if [ "$METADATA_REQUIRED" = "true" ]; then
+                    if ! grep -q "^---$" "$REQUIRED_FILE"; then
+                        echo "❌ Missing metadata header in: $REQUIRED_FILE"
+                        "$CMAT" queue fail "$CURRENT_TASK_ID" "Output validation failed: Missing metadata header"
+                        exit 1
                     fi
                 fi
 
-                echo ""
-                echo "Integration tasks update external systems:"
-                echo "  • GitHub: Issues, PRs, labels"
-                echo "  • Jira: Tickets, status updates"
-                echo "  • Confluence: Documentation pages"
-
-            elif [ "$SUBAGENT_STATUS" = "INTEGRATION_FAILED" ]; then
-                # Mark integration task failed
-                "$CMAT" queue fail "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
-                echo "❌ Integration with external systems failed"
-                echo ""
-                echo "⚠️  Manual intervention required"
-                echo ""
-                echo "Check the integration log for details:"
-                LOG_FILE=$(find enhancements/*/logs -name "*integration*coordinator_*" -type f 2>/dev/null | tail -1)
-                if [ -n "$LOG_FILE" ]; then
-                    echo "  Log: $LOG_FILE"
-                    echo ""
-                    echo "Common issues:"
-                    echo "  • API rate limits exceeded"
-                    echo "  • Authentication failures"
-                    echo "  • Missing configuration"
-                    echo ""
-                    echo "To retry:"
-                    echo "  cmat integration sync $CURRENT_TASK_ID"
-                fi
-            fi
-
-        ########################################################################
-        # Handle Regular Agent Completions (Requirements, Architect, etc.)
-        ########################################################################
-
-        else
-            # Validate agent outputs using contract
-            echo "🔍 Validating agent outputs..."
-
-            if "$CMAT" workflow validate "$AGENT" "$ENHANCEMENT_DIR"; then
-                # Validation passed - mark task complete
-                "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
-                echo "📋 Task marked complete: $CURRENT_TASK_ID"
-
-                ################################################################
-                # Check if status indicates workflow continuation (not blocked)
-                ################################################################
-
-                if [[ ! "$SUBAGENT_STATUS" =~ ^BLOCKED ]]; then
-
-                    ############################################################
-                    # Integration Task Creation (GitHub/Jira/Confluence)
-                    ############################################################
-
-                    # Check if this status requires external integration
-                    case "$SUBAGENT_STATUS" in
-                        "READY_FOR_DEVELOPMENT"|"READY_FOR_IMPLEMENTATION"|"READY_FOR_TESTING"|"TESTING_COMPLETE"|"DOCUMENTATION_COMPLETE")
-                            # Check AUTO_INTEGRATE environment variable
-                            AUTO_INTEGRATE="${AUTO_INTEGRATE:-prompt}"
-                            SHOULD_INTEGRATE="false"
-
-                            case "$AUTO_INTEGRATE" in
-                                "always")
-                                    SHOULD_INTEGRATE="true"
-                                    echo ""
-                                    echo "🔗 Auto-integration enabled (always mode)"
-                                    ;;
-                                "never")
-                                    SHOULD_INTEGRATE="false"
-                                    echo ""
-                                    echo "ℹ️  Auto-integration disabled (never mode)"
-                                    ;;
-                                *)
-                                    echo ""
-                                    echo "🔗 This status may require integration with external systems:"
-                                    echo "   Status: $SUBAGENT_STATUS"
-                                    echo "   This would create GitHub issues, Jira tickets, or update documentation."
-                                    echo ""
-                                    echo -n "Create integration task? [y/N]: "
-                                    read -r response
-                                    if [[ "$response" =~ ^[Yy]$ ]]; then
-                                        SHOULD_INTEGRATE="true"
-                                    fi
-                                    ;;
-                            esac
-
-                            if [ "$SHOULD_INTEGRATE" = "true" ]; then
-                                "$CMAT" integration add \
-                                    "$SUBAGENT_STATUS" \
-                                    "$SOURCE_FILE" \
-                                    "$AGENT" \
-                                    "$CURRENT_TASK_ID"
-                                echo "🔗 Integration task created"
-                            fi
-                            ;;
-                    esac
-
-                    ############################################################
-                    # Auto-Chain to Next Agent (Contract-Based)
-                    ############################################################
-
-                    # Determine next agent from contract
-                    NEXT_AGENT=$("$CMAT" workflow next-agent "$AGENT" "$SUBAGENT_STATUS" 2>/dev/null || echo "UNKNOWN")
-
-                    if [ "$NEXT_AGENT" != "UNKNOWN" ] && [ -n "$NEXT_AGENT" ]; then
-                        # Check if auto-chain is enabled
-                        if [ "$AUTO_CHAIN" = "true" ]; then
-                            echo ""
-                            echo "🔗 Auto-chaining enabled..."
-                            "$CMAT" workflow auto-chain "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
-                        else
-                            # Prompt for manual chain
-                            echo ""
-                            echo "🔗 Next Agent Suggestion:"
-                            echo "   Agent: $NEXT_AGENT"
-
-                            # Build next source path
-                            NEXT_SOURCE=$("$CMAT" workflow next-source "$ENHANCEMENT_NAME" "$NEXT_AGENT" "$AGENT")
-                            echo "   Source: $NEXT_SOURCE"
-                            echo ""
-                            echo -n "Create next task? [y/N]: "
-                            read -r response
-                            if [[ "$response" =~ ^[Yy]$ ]]; then
-                                "$CMAT" workflow auto-chain "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
-                            fi
-                        fi
-                    else
-                        # No next agent - workflow complete or needs manual decision
-                        echo ""
-                        echo "✅ Workflow phase complete"
-
-                        case "$SUBAGENT_STATUS" in
-                            "DOCUMENTATION_COMPLETE")
-                                echo "🎉 Enhancement fully complete!"
-                                echo "   All phases finished: Requirements → Architecture → Implementation → Testing → Documentation"
-                                ;;
-                            "TESTING_COMPLETE")
-                                echo "📚 Optional: Create documentation"
-                                echo ""
-                                echo -n "Queue documentation task? [y/N]: "
-                                read -r doc_response
-                                if [[ "$doc_response" =~ ^[Yy]$ ]]; then
-                                    DOC_SOURCE=$("$CMAT" workflow next-source "$ENHANCEMENT_NAME" "documenter" "$AGENT")
-                                    DOC_TASK_ID=$("$CMAT" queue add \
-                                        "Create documentation for $ENHANCEMENT_NAME" \
-                                        "documenter" \
-                                        "normal" \
-                                        "documentation" \
-                                        "$DOC_SOURCE" \
-                                        "Document feature for users and developers" \
-                                        "false" \
-                                        "false" \
-                                        "$ENHANCEMENT_TITLE")
-                                    echo "📚 Documentation task queued: $DOC_TASK_ID"
-                                else
-                                    echo "Skipping documentation - feature complete"
-                                fi
-                                ;;
-                            *)
-                                echo "   No automatic next step - manual review may be needed"
-                                ;;
-                        esac
-                    fi
-
-                else
-                    # Workflow blocked
-                    echo ""
-                    echo "⚠️  Task blocked: $SUBAGENT_STATUS"
-                    echo "   Manual intervention required to proceed"
-                fi
-
-            else
-                # Validation failed
-                echo "❌ Agent output validation failed"
-                echo "Task marked as BLOCKED - manual review required"
-                "$CMAT" queue fail "$CURRENT_TASK_ID" "Output validation failed: Required outputs missing"
-
-                echo ""
-                echo "Common issues:"
-                echo "  • Root document not created in correct location"
-                echo "  • Missing required metadata header"
-                echo "  • Files created in wrong directory"
-                echo ""
-                echo "Expected output structure:"
-                echo "  $ENHANCEMENT_DIR/$AGENT/<root_document>"
+                echo "✅ Output validation passed"
             fi
         fi
     fi
+
+    ########################################################################
+    # Complete Current Task
+    ########################################################################
+
+    "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+    echo "✅ Task completed: $CURRENT_TASK_ID"
+
+    ########################################################################
+    # Check for Workflow Continuation
+    ########################################################################
+
+    # If no workflow context, stop here
+    if [ -z "$WORKFLOW_NAME" ] || [ -z "$WORKFLOW_STEP" ]; then
+        echo ""
+        echo "ℹ️  Task not part of a workflow - no automatic next step"
+        exit 0
+    fi
+
+    # Load workflow template
+    WORKFLOW=$(jq -r ".workflows[\"$WORKFLOW_NAME\"]" .claude/queues/workflow_templates.json 2>/dev/null)
+
+    if [ -z "$WORKFLOW" ] || [ "$WORKFLOW" = "null" ]; then
+        echo "⚠️  Workflow template not found: $WORKFLOW_NAME"
+        exit 0
+    fi
+
+    # Get current step definition
+    CURRENT_STEP=$(echo "$WORKFLOW" | jq -r ".steps[$WORKFLOW_STEP]")
+
+    # Check if status has a defined transition
+    TRANSITION=$(echo "$CURRENT_STEP" | jq -r ".on_status[\"$SUBAGENT_STATUS\"] // null")
+
+    if [ -z "$TRANSITION" ] || [ "$TRANSITION" = "null" ]; then
+        echo ""
+        echo "⚠️  Status '$SUBAGENT_STATUS' not defined in workflow"
+        echo "Workflow stopped - no automatic next step"
+        exit 0
+    fi
+
+    # Get next step configuration
+    NEXT_STEP_NAME=$(echo "$TRANSITION" | jq -r '.next_step // null')
+    STEP_AUTO_CHAIN=$(echo "$TRANSITION" | jq -r '.auto_chain // false')
+
+    if [ -z "$NEXT_STEP_NAME" ] || [ "$NEXT_STEP_NAME" = "null" ]; then
+        echo ""
+        echo "✅ Workflow complete - no next step defined"
+        exit 0
+    fi
+
+    ########################################################################
+    # Auto-Chain to Next Step
+    ########################################################################
+
+    if [ "$STEP_AUTO_CHAIN" = "false" ] && [ "$AUTO_CHAIN" = "false" ]; then
+        echo ""
+        echo "ℹ️  Auto-chain disabled for this step"
+        echo "Next step: $NEXT_STEP_NAME"
+        echo ""
+        echo "To continue manually, create a task for: $NEXT_STEP_NAME"
+        exit 0
+    fi
+
+    echo ""
+    echo "🔗 Auto-chaining to: $NEXT_STEP_NAME"
+
+    # Get next step details
+    NEXT_STEP_INDEX=$((WORKFLOW_STEP + 1))
+    NEXT_STEP_DEF=$(echo "$WORKFLOW" | jq -r ".steps[$NEXT_STEP_INDEX]")
+
+    if [ -z "$NEXT_STEP_DEF" ] || [ "$NEXT_STEP_DEF" = "null" ]; then
+        echo "❌ Next step not found at index $NEXT_STEP_INDEX"
+        exit 1
+    fi
+
+    NEXT_AGENT=$(echo "$NEXT_STEP_DEF" | jq -r '.agent')
+    NEXT_INPUT=$(echo "$NEXT_STEP_DEF" | jq -r '.input')
+
+    # Resolve input path placeholders
+    NEXT_INPUT="${NEXT_INPUT//\{enhancement_name\}/$ENHANCEMENT_NAME}"
+    NEXT_INPUT="${NEXT_INPUT//\{previous_step\}/$ENHANCEMENT_DIR/$AGENT}"
+
+    # Verify input exists
+    if [ ! -f "$NEXT_INPUT" ] && [ ! -d "$NEXT_INPUT" ]; then
+        echo "❌ Next step input not found: $NEXT_INPUT"
+        echo "Cannot proceed with auto-chain"
+        exit 1
+    fi
+
+    # Determine task type based on agent role
+    NEXT_AGENT_DEF=$(jq -r ".agents[] | select(.[\"agent-file\"] == \"$NEXT_AGENT\")" .claude/agents/agents.json)
+    NEXT_AGENT_ROLE=$(echo "$NEXT_AGENT_DEF" | jq -r '.role // "unknown"')
+
+    case "$NEXT_AGENT_ROLE" in
+        "analysis") NEXT_TASK_TYPE="analysis" ;;
+        "technical_design") NEXT_TASK_TYPE="technical_analysis" ;;
+        "implementation") NEXT_TASK_TYPE="implementation" ;;
+        "testing") NEXT_TASK_TYPE="testing" ;;
+        "documentation") NEXT_TASK_TYPE="documentation" ;;
+        "integration") NEXT_TASK_TYPE="integration" ;;
+        *) NEXT_TASK_TYPE="analysis" ;;
+    esac
+
+    # Create next task
+    NEW_TASK_ID=$("$CMAT" queue add \
+        "Process $ENHANCEMENT_NAME with $NEXT_AGENT" \
+        "$NEXT_AGENT" \
+        "high" \
+        "$NEXT_TASK_TYPE" \
+        "$NEXT_INPUT" \
+        "Continue workflow: $WORKFLOW_NAME (step $NEXT_STEP_INDEX)" \
+        "true" \
+        "true" \
+        "$ENHANCEMENT_TITLE")
+
+    if [ -z "$NEW_TASK_ID" ]; then
+        echo "❌ Failed to create next task"
+        exit 1
+    fi
+
+    # Add workflow metadata to new task
+    "$CMAT" queue metadata "$NEW_TASK_ID" "workflow_name" "$WORKFLOW_NAME"
+    "$CMAT" queue metadata "$NEW_TASK_ID" "workflow_step" "$NEXT_STEP_INDEX"
+
+    echo "✅ Created next task: $NEW_TASK_ID"
+    echo "   Agent: $NEXT_AGENT"
+    echo "   Input: $NEXT_INPUT"
+    echo "   Step: $NEXT_STEP_INDEX"
+
+    # Start the new task
+    echo ""
+    echo "🚀 Starting next task..."
+    "$CMAT" queue start "$NEW_TASK_ID"
 fi
 
 ################################################################################
@@ -291,6 +259,4 @@ if [ -x "$CMAT" ]; then
 fi
 
 echo ""
-echo "=== SUBAGENT OUTPUT ==="
-echo "$SUBAGENT_OUTPUT"
-echo "========================="
+echo "==========================="
