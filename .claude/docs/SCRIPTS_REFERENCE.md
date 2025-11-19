@@ -1,6 +1,6 @@
 # Scripts Reference Guide
 
-Complete reference for all `cmat` commands in the Claude Multi-Agent Template v5.0.
+Complete reference for all `cmat` commands in the Claude Multi-Agent Template v5.1.
 
 ## Command Structure
 
@@ -50,7 +50,7 @@ cmat queue add <title> <agent> <priority> <type> <source> <description> [auto_co
 - `agent` (required) - Agent name (must exist in agents.json)
 - `priority` (required) - Task priority: `critical`, `high`, `normal`, `low`
 - `type` (required) - Task type: `analysis`, `technical_analysis`, `implementation`, `testing`, `documentation`, `integration`
-- `source` (required) - Path to source file or directory
+- `source` (optional) - Path to source file or directory. Can be empty string `""` for ad-hoc tasks without a specific input file. When empty, output goes to `enhancements/{task_id}/`
 - `description` (required) - Detailed task description
 - `auto_complete` (optional) - Auto-complete without prompt: `true`|`false` (default: `false`)
 - `auto_chain` (optional) - Auto-chain to next step: `true`|`false` (default: `false`)
@@ -81,6 +81,18 @@ TASK_ID=$(cmat queue add \
   "Complete feature development" \
   true \
   true)
+
+# Ad-hoc task without source file (quick one-off task)
+TASK_ID=$(cmat queue add \
+  "Review authentication code" \
+  "code-reviewer" \
+  "high" \
+  "analysis" \
+  "" \
+  "Review the src/auth module for security vulnerabilities" \
+  true \
+  false)
+# Output will be in: enhancements/task_1234567890_12345/code-reviewer/required_output/output.md
 ```
 
 ---

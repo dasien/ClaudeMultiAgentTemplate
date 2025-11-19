@@ -283,6 +283,67 @@
           }
         }
       ]
+    },
+    "brians-dev-workflow": {
+      "name": "Brian's Dev Workflow",
+      "description": "This is a test workflow that mimics a regular development workflow",
+      "steps": [
+        {
+          "agent": "requirements-analyst",
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "analysis_summary.md",
+          "on_status": {
+            "READY_FOR_TECH_BREAKDOWN": {
+              "next_step": "architect",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "architect",
+          "input": "{previous_step}/required_output/",
+          "required_output": "implementation_plan.md",
+          "on_status": {
+            "READY_FOR_DEVELOPMENT": {
+              "next_step": "implementer",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "implementer",
+          "input": "{previous_step}/required_output/",
+          "required_output": "coding_summary.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "tester",
+          "input": "{previous_step}/required_output/",
+          "required_output": "test_summary.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": "documenter",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "documenter",
+          "input": "{previous_step}/required_output/",
+          "required_output": "enhancement_summary.md",
+          "on_status": {
+            "ENHANCEMENT_COMPLETE": {
+              "next_step": null,
+              "auto_chain": true
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -46,7 +46,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="5.0.0"
+readonly VERSION="5.1.0"
 
 #############################################################################
 # PROJECT NAVIGATION
@@ -77,6 +77,7 @@ fi
 readonly QUEUE_FILE="$PROJECT_ROOT/.claude/queues/task_queue.json"
 readonly CONTRACTS_FILE="$PROJECT_ROOT/.claude/agents/agent_contracts.json"
 readonly SKILLS_FILE="$PROJECT_ROOT/.claude/skills/skills.json"
+readonly WORKFLOW_TEMPLATES_FILE="$PROJECT_ROOT/.claude/queues/workflow_templates.json"
 readonly AGENTS_DIR="$PROJECT_ROOT/.claude/agents"
 readonly SKILLS_DIR="$PROJECT_ROOT/.claude/skills"
 readonly LOGS_DIR="$PROJECT_ROOT/.claude/logs"
@@ -317,7 +318,28 @@ update_agent_status() {
 
 extract_enhancement_name() {
     local source_file="$1"
-    echo "$source_file" | sed -E 's|^enhancements/([^/]+)/.*|\1|'
+    local task_id="${2:-}"
+
+    # If source_file is provided and follows enhancements/ pattern, extract from path
+    if [ -n "$source_file" ] && [ "$source_file" != "null" ]; then
+        local extracted
+        extracted=$(echo "$source_file" | sed -E 's|^enhancements/([^/]+)/.*|\1|')
+
+        # Check if extraction was successful (path changed)
+        if [ "$extracted" != "$source_file" ]; then
+            echo "$extracted"
+            return
+        fi
+    fi
+
+    # Fall back to task_id for ad-hoc tasks (tasks without workflow context)
+    if [ -n "$task_id" ]; then
+        echo "$task_id"
+        return
+    fi
+
+    # Last resort: return "unknown"
+    echo "unknown"
 }
 
 # Extract enhancement title from source file

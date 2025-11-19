@@ -163,15 +163,15 @@ start_task() {
     echo "Task auto_complete: $auto_complete"
     echo "Task auto_chain: $auto_chain"
 
-    # Validate source file
-    if [ -z "$source_file" ] || [ "$source_file" = "null" ]; then
-        echo "Error: No source file specified for task $task_id"
-        return 1
-    fi
-
-    if [ ! -f "$source_file" ]; then
-        echo "Error: Source file not found: $source_file"
-        return 1
+    # Validate source file (optional for ad-hoc tasks)
+    if [ -n "$source_file" ] && [ "$source_file" != "null" ]; then
+        if [ ! -f "$source_file" ] && [ ! -d "$source_file" ]; then
+            echo "Error: Source file not found: $source_file"
+            return 1
+        fi
+    else
+        echo "Note: No source file specified - running as ad-hoc task"
+        source_file=""
     fi
 
     local temp_file
@@ -191,7 +191,7 @@ start_task() {
 
     # Invoke the agent - delegate to agent-commands
     local enhancement_name
-    enhancement_name=$(extract_enhancement_name "$source_file")
+    enhancement_name=$(extract_enhancement_name "$source_file" "$task_id")
     local log_base_dir="enhancements/$enhancement_name"
 
     "$SCRIPT_DIR/agent-commands.sh" invoke "$agent" "$task_id" "$source_file" "$log_base_dir" "$task_type" "$task_description" "$auto_complete" "$auto_chain"

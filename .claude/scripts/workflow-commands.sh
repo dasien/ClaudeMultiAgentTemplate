@@ -11,9 +11,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common-commands.sh"
 
-# Workflow templates file
-readonly WORKFLOW_TEMPLATES_FILE="$PROJECT_ROOT/.claude/queues/workflow_templates.json"
-
 #############################################################################
 # VALIDATION OPERATIONS
 #############################################################################

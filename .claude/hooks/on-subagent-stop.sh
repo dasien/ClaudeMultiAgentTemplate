@@ -10,11 +10,19 @@
 
 set -euo pipefail
 
+# Debug: Log that hook was triggered
+echo "[DEBUG] Hook triggered at $(date)" >> .claude/logs/hook_debug.log
+
 # Initialize cmat command
 CMAT=".claude/scripts/cmat.sh"
 
 # Read the subagent output from stdin
 SUBAGENT_OUTPUT=$(cat)
+
+# Debug: Log what was received
+echo "[DEBUG] Received input (first 500 chars):" >> .claude/logs/hook_debug.log
+echo "$SUBAGENT_OUTPUT" | head -c 500 >> .claude/logs/hook_debug.log
+echo "" >> .claude/logs/hook_debug.log
 
 ################################################################################
 # Extract completion status from agent output
@@ -44,16 +52,24 @@ fi
 ################################################################################
 
 if [ -x "$CMAT" ]; then
-    # Find the current active task
+    # Find the current task (check active first, then most recent completed)
+    # When auto_complete=false, task is still active when hook runs
+    # When auto_complete=true, task is already completed when hook runs
     CURRENT_TASK_ID=$(jq -r '.active_workflows[0].id' .claude/queues/task_queue.json 2>/dev/null)
 
     if [ -z "$CURRENT_TASK_ID" ] || [ "$CURRENT_TASK_ID" = "null" ]; then
-        echo "⚠️  No active task found"
-        exit 0
+        # Not in active, check most recently completed task
+        CURRENT_TASK_ID=$(jq -r '.completed_tasks[-1].id' .claude/queues/task_queue.json 2>/dev/null)
+        TASK=$(jq -r ".completed_tasks[] | select(.id == \"$CURRENT_TASK_ID\")" .claude/queues/task_queue.json)
+    else
+        # Found in active workflows
+        TASK=$(jq -r ".active_workflows[] | select(.id == \"$CURRENT_TASK_ID\")" .claude/queues/task_queue.json)
     fi
 
-    # Get task details
-    TASK=$(jq -r ".active_workflows[] | select(.id == \"$CURRENT_TASK_ID\")" .claude/queues/task_queue.json)
+    if [ -z "$CURRENT_TASK_ID" ] || [ "$CURRENT_TASK_ID" = "null" ]; then
+        echo "⚠️  No active or recently completed task found"
+        exit 0
+    fi
     AGENT=$(echo "$TASK" | jq -r '.assigned_agent')
     SOURCE_FILE=$(echo "$TASK" | jq -r '.source_file')
     AUTO_CHAIN=$(echo "$TASK" | jq -r '.auto_chain // false')
@@ -115,11 +131,18 @@ if [ -x "$CMAT" ]; then
     fi
 
     ########################################################################
-    # Complete Current Task
+    # Complete Current Task (if not already completed)
     ########################################################################
 
-    "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
-    echo "✅ Task completed: $CURRENT_TASK_ID"
+    # Check if task is still active (auto_complete=false) or already completed (auto_complete=true)
+    TASK_STATUS=$(echo "$TASK" | jq -r '.status')
+
+    if [ "$TASK_STATUS" = "active" ]; then
+        "$CMAT" queue complete "$CURRENT_TASK_ID" "$SUBAGENT_STATUS"
+        echo "✅ Task completed: $CURRENT_TASK_ID"
+    else
+        echo "ℹ️  Task already completed: $CURRENT_TASK_ID"
+    fi
 
     ########################################################################
     # Check for Workflow Continuation

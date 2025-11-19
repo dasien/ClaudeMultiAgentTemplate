@@ -162,13 +162,18 @@ invoke_agent() {
 
     # Extract enhancement name
     local enhancement_name enhancement_dir
-    enhancement_name=$(extract_enhancement_name "$source_file")
+    enhancement_name=$(extract_enhancement_name "$source_file" "$task_id")
     enhancement_dir="enhancements/$enhancement_name"
 
-    # Validate source file exists
-    if [ ! -f "$source_file" ] && [ ! -d "$source_file" ]; then
-        echo "Error: Source file or directory not found: $source_file"
-        return 1
+    # Validate source file exists (optional for ad-hoc tasks)
+    if [ -n "$source_file" ] && [ "$source_file" != "null" ]; then
+        if [ ! -f "$source_file" ] && [ ! -d "$source_file" ]; then
+            echo "Error: Source file or directory not found: $source_file"
+            return 1
+        fi
+    else
+        echo "Note: No source file specified - running as ad-hoc task with enhancement dir: $enhancement_dir"
+        source_file=""
     fi
 
     # Create log file
@@ -224,7 +229,9 @@ invoke_agent() {
 
     # Determine input instruction based on source_file type
     local input_instruction
-    if [ -f "$source_file" ]; then
+    if [ -z "$source_file" ]; then
+        input_instruction="Work from the task description provided. This is an ad-hoc task without a specific input file."
+    elif [ -f "$source_file" ]; then
         input_instruction="Read and process this file: $source_file"
     elif [ -d "$source_file" ]; then
         input_instruction="Read and process all files in this directory: $source_file"
