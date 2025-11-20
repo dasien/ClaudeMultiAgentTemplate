@@ -137,5 +137,103 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(manager2.tasks[0].title, "Task 1")
         self.assertEqual(manager2.tasks[1].title, "Task 2")
 
+class TestHelloCommand(unittest.TestCase):
+    """Test cases for hello command (demo-test enhancement)."""
+
+    def test_hello_command_output(self):
+        """Test that hello command outputs 'Hello, World!'"""
+        result = subprocess.run(
+            [sys.executable, "src/task_manager.py", "hello"],
+            capture_output=True,
+            text=True
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.strip(), "Hello, World!")
+        self.assertEqual(result.stderr, "")
+
+    def test_hello_command_exit_code(self):
+        """Test that hello command exits with code 0."""
+        result = subprocess.run(
+            [sys.executable, "src/task_manager.py", "hello"],
+            capture_output=True
+        )
+
+        self.assertEqual(result.returncode, 0)
+
+    def test_hello_command_in_help(self):
+        """Test that hello command appears in help output."""
+        result = subprocess.run(
+            [sys.executable, "src/task_manager.py", "--help"],
+            capture_output=True,
+            text=True
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("hello", result.stdout)
+        self.assertIn("Display a simple greeting", result.stdout)
+
+    def test_hello_command_no_side_effects(self):
+        """Test that hello command doesn't create or modify files."""
+        # Get initial directory state
+        temp_dir = tempfile.gettempdir()
+        before_files = set(os.listdir(temp_dir))
+
+        # Run hello command
+        subprocess.run(
+            [sys.executable, "src/task_manager.py", "hello"],
+            capture_output=True
+        )
+
+        # Check directory state after
+        after_files = set(os.listdir(temp_dir))
+
+        # No new files should be created
+        self.assertEqual(before_files, after_files)
+
+
+class TestRegressionExistingCommands(unittest.TestCase):
+    """Regression tests to ensure existing commands still work after hello command addition."""
+
+    def setUp(self):
+        """Create a temporary file for each test."""
+        self.temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        self.temp_file.close()
+
+    def tearDown(self):
+        """Clean up temporary file after each test."""
+        if os.path.exists(self.temp_file.name):
+            os.unlink(self.temp_file.name)
+
+    def test_list_command_still_works(self):
+        """Test that list command works after hello command added."""
+        result = subprocess.run(
+            [sys.executable, "src/task_manager.py", "list"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "TASK_FILE": self.temp_file.name}
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("No tasks found", result.stdout)
+
+    def test_help_shows_all_commands(self):
+        """Test that help output includes all commands including hello."""
+        result = subprocess.run(
+            [sys.executable, "src/task_manager.py", "--help"],
+            capture_output=True,
+            text=True
+        )
+
+        self.assertEqual(result.returncode, 0)
+        # Check all commands are present
+        self.assertIn("add", result.stdout)
+        self.assertIn("list", result.stdout)
+        self.assertIn("complete", result.stdout)
+        self.assertIn("delete", result.stdout)
+        self.assertIn("show", result.stdout)
+        self.assertIn("hello", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

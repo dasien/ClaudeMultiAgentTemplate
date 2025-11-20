@@ -10,19 +10,11 @@
 
 set -euo pipefail
 
-# Debug: Log that hook was triggered
-echo "[DEBUG] Hook triggered at $(date)" >> .claude/logs/hook_debug.log
-
 # Initialize cmat command
 CMAT=".claude/scripts/cmat.sh"
 
 # Read the subagent output from stdin
 SUBAGENT_OUTPUT=$(cat)
-
-# Debug: Log what was received
-echo "[DEBUG] Received input (first 500 chars):" >> .claude/logs/hook_debug.log
-echo "$SUBAGENT_OUTPUT" | head -c 500 >> .claude/logs/hook_debug.log
-echo "" >> .claude/logs/hook_debug.log
 
 ################################################################################
 # Extract completion status from agent output

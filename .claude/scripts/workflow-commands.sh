@@ -719,6 +719,154 @@ start_workflow() {
     "$SCRIPT_DIR/queue-commands.sh" start "$task_id"
 }
 
+auto_chain() {
+    local task_id="$1"
+    local status="$2"
+
+    # Get task details from completed tasks
+    local task
+    task=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+
+    if [ -z "$task" ] || [ "$task" = "null" ]; then
+        echo "❌ Task not found in completed tasks: $task_id"
+        return 1
+    fi
+
+    # Extract task details
+    local agent source_file enhancement_title
+    agent=$(echo "$task" | jq -r '.assigned_agent')
+    source_file=$(echo "$task" | jq -r '.source_file')
+    enhancement_title=$(echo "$task" | jq -r '.metadata.enhancement_title // ""')
+
+    # Get workflow context from task metadata
+    local workflow_name workflow_step
+    workflow_name=$(echo "$task" | jq -r '.metadata.workflow_name // ""')
+    workflow_step=$(echo "$task" | jq -r '.metadata.workflow_step // ""')
+
+    # If no workflow context, cannot auto-chain
+    if [ -z "$workflow_name" ] || [ -z "$workflow_step" ]; then
+        echo "ℹ️  Task not part of a workflow - cannot auto-chain"
+        return 0
+    fi
+
+    # Extract enhancement name
+    local enhancement_name enhancement_dir
+    enhancement_name=$(extract_enhancement_name "$source_file")
+    enhancement_dir="enhancements/$enhancement_name"
+
+    echo "🔍 Auto-chain processing for workflow: $workflow_name, step: $workflow_step"
+
+    # Load workflow template
+    local workflow
+    workflow=$(jq -r ".workflows[\"$workflow_name\"]" "$WORKFLOW_TEMPLATES_FILE" 2>/dev/null)
+
+    if [ -z "$workflow" ] || [ "$workflow" = "null" ]; then
+        echo "❌ Workflow template not found: $workflow_name"
+        return 1
+    fi
+
+    # Get current step
+    local current_step required_output
+    current_step=$(echo "$workflow" | jq -r ".steps[$workflow_step]")
+    required_output=$(echo "$current_step" | jq -r '.required_output')
+
+    # Validate agent outputs
+    echo "🔍 Validating agent outputs..."
+    if ! validate_agent_outputs "$agent" "$enhancement_dir" "$required_output"; then
+        echo "❌ Output validation failed - cannot auto-chain"
+        return 1
+    fi
+
+    # Check if status has a defined transition
+    local transition
+    transition=$(echo "$current_step" | jq -r ".on_status[\"$status\"] // null")
+
+    if [ -z "$transition" ] || [ "$transition" = "null" ]; then
+        echo "⚠️  Status '$status' not defined in workflow - stopping"
+        return 0
+    fi
+
+    # Get next step details
+    local next_step_name step_auto_chain
+    next_step_name=$(echo "$transition" | jq -r '.next_step // null')
+    step_auto_chain=$(echo "$transition" | jq -r '.auto_chain // false')
+
+    if [ -z "$next_step_name" ] || [ "$next_step_name" = "null" ]; then
+        echo "✅ Workflow complete - no next step defined"
+        return 0
+    fi
+
+    if [ "$step_auto_chain" != "true" ]; then
+        echo "ℹ️  Auto-chain disabled for this step - stopping"
+        return 0
+    fi
+
+    echo "🔗 Auto-chaining to: $next_step_name"
+
+    # Get next step definition
+    local next_step_index next_step_def next_agent next_input
+    next_step_index=$((workflow_step + 1))
+    next_step_def=$(echo "$workflow" | jq -r ".steps[$next_step_index]")
+
+    if [ -z "$next_step_def" ] || [ "$next_step_def" = "null" ]; then
+        echo "❌ Next step not found at index $next_step_index"
+        return 1
+    fi
+
+    next_agent=$(echo "$next_step_def" | jq -r '.agent')
+    next_input=$(echo "$next_step_def" | jq -r '.input')
+
+    # Resolve input path placeholders
+    next_input="${next_input//\{enhancement_name\}/$enhancement_name}"
+    next_input="${next_input//\{previous_step\}/$enhancement_dir/$agent}"
+
+    # Verify input exists
+    if [ ! -f "$next_input" ] && [ ! -d "$next_input" ]; then
+        echo "❌ Next step input not found: $next_input"
+        return 1
+    fi
+
+    # Get task type for next agent
+    local next_task_type
+    next_task_type=$(get_task_type_for_agent "$next_agent")
+
+    echo "Creating next task:"
+    echo "  Agent: $next_agent"
+    echo "  Input: $next_input"
+    echo "  Step: $next_step_index"
+
+    # Create next task
+    local new_task_id
+    new_task_id=$("$SCRIPT_DIR/queue-commands.sh" add \
+        "Process $enhancement_name with $next_agent" \
+        "$next_agent" \
+        "high" \
+        "$next_task_type" \
+        "$next_input" \
+        "Workflow: $workflow_name, Step $next_step_index" \
+        "true" \
+        "true" \
+        "$enhancement_title")
+
+    if [ -z "$new_task_id" ]; then
+        echo "❌ Failed to create next task"
+        return 1
+    fi
+
+    # Add workflow metadata to new task
+    "$SCRIPT_DIR/queue-commands.sh" metadata "$new_task_id" "workflow_name" "$workflow_name"
+    "$SCRIPT_DIR/queue-commands.sh" metadata "$new_task_id" "workflow_step" "$next_step_index"
+
+    echo "✅ Created next task: $new_task_id"
+    echo ""
+    echo "🚀 Starting next task..."
+
+    # Start the new task
+    "$SCRIPT_DIR/queue-commands.sh" start "$new_task_id"
+
+    return 0
+}
+
 #############################################################################
 # COMMAND ROUTER
 #############################################################################
@@ -842,6 +990,14 @@ case "${1:-}" in
         validate_workflow "$2"
         ;;
 
+    "auto-chain")
+          if [ $# -lt 3 ]; then
+              echo "Usage: cmat workflow auto-chain <task_id> <status>"
+              exit 1
+          fi
+          auto_chain "$2" "$3"
+          ;;
+
     "start")
         if [ $# -lt 3 ]; then
             echo "Usage: cmat workflow start <workflow_name> <enhancement_name>" >&2
@@ -874,6 +1030,7 @@ case "${1:-}" in
         echo "" >&2
         echo "Execution:" >&2
         echo "  start <workflow_name> <enhancement_name>" >&2
+        echo "  auto-chain <task_id> <status> Auto-chain to next workflow step" >&2
         echo "" >&2
         echo "Utilities:" >&2
         echo "  validate-output <agent> <dir> <file>" >&2

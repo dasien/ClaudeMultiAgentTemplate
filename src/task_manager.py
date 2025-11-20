@@ -165,6 +165,9 @@ def main():
     show_parser = subparsers.add_parser("show", help="Show task details")
     show_parser.add_argument("task_id", type=int, help="Task ID to show")
 
+    # Hello command (test feature)
+    hello_parser = subparsers.add_parser("hello", help="Display a simple greeting (test command)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -214,6 +217,9 @@ def main():
         else:
             print(f"✗ Task {args.task_id} not found")
             sys.exit(1)
+
+    elif args.command == "hello":
+        print("Hello, World!")
 
 
 if __name__ == "__main__":
