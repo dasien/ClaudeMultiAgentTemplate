@@ -1,15 +1,5 @@
 {
   "hooks": {
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/on-subagent-stop.sh"
-          }
-        ]
-      }
-    ],
     "SessionEnd": [
       {
         "hooks": [
