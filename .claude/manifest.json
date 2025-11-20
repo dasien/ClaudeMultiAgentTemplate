@@ -5,10 +5,11 @@
   "structure": {
     ".claude": {
       "agents": [
-        "agent_contracts.json",
+        "AGENT_TEMPLATE.md",
         "agents.json",
         "architect.md",
         "atlassian-integration-coordinator.md",
+        "code-reviewer.md",
         "documenter.md",
         "generate_agents_json.sh",
         "github-integration-coordinator.md",
@@ -24,6 +25,7 @@
         "SCRIPTS_REFERENCE.md",
         "SKILLS_GUIDE.md",
         "TASK_PROMPT_DEFAULTS.md",
+        "UNDERSTANDING_PROMPTS.md",
         "WORKFLOW_GUIDE.md",
         "WORKFLOW_TEMPLATE_GUIDE.md"
       ],
