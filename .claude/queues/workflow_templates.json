@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "description": "Workflow templates with input/output specifications and status transitions",
   "workflows": {
-    "new_feature_development": {
+    "new-feature-development": {
       "name": "New Feature Development",
       "description": "Complete workflow for implementing a new feature",
       "steps": [
@@ -50,7 +50,7 @@
           "on_status": {
             "TESTING_COMPLETE": {
               "next_step": "documenter",
-              "auto_chain": false
+              "auto_chain": true
             }
           }
         },
@@ -67,7 +67,7 @@
         }
       ]
     },
-    "bugfix_workflow": {
+    "bugfix-workflow": {
       "name": "Bug Fix Workflow",
       "description": "Workflow for fixing identified bugs",
       "steps": [
@@ -117,7 +117,7 @@
         }
       ]
     },
-    "hotfix_workflow": {
+    "hotfix-workflow": {
       "name": "Critical Hotfix",
       "description": "Fast-track workflow for critical issues",
       "steps": [
@@ -145,7 +145,7 @@
         }
       ]
     },
-    "performance_optimization": {
+    "performance-optimization": {
       "name": "Performance Optimization",
       "description": "Workflow for optimizing system performance",
       "steps": [
@@ -195,7 +195,7 @@
         }
       ]
     },
-    "documentation_update": {
+    "documentation-update": {
       "name": "Documentation Update",
       "description": "Workflow for updating project documentation",
       "steps": [
@@ -234,7 +234,7 @@
         }
       ]
     },
-    "refactoring_workflow": {
+    "refactoring-workflow": {
       "name": "Code Refactoring",
       "description": "Workflow for refactoring existing code",
       "steps": [
