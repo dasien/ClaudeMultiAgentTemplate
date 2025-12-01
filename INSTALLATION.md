@@ -28,7 +28,6 @@ cp -r /path/to/ClaudeMultiAgentTemplate/.claude ./
 # Make scripts executable
 chmod +x .claude/scripts/*.sh
 chmod +x .claude/hooks/*.sh
-chmod +x .claude/agents/generate_agents_json.sh
 ```
 
 ### Step 2: Create enhancements Directory
@@ -225,8 +224,7 @@ cmat workflow list
 
 **Solution**: Regenerate agents.json
 ```bash
-cd .claude/agents
-./generate_agents_json.sh
+cmat agents generate-json
 ```
 
 ### "Permission denied"

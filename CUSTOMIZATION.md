@@ -161,8 +161,7 @@ Review code for security vulnerabilities and ensure compliance.
 ### Step 2: Regenerate agents.json
 
 ```bash
-cd .claude/agents
-./generate_agents_json.sh
+cmat agents generate-json
 ```
 
 ### Step 3: Add to Workflows

@@ -26,9 +26,10 @@
 # Exported Variables:
 #   PROJECT_ROOT      Project root directory path
 #   QUEUE_FILE        Path to task_queue.json
-#   CONTRACTS_FILE    Path to agent_contracts.json
 #   SKILLS_FILE       Path to skills.json
+#   WORKFLOW_TEMPLATES_FILE  Path to workflow_templates.json
 #   AGENTS_DIR        Path to agents directory
+#   AGENTS_FILE       Path to agents.json
 #   SKILLS_DIR        Path to skills directory
 #   LOGS_DIR          Path to logs directory
 #   STATUS_DIR        Path to status directory
@@ -46,7 +47,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="5.1.1"
+readonly VERSION="6.0.0"
 
 #############################################################################
 # PROJECT NAVIGATION
@@ -74,15 +75,15 @@ if [ $? -ne 0 ]; then
 fi
 
 # Global paths
-readonly QUEUE_FILE="$PROJECT_ROOT/.claude/queues/task_queue.json"
-readonly CONTRACTS_FILE="$PROJECT_ROOT/.claude/agents/agent_contracts.json"
-readonly SKILLS_FILE="$PROJECT_ROOT/.claude/skills/skills.json"
-readonly WORKFLOW_TEMPLATES_FILE="$PROJECT_ROOT/.claude/queues/workflow_templates.json"
 readonly AGENTS_DIR="$PROJECT_ROOT/.claude/agents"
 readonly SKILLS_DIR="$PROJECT_ROOT/.claude/skills"
 readonly LOGS_DIR="$PROJECT_ROOT/.claude/logs"
 readonly STATUS_DIR="$PROJECT_ROOT/.claude/status"
+readonly QUEUE_FILE="$PROJECT_ROOT/.claude/queues/task_queue.json"
+readonly SKILLS_FILE="$PROJECT_ROOT/.claude/skills/skills.json"
+readonly WORKFLOW_TEMPLATES_FILE="$PROJECT_ROOT/.claude/queues/workflow_templates.json"
 readonly TEMPLATES_FILE="$PROJECT_ROOT/.claude/docs/TASK_PROMPT_DEFAULTS.md"
+readonly AGENTS_FILE="$PROJECT_ROOT/.claude/agents/agents.json"
 
 #############################################################################
 # DIRECTORY MANAGEMENT
@@ -176,7 +177,7 @@ show_version() {
         echo "Environment:"
         echo "  Project Root: $PROJECT_ROOT"
         echo "  Queue File: $QUEUE_FILE"
-        echo "  Contracts: $CONTRACTS_FILE"
+        echo "  Agents File: $AGENTS_FILE"
         echo "  Skills: $SKILLS_FILE"
 
         if [ -f "$QUEUE_FILE" ]; then
@@ -189,9 +190,9 @@ show_version() {
             echo "  Tasks: $pending_count pending, $active_count active, $completed_count completed"
         fi
 
-        if [ -f "$CONTRACTS_FILE" ]; then
+        if [ -f "$AGENTS_FILE" ]; then
             local agent_count
-            agent_count=$(jq '.agents | length' "$CONTRACTS_FILE" 2>/dev/null || echo "0")
+            agent_count=$(jq '.agents | length' "$AGENTS_FILE" 2>/dev/null || echo "0")
             echo "  Agents: $agent_count defined"
         fi
 

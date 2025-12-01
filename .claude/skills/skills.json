@@ -98,6 +98,20 @@
       "category": "database",
       "required_tools": ["Read", "Write", "Edit", "Bash"],
       "description": "Design database schemas, write optimized queries, and manage data"
+    },
+    {
+      "name": "Agent Design",
+      "skill-directory": "agent-design",
+      "category": "architecture",
+      "required_tools": ["Read", "Write", "Grep", "Glob"],
+      "description": "Design AI agents with appropriate capabilities, tools, and personas for specific software development tasks"
+    },
+    {
+      "name": "Work Breakdown",
+      "skill-directory": "work-breakdown",
+      "category": "analysis",
+      "required_tools": ["Read", "Write", "Grep"],
+      "description": "Break down features and requirements into actionable, implementable tasks with clear scope and acceptance criteria"
     }
   ]
 }

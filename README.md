@@ -2,7 +2,7 @@
 
 A workflow-based multi-agent development system using Claude Code. This template provides specialized AI agents orchestrated by customizable workflow templates with automated validation and comprehensive skills.
 
-**Version**: 5.1.1
+**Version**: 6.0.0
 
 ## 🎯 What Is This?
 
@@ -148,8 +148,7 @@ your-project/
 │   │   └── agent-commands.sh     # Agent operations
 │   ├── agents/                   # Agent definitions
 │   │   ├── *.md                 # Agent specifications
-│   │   ├── agents.json          # Agent registry
-│   │   └── generate_agents_json.sh
+│   │   └── agents.json          # Agent registry
 │   ├── skills/                   # Skills system
 │   │   ├── skills.json          # Skills registry
 │   │   └── */SKILL.md           # 14+ skills

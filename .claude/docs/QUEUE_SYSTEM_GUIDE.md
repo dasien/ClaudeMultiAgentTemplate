@@ -1177,7 +1177,7 @@ cmat.sh queue list failed | jq '.[] |
    ```bash
    # Check agent exists
    ls .claude/agents/my-agent.md
-   jq '.agents | keys' .claude/agents/agent_contracts.json
+   jq '.agents[].name' .claude/agents/agents.json
    ```
 
 ### Task Stuck in Active
@@ -1308,6 +1308,7 @@ cmat.sh queue list failed | jq '.[] |
 - **[SCRIPTS_REFERENCE.md](../SCRIPTS_REFERENCE.md)** - Complete command reference
 - **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns and orchestration
 - **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - External system integration
-- **[agent_contracts.json](../agent_contracts.json)** - Agent specifications
+- **[agents.json](../agents/agents.json)** - Agent definitions
+- **[workflow_templates.json](../queues/workflow_templates.json)** - Workflow orchestration
 
 ---

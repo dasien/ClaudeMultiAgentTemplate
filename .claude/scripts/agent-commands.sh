@@ -143,6 +143,129 @@ load_task_template() {
 # AGENT INVOCATION
 #############################################################################
 
+# Core agent execution logic shared by both invoke and invoke-direct
+# This function contains all the common prompt building and Claude execution logic
+execute_agent_core() {
+    local agent="$1"
+    local input_file="$2"
+    local output_dir="$3"
+    local task_description="$4"
+    local log_file="$5"
+    local task_type="${6:-analysis}"
+    local task_id="${7:-direct_$(date +%Y%m%d_%H%M%S)}"
+
+    # Validate agent configuration exists
+    local agent_config="$AGENTS_DIR/${agent}.md"
+    if [ ! -f "$agent_config" ]; then
+        echo "Error: Agent config not found: $agent_config" >&2
+        return 1
+    fi
+
+    # Validate input exists (if provided and not null)
+    if [ -n "$input_file" ] && [ "$input_file" != "null" ]; then
+        if [ ! -f "$input_file" ] && [ ! -d "$input_file" ]; then
+            echo "Error: Input file or directory not found: $input_file" >&2
+            return 1
+        fi
+    fi
+
+    # Extract enhancement name for context (used in prompt variables)
+    local enhancement_name
+    enhancement_name=$(extract_enhancement_name "$input_file" "$task_id")
+
+    # Load task template
+    local template
+    template=$(load_task_template "$task_type")
+    if [ $? -ne 0 ]; then
+        echo "Failed to load task template for type: $task_type" >&2
+        return 1
+    fi
+
+    # Build skills section
+    local skills_section
+    skills_section=$("$SCRIPT_DIR/skills-commands.sh" prompt "$agent")
+    if [ -n "$skills_section" ]; then
+        template="${template}${skills_section}"
+    fi
+
+    # Determine input instruction
+    local input_instruction
+    if [ -z "$input_file" ] || [ "$input_file" = "null" ]; then
+        input_instruction="Work from the task description provided."
+    elif [ -f "$input_file" ]; then
+        input_instruction="Read and process this file: $input_file"
+    elif [ -d "$input_file" ]; then
+        input_instruction="Read and process all files in this directory: $input_file"
+    else
+        input_instruction="Input: $input_file"
+    fi
+
+    # For direct invocation: no workflow context
+    local expected_statuses="(No workflow-defined statuses - output any appropriate status)"
+    local required_output_filename="output.md"
+    local enhancement_dir="$output_dir"
+
+    # Substitute variables in template
+    prompt="${prompt//\$\{source_file\}/$input_file}"
+    prompt="${prompt//\$\{task_description\}/$task_description}"
+    prompt="${prompt//\$\{task_id\}/$task_id}"
+    prompt="${prompt//\$\{task_type\}/$task_type}"
+    prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
+    prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
+    prompt="${prompt//\$\{input_instruction\}/$input_instruction}"
+    prompt="${prompt//\$\{required_output_filename\}/$required_output_filename}"
+    prompt="${prompt//\$\{expected_statuses\}/$expected_statuses}"
+
+    local start_time start_timestamp
+    start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    start_timestamp=$(date +%s)
+
+    # Log execution start
+    echo "=== Starting Agent Execution ===" | tee "$log_file"
+    echo "Start Time: $start_time" | tee -a "$log_file"
+    echo "Agent: $agent" | tee -a "$log_file"
+    echo "Task ID: $task_id" | tee -a "$log_file"
+    echo "Input: $input_file" | tee -a "$log_file"
+    echo "Output: $output_dir" | tee -a "$log_file"
+    echo "Log: $log_file" | tee -a "$log_file"
+    echo "" | tee -a "$log_file"
+
+    # Log the complete prompt
+    {
+        echo "====================================================================="
+        echo "PROMPT SENT TO AGENT"
+        echo "====================================================================="
+        echo ""
+        echo "$prompt"
+        echo ""
+        echo "====================================================================="
+        echo "END OF PROMPT"
+        echo "====================================================================="
+        echo ""
+        echo ""
+    } >> "$log_file"
+
+    # Execute claude with bypass permissions
+    claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1
+    local exit_code=$?
+
+    local end_time end_timestamp duration
+    end_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    end_timestamp=$(date +%s)
+    duration=$((end_timestamp - start_timestamp))
+
+    # Write completion markers
+    {
+        echo ""
+        echo "=== Agent Execution Complete ==="
+        echo "End Time: $end_time"
+        echo "Duration: ${duration}s"
+        echo "Exit Code: $exit_code"
+    } >> "$log_file"
+
+    return $exit_code
+}
+
 invoke_agent() {
     local agent="$1"
     local task_id="$2"
@@ -182,120 +305,11 @@ invoke_agent() {
     mkdir -p "$log_dir"
     log_file="${log_dir}/${agent}_${task_id}_$(date +%Y%m%d_%H%M%S).log"
 
-    # Load task template
-    local template
-    template=$(load_task_template "$task_type")
-    if [ $? -ne 0 ]; then
-        echo "Failed to load task template for type: $task_type"
-        return 1
-    fi
+    # Execute agent in background to capture PID (for cancellation support)
+    execute_agent_core "$agent" "$source_file" "$output_dir" "$task_description" \
+                       "$log_file" "$task_type" "$task_id" &
 
-    # Build skills section
-    local skills_section
-    skills_section=$("$SCRIPT_DIR/skills-commands.sh" prompt "$agent")
-
-    if [ -n "$skills_section" ]; then
-        template="${template}${skills_section}"
-    fi
-
-    # Get workflow context to extract expected statuses and required output
-    local workflow_state expected_statuses workflow_output
-    workflow_state=$(get_workflow_state "$task_id" 2>/dev/null)
-
-    if [ -n "$workflow_state" ] && [ "$workflow_state" != "null" ]; then
-        # Get workflow name and current step
-        local workflow_name current_step_index
-        workflow_name=$(echo "$workflow_state" | jq -r '.workflow_name')
-        current_step_index=$(echo "$workflow_state" | jq -r '.current_step_index')
-
-        # Load workflow definition
-        local workflow step
-        workflow=$(jq -r ".workflows[\"$workflow_name\"]" "$WORKFLOW_TEMPLATES_FILE" 2>/dev/null)
-        step=$(echo "$workflow" | jq -r ".steps[$current_step_index]" 2>/dev/null)
-
-        if [ -n "$step" ] && [ "$step" != "null" ]; then
-            # Get required output filename from workflow step
-            workflow_output=$(echo "$step" | jq -r '.required_output // "output.md"')
-
-            # Extract expected statuses from on_status keys
-            expected_statuses=$(echo "$step" | jq -r '.on_status | keys | map("- `" + . + "`") | join("\n")')
-        fi
-    fi
-
-    # If no workflow context or no expected statuses, use generic message
-    if [ -z "$expected_statuses" ]; then
-        expected_statuses="(No workflow-defined statuses - output any appropriate status)"
-    fi
-
-    # Determine input instruction based on source_file type
-    local input_instruction
-    if [ -z "$source_file" ]; then
-        input_instruction="Work from the task description provided. This is an ad-hoc task without a specific input file."
-    elif [ -f "$source_file" ]; then
-        input_instruction="Read and process this file: $source_file"
-    elif [ -d "$source_file" ]; then
-        input_instruction="Read and process all files in this directory: $source_file"
-    else
-        input_instruction="Input: $source_file"
-    fi
-
-    # Get required output filename from workflow or use default
-    local required_output_filename="${workflow_output:-output.md}"
-
-    # Substitute variables
-    local prompt="$template"
-    prompt="${prompt//\$\{agent\}/$agent}"
-    prompt="${prompt//\$\{agent_config\}/$agent_config}"
-    prompt="${prompt//\$\{source_file\}/$source_file}"
-    prompt="${prompt//\$\{task_description\}/$task_description}"
-    prompt="${prompt//\$\{task_id\}/$task_id}"
-    prompt="${prompt//\$\{task_type\}/$task_type}"
-    prompt="${prompt//\$\{enhancement_name\}/$enhancement_name}"
-    prompt="${prompt//\$\{enhancement_dir\}/$enhancement_dir}"
-    prompt="${prompt//\$\{input_instruction\}/$input_instruction}"
-    prompt="${prompt//\$\{required_output_filename\}/$required_output_filename}"
-    prompt="${prompt//\$\{expected_statuses\}/$expected_statuses}"
-
-    local start_time start_timestamp
-    start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    start_timestamp=$(date +%s)
-
-    # Log execution start
-    echo "=== Starting Agent Execution ===" | tee "$log_file"
-    echo "Start Time: $start_time" | tee -a "$log_file"
-    echo "Agent: $agent" | tee -a "$log_file"
-    echo "Task ID: $task_id" | tee -a "$log_file"
-    echo "Source File: $source_file" | tee -a "$log_file"
-    echo "Enhancement: $enhancement_name" | tee -a "$log_file"
-    echo "Required Output: $required_output_filename" | tee -a "$log_file"
-    echo "Log: $log_file" | tee -a "$log_file"
-    echo "Cost Tracking: ENABLED (SessionEnd hook)" | tee -a "$log_file"
-    echo "" | tee -a "$log_file"
-
-    # Log the complete prompt sent to agent
-    {
-        echo "====================================================================="
-        echo "PROMPT SENT TO AGENT"
-        echo "====================================================================="
-        echo ""
-        echo "$prompt"
-        echo ""
-        echo "====================================================================="
-        echo "END OF PROMPT"
-        echo "====================================================================="
-        echo ""
-        echo ""
-    } >> "$log_file"
-
-    # Set context for SessionEnd hook (cost tracking)
-    export CMAT_CURRENT_TASK_ID="$task_id"
-    export CMAT_CURRENT_LOG_FILE="$log_file"
-    export CMAT_AGENT="$agent"
-    export CMAT_ENHANCEMENT="$enhancement_name"
-
-    # Invoke Claude Code with bypass permissions in background to capture PID
-    claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1 &
-
+    # Get the process id.
     local claude_pid=$!
 
     # Store PID in task metadata immediately so it can be killed if cancelled
@@ -376,85 +390,204 @@ invoke_agent() {
     return $exit_code
 }
 
-list_agents() {
-    local agents_file="$AGENTS_DIR/agents.json"
+# This command executes an agent synchronously without task queue integration.
+# It is specifically designed for UI-driven operations like enhancement creation,
+# agent creation, and task planning where the output is immediately consumed
+# by the UI rather than being part of a workflow.
+#
+# Key differences from invoke:
+#   - Synchronous execution (blocks until complete)
+#   - No task queue integration
+#   - No PID tracking or cancellation support
+#   - No status extraction or auto-completion
+#   - No cost tracking environment variables
+#   - Custom output directory (not enhancement structure)
+#   - Logs to main logs directory
+#
+# This is NOT intended for:
+#   - Workflow execution
+#   - Background task processing
+#   - Operations requiring cancellation
+#   - Operations requiring status tracking
+#
+invoke_agent_direct() {
+    local agent="$1"
+    local input_file="$2"
+    local output_dir="$3"
+    local task_description="${4:-UI-invoked task}"
+    local task_type="${5:-analysis}"
 
-    if [ ! -f "$agents_file" ]; then
-        echo "Error: agents.json not found: $agents_file"
+    # Validate agent exists
+    local agent_config="$AGENTS_DIR/${agent}.md"
+    if [ ! -f "$agent_config" ]; then
+        echo "Error: Agent config not found: $agent_config" >&2
         return 1
     fi
 
-    jq '.' "$agents_file"
+    # Create output directory
+    mkdir -p "$output_dir"
+
+    # Create log file in main logs directory (not enhancement-specific)
+    local log_file="$LOGS_DIR/ui_agent_${agent}_$(date +%Y%m%d_%H%M%S).log"
+
+    # Generate simple task ID for logging purposes only
+    local task_id="ui_${agent}_$(date +%Y%m%d_%H%M%S)"
+
+    # Execute agent core (synchronous - no background process)
+    execute_agent_core "$agent" "$input_file" "$output_dir" "$task_description" \
+                       "$log_file" "$task_type" "$task_id"
+    local exit_code=$?
+
+    # Simple output: return output directory on success
+    if [ $exit_code -eq 0 ]; then
+        echo "$output_dir"
+    else
+        echo "Error: Agent execution failed (exit code: $exit_code). See log: $log_file" >&2
+    fi
+
+    return $exit_code
+}
+
+list_agents() {
+    if [ ! -f "$AGENTS_FILE" ]; then
+        echo "Error: agents.json not found: $AGENTS_FILE"
+        return 1
+    fi
+
+    jq '.' "$AGENTS_FILE"
 }
 
 generate_agents_json() {
-    local agents_file="$AGENTS_DIR/agents.json"
-
     # Function to convert YAML frontmatter to JSON
     yaml_to_json() {
         local filename="$1"
-        local name="" description="" tools_json="[]" skills_json="[]"
+        local name=""
+        local description=""
+        local role=""
+        local tools_json="[]"
+        local skills_json="[]"
+        local validations_json="{}"
+        local in_validations=false
 
+        # Parse YAML frontmatter
         while IFS= read -r line; do
-            # Extract tools array
+            # Check if we're entering validations block
+            if [[ "$line" =~ ^validations:[[:space:]]*$ ]]; then
+                in_validations=true
+                continue
+            fi
+
+            # If we hit another top-level key, exit validations block
+            if [[ "$line" =~ ^[a-z_]+:[[:space:]] ]] && [ "$in_validations" = true ]; then
+                in_validations=false
+            fi
+
+            # Parse validation fields (indented lines)
+            if [ "$in_validations" = true ] && [[ "$line" =~ ^[[:space:]]+([^:]+):[[:space:]]*(.*) ]]; then
+                key="${BASH_REMATCH[1]}"
+                value="${BASH_REMATCH[2]}"
+
+                # Handle different value types
+                if [[ "$value" =~ ^(true|false)$ ]]; then
+                    # Boolean
+                    validations_json=$(echo "$validations_json" | jq --arg k "$key" --argjson v "$value" '. + {($k): $v}')
+                elif [[ "$value" =~ ^[0-9]+$ ]]; then
+                    # Number
+                    validations_json=$(echo "$validations_json" | jq --arg k "$key" --argjson v "$value" '. + {($k): $v}')
+                elif [[ "$value" =~ ^\[.*\]$ ]]; then
+                    # Array
+                    validations_json=$(echo "$validations_json" | jq --arg k "$key" --argjson v "$value" '. + {($k): $v}')
+                else
+                    # String (remove quotes if present)
+                    value=$(echo "$value" | sed 's/^["'\'']\(.*\)["'\'']$/\1/')
+                    validations_json=$(echo "$validations_json" | jq --arg k "$key" --arg v "$value" '. + {($k): $v}')
+                fi
+                continue
+            fi
+
+            # Check if this is the tools line with array
             if [[ "$line" =~ ^tools:[[:space:]]*\[.*\][[:space:]]*$ ]]; then
+                # Extract array directly
                 tools_json=$(echo "$line" | sed 's/^tools:[[:space:]]*//')
                 continue
             fi
 
-            # Extract skills array
+            # Check if this is the skills line with array
             if [[ "$line" =~ ^skills:[[:space:]]*\[.*\][[:space:]]*$ ]]; then
+                # Extract array directly
                 skills_json=$(echo "$line" | sed 's/^skills:[[:space:]]*//')
                 continue
             fi
 
-            # Extract key:value pairs
-            if [[ "$line" =~ ^[[:space:]]*([^:]+):[[:space:]]*(.*)[[:space:]]*$ ]]; then
+            # Check for key: value format (top-level only)
+            if [[ "$line" =~ ^[[:space:]]*([^:]+):[[:space:]]*(.*)[[:space:]]*$ ]] && [ "$in_validations" = false ]; then
                 key="${BASH_REMATCH[1]}"
                 value="${BASH_REMATCH[2]}"
+
+                # Remove quotes from value if present
                 value=$(echo "$value" | sed 's/^["'\'']\(.*\)["'\'']$/\1/')
 
                 case "$key" in
-                    name) name="$value" ;;
-                    description) description="$value" ;;
+                    name)
+                        name="$value"
+                        ;;
+                    description)
+                        description="$value"
+                        ;;
+                    role)
+                        role="$value"
+                        ;;
                 esac
             fi
         done
 
+        # If validations is empty, set default
+        if [ "$validations_json" = "{}" ]; then
+            validations_json='{"metadata_required": true}'
+        fi
+
+        # Output JSON with role and validations
         cat <<EOF
   {
     "name": "$name",
     "agent-file": "$filename",
+    "role": "$role",
     "tools": $tools_json,
     "skills": $skills_json,
-    "description": "$description"
+    "description": "$description",
+    "validations": $validations_json
   }
 EOF
     }
 
-    # Generate JSON
-    echo '{"agents":[' > "$agents_file"
+    # Start JSON array
+    echo '{"agents":[' > "$AGENTS_FILE"
 
-    local first=true
-    for agent_md in "$AGENTS_DIR"/*.md; do
-        [ -f "$agent_md" ] || continue
+    first=true
+    for agent_file in "$AGENTS_DIR"/*.md; do
+        [ -f "$agent_file" ] || continue
 
-        if grep -q "^---$" "$agent_md"; then
+        # Check if file starts with frontmatter (--- on line 1)
+        if head -1 "$agent_file" | grep -q "^---$"; then
+            # Add comma between agents
             if [ "$first" = false ]; then
-                echo ',' >> "$agents_file"
+                echo ',' >> "$AGENTS_FILE"
             fi
             first=false
 
-            local filename
-            filename=$(basename "$agent_md" .md)
+            # Get filename without path and extension
+            filename=$(basename "$agent_file" .md)
 
-            awk '/^---$/{f=!f;next} f' "$agent_md" | yaml_to_json "$filename" >> "$agents_file"
+            # Extract frontmatter (only between FIRST pair of --- markers)
+            # This awk stops after finding the second ---, preventing extraction of example frontmatter
+            awk '/^---$/ && NR==1 {next} /^---$/ && NR>1 {exit} {print}' "$agent_file" | yaml_to_json "$filename" >> "$AGENTS_FILE"
         fi
     done
 
-    echo ']}' >> "$agents_file"
+    # Close JSON array
+    echo ']}' >> "$AGENTS_FILE"
 
-    echo "✓ Generated $agents_file"
+    echo "✓ Generated $AGENTS_FILE"
 }
 
 #############################################################################
@@ -474,13 +607,24 @@ case "${1:-list}" in
         invoke_agent "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
         ;;
 
+    "invoke-direct")
+        if [ $# -lt 3 ]; then
+            echo "Usage: cmat agents invoke-direct <agent> <input_file> <output_dir> [description] [type]"
+            echo ""
+            echo "Direct agent invocation for UI operations (no task queue integration)."
+            echo "This command is intended for UI-driven operations only."
+            exit 1
+        fi
+        invoke_agent_direct "$2" "$3" "$4" "${5:-UI-invoked task}" "${6:-analysis}"
+        ;;
+
     "generate-json")
         generate_agents_json
         ;;
 
     *)
         echo "Unknown agents command: ${1:-}" >&2
-        echo "Usage: cmat agents <list|invoke|generate-json>" >&2
+        echo "Usage: cmat agents <list|invoke|invoke-direct|generate-json>" >&2
         exit 1
         ;;
 esac

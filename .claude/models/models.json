@@ -29,7 +29,7 @@
       }
     },
     "claude-opus-4": {
-      "pattern": "*opus*",
+      "pattern": "*opus-4-20241229*",
       "name": "Claude Opus 4",
       "description": "Most capable model with superior performance on complex reasoning, analysis, and creative tasks",
       "max_tokens": 200000,
@@ -41,12 +41,26 @@
         "currency": "USD",
         "per_tokens": 1000000
       }
+    },
+    "claude-opus-4.5": {
+      "pattern": "*opus-4-5*|*opus-4.5*",
+      "name": "Claude Opus 4.5",
+      "description": "Most capable model with superior performance on complex reasoning, analysis, and creative tasks. 66% more affordable than Opus 4.",
+      "max_tokens": 200000,
+      "pricing": {
+        "input": 5.00,
+        "output": 25.00,
+        "cache_write": 6.25,
+        "cache_read": 0.50,
+        "currency": "USD",
+        "per_tokens": 1000000
+      }
     }
   },
   "default_model": "claude-sonnet-4.5",
   "metadata": {
-    "last_updated": "2025-11-11",
+    "last_updated": "2025-12-01",
     "pricing_source": "https://www.anthropic.com/pricing",
-    "notes": "Pricing as of November 2024. Check Anthropic's website for current rates."
+    "notes": "Pricing as of December 2025. Check Anthropic's website for current rates."
   }
 }

@@ -67,3 +67,6 @@ enhancements/*/logs/
 !.claude/queues/workflow_templates.json
 !.claude/status/.gitkeep
 !.claude/logs/.gitkeep
+
+# Temp space for enhancement creation.
+enhancements/.staging

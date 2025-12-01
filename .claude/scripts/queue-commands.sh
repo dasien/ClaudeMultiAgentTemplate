@@ -660,10 +660,10 @@ initialize_queue() {
 
     echo "🔄 Initializing queue system..."
 
-    # Get list of all defined agents from contracts file
+    # Get list of all defined agents from agents file
     local agent_status="{}"
-    if [ -f "$CONTRACTS_FILE" ]; then
-        agent_status=$(jq -r '.agents | keys | map({(.): {status: "idle", last_activity: null, current_task: null}}) | add' "$CONTRACTS_FILE" 2>/dev/null || echo "{}")
+    if [ -f "$AGENTS_FILE" ]; then
+        agent_status=$(jq -r '[.agents[].name] | map({(.): {status: "idle", last_activity: null, current_task: null}}) | add' "$AGENTS_FILE" 2>/dev/null || echo "{}")
     fi
 
     # Get version from common-commands

@@ -848,23 +848,7 @@ skills: ["security-audit"]
 ---
 ```
 
-### 5. Update Contracts
-
-Add to `.claude/agents/agent_contracts.json`:
-```json
-{
-  "agents": {
-    "security-reviewer": {
-      "role": "security_review",
-      "inputs": {...},
-      "outputs": {...},
-      "statuses": {...}
-    }
-  }
-}
-```
-
-### 6. Test the Skill
+### 5. Test the Skill
 
 ```bash
 # Generate agents.json

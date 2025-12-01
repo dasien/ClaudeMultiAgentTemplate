@@ -61,8 +61,6 @@ The system includes two specialized integration coordinator agents:
 - Apply labels for workflow stages
 - Link issues to PRs
 
-**Contract**: `.claude/agents/agent_contracts.json → agents.github-integration-coordinator`
-
 **Configuration**: `.claude/mcp-servers/github-config.json`
 
 ### atlassian-integration-coordinator
