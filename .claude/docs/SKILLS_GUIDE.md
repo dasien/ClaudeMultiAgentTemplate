@@ -1,6 +1,6 @@
 # Skills System Guide
 
-Complete guide to the Skills System in Claude Multi-Agent Template v4.0.
+Complete guide to the Skills System in Claude Multi-Agent Template.
 
 ## Table of Contents
 

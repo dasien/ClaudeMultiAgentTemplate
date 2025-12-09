@@ -1,6 +1,6 @@
 # Queue System Guide
 
-Complete guide to the task queue system in Claude Multi-Agent Template v4.0.
+Complete guide to the task queue system in Claude Multi-Agent Template.
 
 ## Table of Contents
 

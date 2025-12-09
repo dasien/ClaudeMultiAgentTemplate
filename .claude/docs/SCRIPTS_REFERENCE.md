@@ -1,6 +1,6 @@
 # Scripts Reference Guide
 
-Complete reference for all `cmat` commands in the Claude Multi-Agent Template v6.0.0.
+Complete reference for all `cmat` commands in the Claude Multi-Agent Template.
 
 ## Command Structure
 

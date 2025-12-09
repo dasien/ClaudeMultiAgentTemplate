@@ -145,33 +145,20 @@ load_task_template() {
 
 # Core agent execution logic shared by both invoke and invoke-direct
 # This function contains all the common prompt building and Claude execution logic
+# All context should be passed in as parameters - this function should not derive context
 execute_agent_core() {
     local agent="$1"
-    local input_file="$2"
-    local output_dir="$3"
-    local task_description="$4"
-    local log_file="$5"
-    local task_type="${6:-analysis}"
-    local task_id="${7:-direct_$(date +%Y%m%d_%H%M%S)}"
-
-    # Validate agent configuration exists
-    local agent_config="$AGENTS_DIR/${agent}.md"
-    if [ ! -f "$agent_config" ]; then
-        echo "Error: Agent config not found: $agent_config" >&2
-        return 1
-    fi
-
-    # Validate input exists (if provided and not null)
-    if [ -n "$input_file" ] && [ "$input_file" != "null" ]; then
-        if [ ! -f "$input_file" ] && [ ! -d "$input_file" ]; then
-            echo "Error: Input file or directory not found: $input_file" >&2
-            return 1
-        fi
-    fi
-
-    # Extract enhancement name for context (used in prompt variables)
-    local enhancement_name
-    enhancement_name=$(extract_enhancement_name "$input_file" "$task_id")
+    local agent_config="$2"
+    local input_file="$3"
+    local output_dir="$4"
+    local task_description="$5"
+    local log_file="$6"
+    local task_type="$7"
+    local task_id="$8"
+    local enhancement_name="$9"
+    local enhancement_dir="${10}"
+    local required_output_filename="${11}"
+    local expected_statuses="${12}"
 
     # Load task template
     local template
@@ -200,12 +187,12 @@ execute_agent_core() {
         input_instruction="Input: $input_file"
     fi
 
-    # For direct invocation: no workflow context
-    local expected_statuses="(No workflow-defined statuses - output any appropriate status)"
-    local required_output_filename="output.md"
-    local enhancement_dir="$output_dir"
+    # Build prompt with workflow context (passed as parameters)
+    local prompt="$template"
 
     # Substitute variables in template
+    prompt="${prompt//\$\{agent\}/$agent}"
+    prompt="${prompt//\$\{agent_config\}/$agent_config}"
     prompt="${prompt//\$\{source_file\}/$input_file}"
     prompt="${prompt//\$\{task_description\}/$task_description}"
     prompt="${prompt//\$\{task_id\}/$task_id}"
@@ -245,9 +232,18 @@ execute_agent_core() {
         echo ""
     } >> "$log_file"
 
+    # Set context for SessionEnd hook (cost tracking)
+    export CMAT_CURRENT_TASK_ID="$task_id"
+    export CMAT_CURRENT_LOG_FILE="$log_file"
+    export CMAT_AGENT="$agent"
+    export CMAT_ENHANCEMENT="$enhancement_name"
+
     # Execute claude with bypass permissions
     claude --permission-mode bypassPermissions "$prompt" >> "$log_file" 2>&1
     local exit_code=$?
+
+    # Unset context after execution (SessionEnd hook will have already run)
+    unset CMAT_CURRENT_TASK_ID CMAT_CURRENT_LOG_FILE CMAT_AGENT CMAT_ENHANCEMENT
 
     local end_time end_timestamp duration
     end_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -288,6 +284,10 @@ invoke_agent() {
     enhancement_name=$(extract_enhancement_name "$source_file" "$task_id")
     enhancement_dir="enhancements/$enhancement_name"
 
+    # Set output directory for agent outputs
+    local output_dir="$enhancement_dir/$agent"
+    mkdir -p "$output_dir"
+
     # Validate source file exists (optional for ad-hoc tasks)
     if [ -n "$source_file" ] && [ "$source_file" != "null" ]; then
         if [ ! -f "$source_file" ] && [ ! -d "$source_file" ]; then
@@ -305,9 +305,46 @@ invoke_agent() {
     mkdir -p "$log_dir"
     log_file="${log_dir}/${agent}_${task_id}_$(date +%Y%m%d_%H%M%S).log"
 
+    # Set timestamp for start.
+    local start_timestamp
+    start_timestamp=$(date +%s)
+
+    # Get workflow context to extract expected statuses and required output
+    local workflow_state expected_statuses workflow_output
+    workflow_state=$(get_workflow_state "$task_id" 2>/dev/null)
+
+    if [ -n "$workflow_state" ] && [ "$workflow_state" != "null" ]; then
+        # Get workflow name and current step
+        local workflow_name current_step_index
+        workflow_name=$(echo "$workflow_state" | jq -r '.workflow_name')
+        current_step_index=$(echo "$workflow_state" | jq -r '.current_step_index')
+
+        # Load workflow definition
+        local workflow step
+        workflow=$(jq -r ".workflows[\"$workflow_name\"]" "$WORKFLOW_TEMPLATES_FILE" 2>/dev/null)
+        step=$(echo "$workflow" | jq -r ".steps[$current_step_index]" 2>/dev/null)
+
+        if [ -n "$step" ] && [ "$step" != "null" ]; then
+            # Get required output filename from workflow step
+            workflow_output=$(echo "$step" | jq -r '.required_output // "output.md"')
+
+            # Extract expected statuses from on_status keys
+            expected_statuses=$(echo "$step" | jq -r '.on_status | keys | map("- `" + . + "`") | join("\n")')
+        fi
+    fi
+
+    # If no workflow context or no expected statuses, use generic message
+    if [ -z "$expected_statuses" ]; then
+        expected_statuses="(No workflow-defined statuses - output any appropriate status)"
+    fi
+
+    # Get required output filename from workflow or use default
+    local required_output_filename="${workflow_output:-output.md}"
+
     # Execute agent in background to capture PID (for cancellation support)
-    execute_agent_core "$agent" "$source_file" "$output_dir" "$task_description" \
-                       "$log_file" "$task_type" "$task_id" &
+    execute_agent_core "$agent" "$agent_config" "$source_file" "$output_dir" "$task_description" \
+                       "$log_file" "$task_type" "$task_id" "$enhancement_name" "$enhancement_dir" \
+                       "$required_output_filename" "$expected_statuses" &
 
     # Get the process id.
     local claude_pid=$!
@@ -318,9 +355,6 @@ invoke_agent() {
     # Wait for the claude process to complete
     wait $claude_pid
     local exit_code=$?
-
-    # Unset context after execution (SessionEnd hook will have already run)
-    unset CMAT_CURRENT_TASK_ID CMAT_CURRENT_LOG_FILE CMAT_AGENT CMAT_ENHANCEMENT
 
     local end_time end_timestamp duration
     end_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -433,9 +467,27 @@ invoke_agent_direct() {
     # Generate simple task ID for logging purposes only
     local task_id="ui_${agent}_$(date +%Y%m%d_%H%M%S)"
 
+    # For UI invocations, extract enhancement name from output_dir if possible
+    # Output dir is typically enhancements/.staging/{name} for enhancement creation
+    local enhancement_name enhancement_dir
+    if [[ "$output_dir" =~ enhancements/([^/]+) ]]; then
+        enhancement_name="${BASH_REMATCH[1]}"
+        # Enhancement dir is the output dir for direct invocations (staging or final)
+        enhancement_dir="$output_dir"
+    else
+        # Fallback for non-enhancement operations
+        enhancement_name="ui-operation"
+        enhancement_dir="$output_dir"
+    fi
+
+    # Direct invocations have no workflow context - use defaults
+    local required_output_filename="output.md"
+    local expected_statuses="(No workflow-defined statuses - output any appropriate status)"
+
     # Execute agent core (synchronous - no background process)
-    execute_agent_core "$agent" "$input_file" "$output_dir" "$task_description" \
-                       "$log_file" "$task_type" "$task_id"
+    execute_agent_core "$agent" "$agent_config" "$input_file" "$output_dir" "$task_description" \
+                       "$log_file" "$task_type" "$task_id" "$enhancement_name" "$enhancement_dir" \
+                       "$required_output_filename" "$expected_statuses"
     local exit_code=$?
 
     # Simple output: return output directory on success

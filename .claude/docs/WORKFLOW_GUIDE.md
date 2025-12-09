@@ -1,6 +1,6 @@
 # Workflow Guide
 
-This guide describes workflow patterns and orchestration in the multi-agent system v5.0.
+This guide describes workflow patterns and orchestration in the multi-agent system.
 
 ## Table of Contents
 

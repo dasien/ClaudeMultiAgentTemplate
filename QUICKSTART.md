@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with the Claude Multi-Agent Template v5.0 in 5 minutes.
+Get up and running with the Claude Multi-Agent Template in 5 minutes.
 
 ## 1. Verify Installation
 

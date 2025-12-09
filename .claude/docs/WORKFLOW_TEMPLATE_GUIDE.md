@@ -1,6 +1,6 @@
 # Workflow Template Management Guide
 
-Guide to creating and managing custom workflow templates in Claude Multi-Agent Template v5.0.
+Guide to creating and managing custom workflow templates in Claude Multi-Agent Template.
 
 ## Table of Contents
 

@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide will walk you through installing and configuring the Claude Multi-Agent Template v5.0 in your project.
+This guide will walk you through installing and configuring the Claude Multi-Agent Template in your project.
 
 ## Prerequisites
 

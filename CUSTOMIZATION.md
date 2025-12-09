@@ -1,12 +1,12 @@
 # Customization Guide
 
-This guide shows you how to adapt the Claude Multi-Agent Template v5.0 for your specific project.
+This guide shows you how to adapt the Claude Multi-Agent Template for your specific project.
 
 ## Overview
 
 The template is designed to be **language-agnostic** and **project-flexible**. Customization involves updating agent definitions, workflow templates, and project-specific documentation to match your needs.
 
-**v5.0 Key Principle**: The system is driven by **workflow templates** (orchestration) and **agents.json** (capabilities).
+**vKey Principle**: The system is driven by **workflow templates** (orchestration) and **agents.json** (capabilities).
 
 ---
 
