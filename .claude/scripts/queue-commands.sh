@@ -18,6 +18,8 @@
 #       Mark active task as completed
 #   fail <task_id> [error]
 #       Mark active task as failed
+#   rerun <task_id> [--start]
+#       Re-queue a completed or failed task for re-execution
 #   cancel <task_id> [reason]
 #       Cancel pending or active task
 #   cancel-all [reason]
@@ -253,6 +255,82 @@ fail_task() {
     fi
 
     log_operation "TASK_FAILED" "ID: $task_id, Agent: $agent, Error: $error"
+}
+
+rerun_task() {
+    local task_id="$1"
+    local start_immediately="${2:-false}"
+
+    local temp_file
+    temp_file=$(mktemp)
+
+    # Check if task is in completed_tasks
+    local in_completed
+    in_completed=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+
+    # Check if task is in failed_tasks
+    local in_failed
+    in_failed=$(jq -r ".failed_tasks[] | select(.id == \"$task_id\") | .id" "$QUEUE_FILE")
+
+    if [ -z "$in_completed" ] && [ -z "$in_failed" ]; then
+        echo "❌ Task $task_id not found in completed or failed queues"
+        echo "   Note: Only completed or failed tasks can be re-run"
+        return 1
+    fi
+
+    local source_queue
+    local task_data
+    if [ -n "$in_completed" ]; then
+        source_queue="completed_tasks"
+        task_data=$(jq -r ".completed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+    else
+        source_queue="failed_tasks"
+        task_data=$(jq -r ".failed_tasks[] | select(.id == \"$task_id\")" "$QUEUE_FILE")
+    fi
+
+    # Get task details for logging
+    local agent title previous_result
+    agent=$(echo "$task_data" | jq -r '.assigned_agent')
+    title=$(echo "$task_data" | jq -r '.title')
+    previous_result=$(echo "$task_data" | jq -r '.result // "none"')
+
+    # Move task from source queue to pending with reset fields
+    jq --arg id "$task_id" --arg source "$source_queue" '
+        # Get the task and reset its fields
+        (.[$source][] | select(.id == $id)) as $task |
+        ($task | .status = "pending" | .started = null | .completed = null | .result = null) as $reset_task |
+        # Add to pending and remove from source
+        .pending_tasks += [$reset_task] |
+        .[$source] = [.[$source][] | select(.id != $id)]
+    ' "$QUEUE_FILE" > "$temp_file"
+
+    mv "$temp_file" "$QUEUE_FILE"
+
+    log_operation "TASK_RERUN" "ID: $task_id, Agent: $agent, Previous result: $previous_result, From: $source_queue"
+    echo "✅ Task re-queued for execution: $task_id"
+    echo "   Title: $title"
+    echo "   Agent: $agent"
+    echo "   Previous result: $previous_result"
+
+    # Check for workflow context
+    local workflow_name workflow_step
+    workflow_name=$(echo "$task_data" | jq -r '.metadata.workflow_name // ""')
+    workflow_step=$(echo "$task_data" | jq -r '.metadata.workflow_step // ""')
+
+    if [ -n "$workflow_name" ] && [ "$workflow_name" != "null" ]; then
+        echo "   Workflow: $workflow_name (step $workflow_step)"
+        echo "   Note: Auto-chain will resume from this step if task produces a valid status"
+    fi
+
+    # Start immediately if requested
+    if [ "$start_immediately" = "true" ] || [ "$start_immediately" = "--start" ]; then
+        echo ""
+        echo "🚀 Starting task immediately..."
+        start_task "$task_id"
+    else
+        echo ""
+        echo "Run 'cmat queue start $task_id' to execute the task"
+    fi
 }
 
 cancel_task() {
@@ -829,6 +907,16 @@ case "${1:-status}" in
         fail_task "$2" "${3:-task failed}"
         ;;
 
+    "rerun")
+        if [ $# -lt 2 ]; then
+            echo "Usage: cmat queue rerun <task_id> [--start]"
+            echo "  Re-queues a completed or failed task for re-execution"
+            echo "  --start    Start the task immediately after re-queuing"
+            exit 1
+        fi
+        rerun_task "$2" "${3:-false}"
+        ;;
+
     "status")
         show_status
         ;;
@@ -884,7 +972,7 @@ case "${1:-status}" in
         ;;
     *)
         echo "Unknown queue command: ${1:-status}" >&2
-        echo "Usage: cmat queue <add|start|complete|cancel|cancel-all|fail|status|list|metadata|init|preview-prompt|clear-finished>" >&2
+        echo "Usage: cmat queue <add|start|complete|cancel|cancel-all|fail|rerun|status|list|metadata|init|preview-prompt|clear-finished>" >&2
         exit 1
         ;;
 esac

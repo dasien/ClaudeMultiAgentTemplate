@@ -47,7 +47,7 @@
 # VERSION
 #############################################################################
 
-readonly VERSION="6.0.1"
+readonly VERSION="6.0.2"
 
 #############################################################################
 # PROJECT NAVIGATION
@@ -220,6 +220,7 @@ QUEUE COMMANDS:
   cmat queue cancel <task_id> [reason]
   cmat queue cancel-all [reason]
   cmat queue fail <task_id> [error]
+  cmat queue rerun <task_id> [--start]
   cmat queue status
   cmat queue list <queue_type> [format]
   cmat queue metadata <task_id> <key> <value>

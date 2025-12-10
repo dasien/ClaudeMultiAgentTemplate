@@ -170,6 +170,7 @@ Each agent maintains status:
 ┌─────────┐     ┌──────────┐
 │ Pending │────→│ Canceled │
 └────┬────┘     └──────────┘
+     ↑ rerun
      │
      ↓ start
 ┌─────────┐     ┌──────────┐
@@ -177,12 +178,12 @@ Each agent maintains status:
 └────┬────┘     └──────────┘
      │
      ├──→ fail ────→ ┌────────┐
-     │               │ Failed │
-     │               └────────┘
-     │
-     ↓ complete
-┌───────────┐
-│ Completed │
+     │               │ Failed │──┐
+     │               └────────┘  │
+     │                           │ rerun
+     ↓ complete                  │
+┌───────────┐                    │
+│ Completed │────────────────────┘
 └─────┬─────┘
       │
       ↓ auto-chain
@@ -191,6 +192,8 @@ Each agent maintains status:
 │ (Pending)   │
 └─────────────┘
 ```
+
+**Note**: The `rerun` command moves tasks from `Completed` or `Failed` back to `Pending`, preserving workflow metadata for auto-chain continuation.
 
 ### Detailed Lifecycle Steps
 
@@ -405,6 +408,45 @@ cmat.sh queue cancel-all "Project scope changed"
 ```bash
 # Mark task as failed
 cmat.sh queue fail task_1234567890_12345 "Agent execution timeout"
+```
+
+### Re-running Tasks
+
+Re-queue a completed or failed task for re-execution:
+
+```bash
+# Re-queue task (requires manual start)
+cmat.sh queue rerun task_1234567890_12345
+
+# Re-queue and start immediately
+cmat.sh queue rerun task_1234567890_12345 --start
+```
+
+**What It Does**:
+- ✅ Finds task in `completed_tasks` or `failed_tasks`
+- ✅ Resets task state (`status`, `started`, `completed`, `result`)
+- ✅ Moves task back to `pending_tasks`
+- ✅ Preserves workflow metadata for auto-chain continuation
+- ✅ Optionally starts task immediately with `--start`
+
+**Use Cases**:
+- **BLOCKED tasks**: Task completed with `BLOCKED: <reason>` status, stopping the workflow. After resolving the blocker, re-run to continue the workflow.
+- **Failed tasks**: Task failed due to a transient error or external issue. After fixing, re-run to retry.
+- **Updated output**: Need fresh output from an agent after making changes to inputs or configurations.
+
+**Example - Continuing a Blocked Workflow**:
+```bash
+# 1. Task completes with BLOCKED status
+# Result: "BLOCKED: Missing database schema"
+# Workflow stops because BLOCKED isn't in on_status transitions
+
+# 2. You manually resolve the blocker (create the schema)
+
+# 3. Re-run the blocked task
+cmat.sh queue rerun task_1234567890_12345 --start
+
+# 4. Agent now produces valid status (e.g., READY_FOR_IMPLEMENTATION)
+# 5. Auto-chain continues the workflow
 ```
 
 ### Viewing Queue Status
@@ -938,7 +980,10 @@ cmat.sh queue start $TASK_ID
 # Find failed task details
 cmat.sh queue list failed | jq '.[] | {id, title, result}'
 
-# Re-create task with same parameters
+# Use the rerun command to retry (recommended - preserves all task properties)
+cmat.sh queue rerun task_123 --start
+
+# Or re-create task with same parameters (legacy approach)
 # (Extract from failed task metadata)
 TASK_ID=$(cmat.sh queue add \
   "$(jq -r '.failed[0].title' .claude/queues/task_queue.json)" \

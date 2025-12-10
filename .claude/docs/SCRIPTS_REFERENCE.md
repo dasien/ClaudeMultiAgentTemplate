@@ -217,6 +217,41 @@ cmat queue show-enhancement-cost <enhancement_name>
 
 ---
 
+### queue rerun
+
+Re-queue a completed or failed task for re-execution.
+
+```bash
+cmat queue rerun <task_id> [--start]
+```
+
+**Parameters**:
+- `task_id` (required) - Task ID to re-run
+- `--start` (optional) - Start the task immediately after re-queuing
+
+**Behavior**:
+1. Finds task in `completed_tasks` or `failed_tasks`
+2. Resets task state (`status`, `started`, `completed`, `result`)
+3. Moves task back to `pending_tasks`
+4. Preserves workflow metadata for auto-chain continuation
+5. Optionally starts task immediately
+
+**Use Cases**:
+- Re-run a task that completed with `BLOCKED:` status after resolving the blocker
+- Retry a failed task after fixing the underlying issue
+- Re-execute a task to get updated output
+
+**Examples**:
+```bash
+# Re-queue task (requires manual start)
+cmat queue rerun task_1234567890_12345
+
+# Re-queue and start immediately
+cmat queue rerun task_1234567890_12345 --start
+```
+
+---
+
 ## Workflow Commands
 
 Workflow template management and execution.
