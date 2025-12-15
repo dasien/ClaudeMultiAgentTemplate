@@ -15,10 +15,11 @@ from .workflow_template import WorkflowTemplate
 from .tool import Tool
 from .claude_model import ClaudeModel, ModelPricing
 from .enhancement import Enhancement
+from .learning import Learning
 
 __all__ = [
     "Task",
-    "TaskStatus", 
+    "TaskStatus",
     "TaskPriority",
     "TaskMetadata",
     "Agent",
@@ -30,4 +31,5 @@ __all__ = [
     "ClaudeModel",
     "ModelPricing",
     "Enhancement",
+    "Learning",
 ]

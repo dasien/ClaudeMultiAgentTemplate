@@ -30,6 +30,7 @@ class QueueService:
 
     def __init__(self, queue_file: str = ".claude/queues/task_queue.json"):
         self.queue_file = Path(queue_file)
+        self._task_service = None  # Injected via set_services()
         self._ensure_queue_exists()
 
     def _ensure_queue_exists(self) -> None:
@@ -454,3 +455,115 @@ class QueueService:
         queue["failed_tasks"] = []
         self._write_queue(queue)
         return count
+
+    def status(self) -> dict:
+        """
+        Get queue status summary.
+
+        Returns dict with counts and agent status:
+        {
+            "pending": count,
+            "active": count,
+            "completed": count,
+            "failed": count,
+            "total": count,
+            "agent_status": {agent_name: {status, current_task, last_activity}}
+        }
+        """
+        queue = self._read_queue()
+
+        return {
+            "pending": len(queue.get("pending_tasks", [])),
+            "active": len(queue.get("active_workflows", [])),
+            "completed": len(queue.get("completed_tasks", [])),
+            "failed": len(queue.get("failed_tasks", [])),
+            "total": (
+                len(queue.get("pending_tasks", [])) +
+                len(queue.get("active_workflows", [])) +
+                len(queue.get("completed_tasks", [])) +
+                len(queue.get("failed_tasks", []))
+            ),
+            "agent_status": queue.get("agent_status", {}),
+        }
+
+    def init(self, force: bool = False) -> bool:
+        """
+        Initialize/reset the queue to a clean state.
+
+        Args:
+            force: If True, reset even if active tasks exist
+
+        Returns:
+            True if queue was reset, False if refused (active tasks without force)
+        """
+        queue = self._read_queue()
+
+        # Safety check: don't reset if active tasks exist
+        if not force and queue.get("active_workflows"):
+            return False
+
+        self._write_queue(self._empty_queue())
+        log_operation("QUEUE_INIT", "Queue reset to clean state")
+        return True
+
+    def show_task_cost(self, task_id: str) -> Optional[float]:
+        """
+        Get the cost in USD for a specific task.
+
+        Returns the cost as a float, or None if task not found or no cost recorded.
+        """
+        task = self.get(task_id)
+        if not task:
+            return None
+
+        return task.get_cost_usd()
+
+    def show_enhancement_cost(self, enhancement_name: str) -> float:
+        """
+        Calculate total cost for all tasks in an enhancement.
+
+        Returns sum of costs in USD (0.0 if no costs recorded).
+        """
+        tasks = self.list_by_enhancement(enhancement_name)
+        total = 0.0
+
+        for task in tasks:
+            cost = task.get_cost_usd()
+            if cost:
+                total += cost
+
+        return total
+
+    def preview_prompt(self, task_id: str) -> Optional[str]:
+        """
+        Preview the prompt that would be sent for a task.
+
+        NOTE: Requires TaskService to be injected via set_services().
+        Returns the prompt string, or None if task not found or service unavailable.
+        """
+        task = self.get(task_id)
+        if not task:
+            return None
+
+        if not self._task_service:
+            log_error("Cannot preview prompt: TaskService not configured")
+            return None
+
+        # Get agent from agent service if available
+        agent_name = task.assigned_agent
+
+        # Build prompt using task service
+        return self._task_service.build_prompt(
+            agent_name=agent_name,
+            task_type=task.task_type,
+            task_id=task.id,
+            task_description=task.description,
+            source_file=task.source_file,
+            enhancement_name=task.metadata.enhancement_title or "unknown",
+            enhancement_dir=f"enhancements/{task.metadata.enhancement_title or 'unknown'}",
+        )
+
+    def set_services(self, task_service=None) -> None:
+        """Inject service dependencies."""
+        if task_service:
+            self._task_service = task_service

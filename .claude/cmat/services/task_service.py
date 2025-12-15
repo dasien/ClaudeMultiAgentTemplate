@@ -68,8 +68,9 @@ class TaskService:
         self._agent_service = None
         self._skills_service = None
         self._queue_service = None
+        self._learnings_service = None
 
-    def set_services(self, agent=None, skills=None, queue=None) -> None:
+    def set_services(self, agent=None, skills=None, queue=None, learnings=None) -> None:
         """Inject service dependencies."""
         if agent:
             self._agent_service = agent
@@ -77,6 +78,8 @@ class TaskService:
             self._skills_service = skills
         if queue:
             self._queue_service = queue
+        if learnings:
+            self._learnings_service = learnings
 
     def _load_templates(self) -> dict[str, str]:
         """Load prompt templates from TASK_PROMPT_DEFAULTS.md."""
@@ -193,6 +196,20 @@ class TaskService:
         if skills_section:
             prompt = f"{prompt}\n\n{skills_section}"
 
+        # Retrieve and append learnings section if service available
+        if self._learnings_service:
+            from cmat.services.learnings_service import RetrievalContext
+            context = RetrievalContext(
+                agent_name=agent_name,
+                task_type=task_type,
+                task_description=task_description,
+                source_file=source_file,
+            )
+            learnings = self._learnings_service.retrieve(context, limit=5)
+            if learnings:
+                learnings_section = self._learnings_service.build_learnings_prompt(learnings)
+                prompt = f"{prompt}\n\n{learnings_section}"
+
         return prompt
 
     def extract_status(self, output: str) -> Optional[str]:
@@ -270,6 +287,16 @@ class TaskService:
             agent_name=agent.agent_file,
             enhancement_name=enhancement_name,
         )
+
+        # Extract learnings from successful output
+        if result["exit_code"] == 0 and result.get("output") and self._learnings_service:
+            self._extract_and_store_learnings(
+                output=result["output"],
+                agent_name=agent.agent_file,
+                task_type=task.task_type,
+                task_description=task.description,
+                task_id=task.id,
+            )
 
         return ExecutionResult(
             success=result["exit_code"] == 0,
@@ -466,3 +493,41 @@ class TaskService:
 
         # Fallback to task ID
         return task.id
+
+    def _extract_and_store_learnings(
+        self,
+        output: str,
+        agent_name: str,
+        task_type: str,
+        task_description: str,
+        task_id: str,
+    ) -> None:
+        """
+        Extract learnings from agent output and store them.
+
+        Called automatically after successful task execution.
+        """
+        if not self._learnings_service:
+            return
+
+        try:
+            learnings = self._learnings_service.extract_from_output(
+                agent_output=output,
+                agent_name=agent_name,
+                task_type=task_type,
+                task_description=task_description,
+                task_id=task_id,
+            )
+
+            # Store each extracted learning
+            for learning in learnings:
+                self._learnings_service.store(learning)
+
+            if learnings:
+                log_operation(
+                    "LEARNINGS_STORED",
+                    f"Stored {len(learnings)} learnings from task {task_id}"
+                )
+        except Exception as e:
+            # Don't fail task if learning extraction fails
+            log_error(f"Failed to extract learnings from task {task_id}: {e}")

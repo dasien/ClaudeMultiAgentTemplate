@@ -13,6 +13,7 @@ from cmat.services.agent_service import AgentService
 from cmat.services.skills_service import SkillsService
 from cmat.services.workflow_service import WorkflowService
 from cmat.services.task_service import TaskService
+from cmat.services.learnings_service import LearningsService
 from cmat.utils import find_project_root, ensure_directories
 
 
@@ -113,17 +114,27 @@ class CMAT:
             enhancements_dir=_enhancements_dir,
         )
 
+        self.learnings = LearningsService(
+            storage_path=str(base / ".claude/learnings"),
+        )
+
         # Wire up service dependencies
         self.tasks.set_services(
             agent=self.agents,
             skills=self.skills,
             queue=self.queue,
+            learnings=self.learnings,
         )
 
         self.workflow.set_services(
             queue=self.queue,
             task=self.tasks,
             agent=self.agents,
+        )
+
+        # Wire queue service with task service for preview_prompt
+        self.queue.set_services(
+            task_service=self.tasks,
         )
 
     @property

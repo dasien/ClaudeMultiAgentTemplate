@@ -115,6 +115,118 @@ class WorkflowService:
         self._save_templates(templates)
         return True
 
+    def add_step(self, workflow_id: str, step: WorkflowStep, index: Optional[int] = None) -> Optional[WorkflowTemplate]:
+        """
+        Add a step to a workflow template.
+
+        Args:
+            workflow_id: ID of the workflow to modify
+            step: The WorkflowStep to add
+            index: Optional position to insert at (appends if not specified)
+
+        Returns:
+            Updated WorkflowTemplate or None if workflow not found.
+        """
+        templates = self._load_templates()
+        if workflow_id not in templates:
+            return None
+
+        template = templates[workflow_id]
+        if index is not None and 0 <= index <= len(template.steps):
+            template.steps.insert(index, step)
+        else:
+            template.steps.append(step)
+
+        self._save_templates(templates)
+        return template
+
+    def remove_step(self, workflow_id: str, step_index: int) -> Optional[WorkflowTemplate]:
+        """
+        Remove a step from a workflow template.
+
+        Args:
+            workflow_id: ID of the workflow to modify
+            step_index: Index of the step to remove
+
+        Returns:
+            Updated WorkflowTemplate or None if workflow/step not found.
+        """
+        templates = self._load_templates()
+        if workflow_id not in templates:
+            return None
+
+        template = templates[workflow_id]
+        if step_index < 0 or step_index >= len(template.steps):
+            return None
+
+        template.steps.pop(step_index)
+        self._save_templates(templates)
+        return template
+
+    def add_transition(
+        self,
+        workflow_id: str,
+        step_index: int,
+        status: str,
+        transition: "StatusTransition",
+    ) -> Optional[WorkflowTemplate]:
+        """
+        Add or update a status transition for a workflow step.
+
+        Args:
+            workflow_id: ID of the workflow to modify
+            step_index: Index of the step to modify
+            status: Status name (e.g., "READY_FOR_DEVELOPMENT")
+            transition: StatusTransition object defining the transition
+
+        Returns:
+            Updated WorkflowTemplate or None if workflow/step not found.
+        """
+        from cmat.models.status_transition import StatusTransition
+
+        templates = self._load_templates()
+        if workflow_id not in templates:
+            return None
+
+        template = templates[workflow_id]
+        step = template.get_step(step_index)
+        if not step:
+            return None
+
+        step.on_status[status] = transition
+        self._save_templates(templates)
+        return template
+
+    def remove_transition(
+        self,
+        workflow_id: str,
+        step_index: int,
+        status: str,
+    ) -> Optional[WorkflowTemplate]:
+        """
+        Remove a status transition from a workflow step.
+
+        Args:
+            workflow_id: ID of the workflow to modify
+            step_index: Index of the step to modify
+            status: Status name to remove
+
+        Returns:
+            Updated WorkflowTemplate or None if workflow/step/status not found.
+        """
+        templates = self._load_templates()
+        if workflow_id not in templates:
+            return None
+
+        template = templates[workflow_id]
+        step = template.get_step(step_index)
+        if not step or status not in step.on_status:
+            return None
+
+        del step.on_status[status]
+        self._save_templates(templates)
+        return template
+
     def resolve_input_path(
             self,
             step: WorkflowStep,

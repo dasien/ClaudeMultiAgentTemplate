@@ -10,6 +10,7 @@ from .agent_service import AgentService
 from .skills_service import SkillsService
 from .workflow_service import WorkflowService
 from .task_service import TaskService
+from .learnings_service import LearningsService, RetrievalContext
 
 __all__ = [
     "QueueService",
@@ -17,4 +18,6 @@ __all__ = [
     "SkillsService",
     "WorkflowService",
     "TaskService",
+    "LearningsService",
+    "RetrievalContext",
 ]

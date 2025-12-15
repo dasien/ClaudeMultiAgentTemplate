@@ -5,10 +5,14 @@ Handles loading, listing, and managing agent configurations.
 """
 
 import json
+import re
 from pathlib import Path
 from typing import Optional
 
+import yaml
+
 from cmat.models.agent import Agent
+from cmat.utils import log_operation, log_error
 
 
 class AgentService:
@@ -151,3 +155,100 @@ class AgentService:
             errors.append(f"Agent prompt file not found: {prompt_file}")
 
         return errors
+
+    def generate_agents_json(self, skip_templates: bool = True) -> dict:
+        """
+        Generate agents.json by parsing frontmatter from agent markdown files.
+
+        Scans all .md files in the agents directory, extracts YAML frontmatter,
+        and builds the agents.json registry.
+
+        Args:
+            skip_templates: If True, skip files named *TEMPLATE*.md (default: True)
+
+        Returns:
+            Dict with "generated": count, "errors": list of error messages
+        """
+        agents = {}
+        errors = []
+
+        if not self.agents_dir.exists():
+            return {"generated": 0, "errors": ["Agents directory not found"]}
+
+        # Find all markdown files
+        md_files = list(self.agents_dir.glob("*.md"))
+
+        for md_file in md_files:
+            # Skip templates if configured
+            if skip_templates and "TEMPLATE" in md_file.name.upper():
+                continue
+
+            agent_file = md_file.stem  # filename without .md
+
+            try:
+                content = md_file.read_text()
+
+                # Extract frontmatter
+                frontmatter = self._extract_frontmatter(content)
+                if not frontmatter:
+                    errors.append(f"{md_file.name}: No valid frontmatter found")
+                    continue
+
+                # Validate required fields
+                required_fields = ["name", "role", "description"]
+                missing = [f for f in required_fields if f not in frontmatter]
+                if missing:
+                    errors.append(f"{md_file.name}: Missing required fields: {missing}")
+                    continue
+
+                # Create agent from frontmatter
+                agent = Agent(
+                    name=frontmatter.get("name", ""),
+                    agent_file=agent_file,
+                    role=frontmatter.get("role", ""),
+                    description=frontmatter.get("description", ""),
+                    tools=frontmatter.get("tools", []),
+                    skills=frontmatter.get("skills", []),
+                )
+
+                agents[agent_file] = agent
+
+            except Exception as e:
+                errors.append(f"{md_file.name}: Error parsing - {e}")
+
+        # Save the generated agents
+        self._save_agents(agents)
+
+        log_operation(
+            "AGENTS_GENERATED",
+            f"Generated {len(agents)} agents from markdown files"
+        )
+
+        return {
+            "generated": len(agents),
+            "errors": errors,
+        }
+
+    def _extract_frontmatter(self, content: str) -> Optional[dict]:
+        """
+        Extract YAML frontmatter from markdown content.
+
+        Expects format:
+        ---
+        key: value
+        ---
+        Content...
+
+        Returns parsed dict or None if no valid frontmatter.
+        """
+        # Match frontmatter block
+        match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+        if not match:
+            return None
+
+        frontmatter_text = match.group(1)
+
+        try:
+            return yaml.safe_load(frontmatter_text)
+        except yaml.YAMLError:
+            return None
