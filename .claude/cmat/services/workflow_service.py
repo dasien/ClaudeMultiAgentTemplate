@@ -31,7 +31,7 @@ class WorkflowService:
 
     def __init__(
             self,
-            templates_file: str = ".claude/queues/workflow_templates.json",
+            templates_file: str = ".claude/data/workflow_templates.json",
             enhancements_dir: str = "enhancements"
     ):
         self.templates_file = Path(templates_file)

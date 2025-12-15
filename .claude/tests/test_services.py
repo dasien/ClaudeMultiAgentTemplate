@@ -23,7 +23,7 @@ class TestQueueService:
 
     def test_init_creates_queue_file(self, cmat_test_env):
         """Test that init creates queue file if missing."""
-        queue_file = cmat_test_env / ".claude/queues/task_queue.json"
+        queue_file = cmat_test_env / ".claude/data/task_queue.json"
         queue_file.unlink()  # Remove existing file
 
         service = QueueService(str(queue_file))
@@ -31,7 +31,7 @@ class TestQueueService:
 
     def test_add_task(self, cmat_test_env):
         """Test adding a task to the queue."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test Task",
@@ -48,7 +48,7 @@ class TestQueueService:
 
     def test_get_task(self, cmat_test_env):
         """Test retrieving a task by ID."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test Task",
@@ -66,12 +66,12 @@ class TestQueueService:
 
     def test_get_nonexistent_task(self, cmat_test_env):
         """Test getting a task that doesn't exist."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
         assert service.get("nonexistent_id") is None
 
     def test_start_task(self, cmat_test_env):
         """Test starting a task moves it to active."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test",
@@ -96,7 +96,7 @@ class TestQueueService:
 
     def test_complete_task(self, cmat_test_env):
         """Test completing a task."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test",
@@ -120,7 +120,7 @@ class TestQueueService:
 
     def test_fail_task(self, cmat_test_env):
         """Test failing a task."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test",
@@ -140,7 +140,7 @@ class TestQueueService:
 
     def test_cancel_pending_task(self, cmat_test_env):
         """Test cancelling a pending task."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test",
@@ -157,7 +157,7 @@ class TestQueueService:
 
     def test_rerun_task(self, cmat_test_env):
         """Test rerunning a completed task."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         task = service.add(
             title="Test",
@@ -179,7 +179,7 @@ class TestQueueService:
 
     def test_status(self, cmat_test_env):
         """Test queue status summary."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         # Add some tasks
         t1 = service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
@@ -199,7 +199,7 @@ class TestQueueService:
 
     def test_init_queue(self, cmat_test_env):
         """Test resetting queue to clean state."""
-        service = QueueService(str(cmat_test_env / ".claude/queues/task_queue.json"))
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
         service.add("Task 2", "agent", "normal", "analysis", "t.md", "Test")
@@ -349,16 +349,18 @@ class TestLearningsService:
     """Tests for LearningsService (without Claude calls)."""
 
     def test_init_creates_directory(self, cmat_test_env):
-        """Test that init creates learnings directory."""
-        learnings_path = cmat_test_env / ".claude/learnings"
-        learnings_path.rmdir()  # Remove existing
+        """Test that init creates data directory and learnings.json file."""
+        import shutil
+        data_path = cmat_test_env / ".claude/data"
+        shutil.rmtree(data_path)  # Remove existing
 
-        service = LearningsService(str(learnings_path))
-        assert learnings_path.exists()
+        service = LearningsService(str(data_path))
+        assert data_path.exists()
+        assert (data_path / "learnings.json").exists()
 
     def test_store_and_get(self, cmat_test_env):
         """Test storing and retrieving a learning."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         learning = Learning.from_user_input(
             "Always use pytest fixtures",
@@ -374,7 +376,7 @@ class TestLearningsService:
 
     def test_delete(self, cmat_test_env):
         """Test deleting a learning."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         learning = Learning.from_user_input("Test learning")
         service.store(learning)
@@ -386,13 +388,13 @@ class TestLearningsService:
 
     def test_delete_nonexistent(self, cmat_test_env):
         """Test deleting non-existent learning."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
         result = service.delete("nonexistent_id")
         assert result is False
 
     def test_list_all(self, cmat_test_env):
         """Test listing all learnings."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         l1 = Learning.from_user_input("Learning 1", tags=["python"])
         l2 = Learning.from_user_input("Learning 2", tags=["testing"])
@@ -405,7 +407,7 @@ class TestLearningsService:
 
     def test_list_by_tags(self, cmat_test_env):
         """Test filtering learnings by tags."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         l1 = Learning.from_user_input("Python tip", tags=["python"])
         l2 = Learning.from_user_input("Testing tip", tags=["testing"])
@@ -423,7 +425,7 @@ class TestLearningsService:
 
     def test_count(self, cmat_test_env):
         """Test counting learnings."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         assert service.count() == 0
 
@@ -434,13 +436,13 @@ class TestLearningsService:
 
     def test_build_learnings_prompt_empty(self, cmat_test_env):
         """Test building prompt with no learnings."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
         prompt = service.build_learnings_prompt([])
         assert prompt == ""
 
     def test_build_learnings_prompt(self, cmat_test_env):
         """Test building learnings prompt."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         learnings = [
             Learning(
@@ -469,13 +471,13 @@ class TestLearningsService:
 
     def test_cache_invalidation(self, cmat_test_env):
         """Test that cache invalidation works."""
-        service = LearningsService(str(cmat_test_env / ".claude/learnings"))
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
 
         learning = Learning.from_user_input("Test")
         service.store(learning)
 
         # Manually modify the file
-        learnings_file = cmat_test_env / ".claude/learnings/learnings.json"
+        learnings_file = cmat_test_env / ".claude/data/learnings.json"
         with open(learnings_file) as f:
             data = json.load(f)
         data["learnings"].append({

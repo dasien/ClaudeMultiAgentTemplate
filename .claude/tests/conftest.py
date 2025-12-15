@@ -75,21 +75,22 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
     # Create directory structure
     (temp_dir / ".claude/agents").mkdir(parents=True)
     (temp_dir / ".claude/skills").mkdir(parents=True)
-    (temp_dir / ".claude/queues").mkdir(parents=True)
+    (temp_dir / ".claude/data").mkdir(parents=True)
     (temp_dir / ".claude/logs").mkdir(parents=True)
-    (temp_dir / ".claude/learnings").mkdir(parents=True)
     (temp_dir / ".claude/docs").mkdir(parents=True)
     (temp_dir / "enhancements").mkdir(parents=True)
 
     # Create empty queue file
     queue_data = {
-        "pending_tasks": [],
-        "active_workflows": [],
-        "completed_tasks": [],
-        "failed_tasks": [],
+        "queue_metadata": {
+            "created": "2025-01-01T00:00:00Z",
+            "version": "3.0.0",
+            "description": "Task queue for multi-agent development system"
+        },
+        "tasks": [],
         "agent_status": {},
     }
-    with open(temp_dir / ".claude/queues/task_queue.json", "w") as f:
+    with open(temp_dir / ".claude/data/task_queue.json", "w") as f:
         json.dump(queue_data, f)
 
     # Create empty agents.json
@@ -101,8 +102,12 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
         json.dump({"skills": []}, f)
 
     # Create empty workflow templates
-    with open(temp_dir / ".claude/queues/workflow_templates.json", "w") as f:
+    with open(temp_dir / ".claude/data/workflow_templates.json", "w") as f:
         json.dump({}, f)
+
+    # Create empty learnings file
+    with open(temp_dir / ".claude/data/learnings.json", "w") as f:
+        json.dump({"version": "1.0.0", "learnings": []}, f)
 
     # Create minimal TASK_PROMPT_DEFAULTS.md
     defaults_content = """# TASK_PROMPT_DEFAULTS

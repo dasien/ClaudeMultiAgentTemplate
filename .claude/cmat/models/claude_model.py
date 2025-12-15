@@ -65,7 +65,7 @@ class ClaudeModel:
     """
     Represents a Claude model with its configuration and pricing.
 
-    Models are defined in .claude/models/models.json and used for
+    Models are defined in .claude/data/models.json and used for
     cost calculation and model selection.
     """
     id: str

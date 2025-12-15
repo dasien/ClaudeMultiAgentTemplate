@@ -33,9 +33,9 @@ class QueueService:
         if queue_file is None:
             project_root = find_project_root()
             if project_root:
-                self.queue_file = project_root / ".claude/queues/task_queue.json"
+                self.queue_file = project_root / ".claude/data/task_queue.json"
             else:
-                self.queue_file = Path(".claude/queues/task_queue.json")
+                self.queue_file = Path(".claude/data/task_queue.json")
         else:
             self.queue_file = Path(queue_file)
 
@@ -53,13 +53,10 @@ class QueueService:
         return {
             "queue_metadata": {
                 "created": get_timestamp(),
-                "version": "2.0.0",
+                "version": "3.0.0",
                 "description": "Task queue for multi-agent development system"
             },
-            "active_workflows": [],
-            "pending_tasks": [],
-            "completed_tasks": [],
-            "failed_tasks": [],
+            "tasks": [],
             "agent_status": {}
         }
 
@@ -78,6 +75,13 @@ class QueueService:
         timestamp = int(get_datetime_utc().timestamp())
         random_suffix = random.randint(10000, 99999)
         return f"task_{timestamp}_{random_suffix}"
+
+    def _find_task_index(self, queue: dict, task_id: str) -> Optional[int]:
+        """Find the index of a task in the tasks array."""
+        for i, task_data in enumerate(queue.get("tasks", [])):
+            if task_data["id"] == task_id:
+                return i
+        return None
 
     def add(
             self,
@@ -112,7 +116,7 @@ class QueueService:
         )
 
         queue = self._read_queue()
-        queue["pending_tasks"].append(task.to_dict())
+        queue["tasks"].append(task.to_dict())
         self._write_queue(queue)
 
         log_operation("TASK_ADDED", f"Task: {task.id}, Agent: {assigned_agent}, Title: {title}")
@@ -120,76 +124,84 @@ class QueueService:
         return task
 
     def get(self, task_id: str) -> Optional[Task]:
-        """Get a task by ID from any queue."""
+        """Get a task by ID."""
         queue = self._read_queue()
 
-        # Search ALL queues including active_workflows
-        for queue_name in ["pending_tasks", "active_workflows", "completed_tasks", "failed_tasks"]:
-            for task_data in queue.get(queue_name, []):
-                if task_data["id"] == task_id:
-                    return Task.from_dict(task_data)
+        for task_data in queue.get("tasks", []):
+            if task_data["id"] == task_id:
+                return Task.from_dict(task_data)
 
         return None
 
+    def list_tasks(self, status: Optional[TaskStatus] = None) -> list[Task]:
+        """
+        List tasks, optionally filtered by status.
+
+        Args:
+            status: If provided, only return tasks with this status.
+                    If None, return all tasks.
+
+        Returns:
+            List of Task objects matching the filter.
+        """
+        queue = self._read_queue()
+        tasks = [Task.from_dict(t) for t in queue.get("tasks", [])]
+
+        if status is not None:
+            tasks = [t for t in tasks if t.status == status]
+
+        return tasks
+
     def list_pending(self) -> list[Task]:
         """List all pending tasks."""
-        queue = self._read_queue()
-        return [Task.from_dict(t) for t in queue.get("pending_tasks", [])]
+        return self.list_tasks(TaskStatus.PENDING)
 
     def list_completed(self) -> list[Task]:
         """List all completed tasks."""
-        queue = self._read_queue()
-        return [Task.from_dict(t) for t in queue.get("completed_tasks", [])]
+        return self.list_tasks(TaskStatus.COMPLETED)
 
     def list_failed(self) -> list[Task]:
         """List all failed tasks."""
-        queue = self._read_queue()
-        return [Task.from_dict(t) for t in queue.get("failed_tasks", [])]
+        return self.list_tasks(TaskStatus.FAILED)
 
     def list_active(self) -> list[Task]:
         """List all active (in-progress) tasks."""
-        queue = self._read_queue()
-        return [Task.from_dict(t) for t in queue.get("active_workflows", [])]
+        return self.list_tasks(TaskStatus.ACTIVE)
 
     def list_by_agent(self, agent_name: str) -> list[Task]:
         """List all tasks assigned to a specific agent."""
-        all_tasks = self.list_pending() + self.list_active() + self.list_completed() + self.list_failed()
+        all_tasks = self.list_tasks()
         return [t for t in all_tasks if t.assigned_agent == agent_name]
 
     def list_by_enhancement(self, enhancement_name: str) -> list[Task]:
         """List all tasks for a specific enhancement."""
-        all_tasks = self.list_pending() + self.list_active() + self.list_completed() + self.list_failed()
+        all_tasks = self.list_tasks()
         return [t for t in all_tasks if t.metadata.enhancement_title == enhancement_name]
 
     def start(self, task_id: str) -> Optional[Task]:
         """
-        Move task from pending to active.
+        Start a pending task (mark as active).
 
         NOTE: This only updates state. Execution is handled by TaskService.
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        # Find in pending
-        task_index = None
-        task_data = None
-        for i, t in enumerate(queue.get("pending_tasks", [])):
-            if t["id"] == task_id:
-                task_index = i
-                task_data = t
-                break
-
-        if task_data is None:
+        if task_index is None:
             return None
 
-        task = Task.from_dict(task_data)
+        task = Task.from_dict(queue["tasks"][task_index])
+
+        # Only start pending tasks
+        if task.status != TaskStatus.PENDING:
+            return None
 
         # Update state
         task.status = TaskStatus.ACTIVE
         task.started = get_datetime_utc()
 
-        # Move from pending to active
-        queue["pending_tasks"].pop(task_index)
-        queue["active_workflows"].append(task.to_dict())
+        # Update in place
+        queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
 
         # Update agent status
@@ -202,31 +214,25 @@ class QueueService:
     def complete(self, task_id: str, result: str) -> Optional[Task]:
         """
         Mark an active task as completed.
-
-        Moves task from active_workflows to completed_tasks.
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        # Find in active_workflows (NOT pending_tasks)
-        task_index = None
-        task_data = None
-        for i, t in enumerate(queue.get("active_workflows", [])):
-            if t["id"] == task_id:
-                task_index = i
-                task_data = t
-                break
-
-        if task_data is None:
+        if task_index is None:
             return None
 
-        task = Task.from_dict(task_data)
+        task = Task.from_dict(queue["tasks"][task_index])
+
+        # Only complete active tasks
+        if task.status != TaskStatus.ACTIVE:
+            return None
+
         task.status = TaskStatus.COMPLETED
         task.completed = get_datetime_utc()
         task.result = result
 
-        # Move from active to completed
-        queue["active_workflows"].pop(task_index)
-        queue["completed_tasks"].append(task.to_dict())
+        # Update in place
+        queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
 
         # Update agent status
@@ -239,31 +245,25 @@ class QueueService:
     def fail(self, task_id: str, reason: str) -> Optional[Task]:
         """
         Mark an active task as failed.
-
-        Moves task from active_workflows to failed_tasks.
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        # Find in active_workflows
-        task_index = None
-        task_data = None
-        for i, t in enumerate(queue.get("active_workflows", [])):
-            if t["id"] == task_id:
-                task_index = i
-                task_data = t
-                break
-
-        if task_data is None:
+        if task_index is None:
             return None
 
-        task = Task.from_dict(task_data)
+        task = Task.from_dict(queue["tasks"][task_index])
+
+        # Only fail active tasks
+        if task.status != TaskStatus.ACTIVE:
+            return None
+
         task.status = TaskStatus.FAILED
         task.completed = get_datetime_utc()
         task.result = reason
 
-        # Move from active to failed
-        queue["active_workflows"].pop(task_index)
-        queue["failed_tasks"].append(task.to_dict())
+        # Update in place
+        queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
 
         # Update agent status
@@ -280,68 +280,56 @@ class QueueService:
         For active tasks, also attempts to kill the process if PID is stored.
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        # Try pending first
-        for i, t in enumerate(queue.get("pending_tasks", [])):
-            if t["id"] == task_id:
-                task = Task.from_dict(t)
-                task.cancel(reason)
-                queue["pending_tasks"].pop(i)
-                queue["failed_tasks"].append(task.to_dict())
-                self._write_queue(queue)
-                log_operation("TASK_CANCELLED", f"Task: {task_id} (pending), Reason: {reason}")
-                return task
+        if task_index is None:
+            return None
 
-        # Try active
-        for i, t in enumerate(queue.get("active_workflows", [])):
-            if t["id"] == task_id:
-                task = Task.from_dict(t)
+        task = Task.from_dict(queue["tasks"][task_index])
 
-                # Try to kill process if PID stored
-                if task.metadata.process_pid:
-                    try:
-                        os.kill(int(task.metadata.process_pid), signal.SIGTERM)
-                    except (ProcessLookupError, ValueError, OSError):
-                        pass  # Process already gone
+        # Only cancel pending or active tasks
+        if task.status not in (TaskStatus.PENDING, TaskStatus.ACTIVE):
+            return None
 
-                task.cancel(reason)
-                queue["active_workflows"].pop(i)
-                queue["failed_tasks"].append(task.to_dict())
-                self._write_queue(queue)
+        was_active = task.status == TaskStatus.ACTIVE
 
-                self.update_agent_status(task.assigned_agent, "idle", None)
-                log_operation("TASK_CANCELLED", f"Task: {task_id} (active), Reason: {reason}")
-                return task
+        # Try to kill process if active and PID stored
+        if was_active and task.metadata.process_pid:
+            try:
+                os.kill(int(task.metadata.process_pid), signal.SIGTERM)
+            except (ProcessLookupError, ValueError, OSError):
+                pass  # Process already gone
 
-        return None
+        task.cancel(reason)
+
+        # Update in place
+        queue["tasks"][task_index] = task.to_dict()
+        self._write_queue(queue)
+
+        if was_active:
+            self.update_agent_status(task.assigned_agent, "idle", None)
+
+        log_operation("TASK_CANCELLED", f"Task: {task_id}, Reason: {reason}")
+
+        return task
 
     def rerun(self, task_id: str) -> Optional[Task]:
         """
         Re-queue a completed or failed task for re-execution.
 
-        Moves task back to pending with reset state.
+        Resets task state to pending.
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        # Find in completed or failed
-        source_queue = None
-        task_index = None
-        task_data = None
-
-        for qname in ["completed_tasks", "failed_tasks"]:
-            for i, t in enumerate(queue.get(qname, [])):
-                if t["id"] == task_id:
-                    source_queue = qname
-                    task_index = i
-                    task_data = t
-                    break
-            if task_data:
-                break
-
-        if task_data is None:
+        if task_index is None:
             return None
 
-        task = Task.from_dict(task_data)
+        task = Task.from_dict(queue["tasks"][task_index])
+
+        # Only rerun completed or failed tasks
+        if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
+            return None
 
         # Reset state
         task.status = TaskStatus.PENDING
@@ -349,12 +337,11 @@ class QueueService:
         task.completed = None
         task.result = None
 
-        # Move to pending
-        queue[source_queue].pop(task_index)
-        queue["pending_tasks"].append(task.to_dict())
+        # Update in place
+        queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
 
-        log_operation("TASK_RERUN", f"Task: {task_id}, From: {source_queue}")
+        log_operation("TASK_RERUN", f"Task: {task_id}")
 
         return task
 
@@ -366,12 +353,14 @@ class QueueService:
         """
         count = 0
 
-        # Get all task IDs first to avoid mutation during iteration
-        queue = self._read_queue()
-        pending_ids = [t["id"] for t in queue.get("pending_tasks", [])]
-        active_ids = [t["id"] for t in queue.get("active_workflows", [])]
+        # Get all cancellable task IDs
+        tasks = self.list_tasks()
+        cancellable_ids = [
+            t.id for t in tasks
+            if t.status in (TaskStatus.PENDING, TaskStatus.ACTIVE)
+        ]
 
-        for task_id in pending_ids + active_ids:
+        for task_id in cancellable_ids:
             if self.cancel(task_id, reason):
                 count += 1
 
@@ -384,43 +373,41 @@ class QueueService:
         This matches the bash: cmat queue metadata <task_id> <key> <value>
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        for queue_name in ["pending_tasks", "active_workflows", "completed_tasks", "failed_tasks"]:
-            for i, task_data in enumerate(queue.get(queue_name, [])):
-                if task_data["id"] == task_id:
-                    # Update the metadata field
-                    if "metadata" not in task_data:
-                        task_data["metadata"] = {}
-                    task_data["metadata"][key] = value
-                    queue[queue_name][i] = task_data
-                    self._write_queue(queue)
+        if task_index is None:
+            return None
 
-                    log_operation("METADATA_UPDATE", f"Task: {task_id}, {key}={value}")
-                    return Task.from_dict(task_data)
+        task_data = queue["tasks"][task_index]
 
-        return None
+        # Update the metadata field
+        if "metadata" not in task_data:
+            task_data["metadata"] = {}
+        task_data["metadata"][key] = value
+        queue["tasks"][task_index] = task_data
+        self._write_queue(queue)
+
+        log_operation("METADATA_UPDATE", f"Task: {task_id}, {key}={value}")
+        return Task.from_dict(task_data)
 
     def update_metadata(self, task_id: str, metadata_updates: dict) -> Optional[Task]:
         """
         Update metadata fields on a task.
-
-        Searches all queues for the task.
         """
         queue = self._read_queue()
+        task_index = self._find_task_index(queue, task_id)
 
-        for queue_name in ["pending_tasks", "active_workflows", "completed_tasks", "failed_tasks"]:
-            for i, task_data in enumerate(queue.get(queue_name, [])):
-                if task_data["id"] == task_id:
-                    task = Task.from_dict(task_data)
-                    for key, value in metadata_updates.items():
-                        if hasattr(task.metadata, key):
-                            setattr(task.metadata, key, value)
+        if task_index is None:
+            return None
 
-                    queue[queue_name][i] = task.to_dict()
-                    self._write_queue(queue)
-                    return task
+        task = Task.from_dict(queue["tasks"][task_index])
+        for key, value in metadata_updates.items():
+            if hasattr(task.metadata, key):
+                setattr(task.metadata, key, value)
 
-        return None
+        queue["tasks"][task_index] = task.to_dict()
+        self._write_queue(queue)
+        return task
 
     def get_agent_status(self, agent_name: str) -> Optional[dict]:
         """Get the current status of an agent."""
@@ -452,18 +439,18 @@ class QueueService:
     def clear_completed(self) -> int:
         """Clear all completed tasks. Returns count of cleared tasks."""
         queue = self._read_queue()
-        count = len(queue.get("completed_tasks", []))
-        queue["completed_tasks"] = []
+        original_count = len(queue.get("tasks", []))
+        queue["tasks"] = [t for t in queue.get("tasks", []) if t.get("status") != "completed"]
         self._write_queue(queue)
-        return count
+        return original_count - len(queue["tasks"])
 
     def clear_failed(self) -> int:
         """Clear all failed tasks. Returns count of cleared tasks."""
         queue = self._read_queue()
-        count = len(queue.get("failed_tasks", []))
-        queue["failed_tasks"] = []
+        original_count = len(queue.get("tasks", []))
+        queue["tasks"] = [t for t in queue.get("tasks", []) if t.get("status") != "failed"]
         self._write_queue(queue)
-        return count
+        return original_count - len(queue["tasks"])
 
     def status(self) -> dict:
         """
@@ -480,18 +467,19 @@ class QueueService:
         }
         """
         queue = self._read_queue()
+        tasks = queue.get("tasks", [])
+
+        pending = sum(1 for t in tasks if t.get("status") == "pending")
+        active = sum(1 for t in tasks if t.get("status") == "active")
+        completed = sum(1 for t in tasks if t.get("status") == "completed")
+        failed = sum(1 for t in tasks if t.get("status") in ("failed", "cancelled"))
 
         return {
-            "pending": len(queue.get("pending_tasks", [])),
-            "active": len(queue.get("active_workflows", [])),
-            "completed": len(queue.get("completed_tasks", [])),
-            "failed": len(queue.get("failed_tasks", [])),
-            "total": (
-                len(queue.get("pending_tasks", [])) +
-                len(queue.get("active_workflows", [])) +
-                len(queue.get("completed_tasks", [])) +
-                len(queue.get("failed_tasks", []))
-            ),
+            "pending": pending,
+            "active": active,
+            "completed": completed,
+            "failed": failed,
+            "total": len(tasks),
             "agent_status": queue.get("agent_status", {}),
         }
 
@@ -505,11 +493,11 @@ class QueueService:
         Returns:
             True if queue was reset, False if refused (active tasks without force)
         """
-        queue = self._read_queue()
-
         # Safety check: don't reset if active tasks exist
-        if not force and queue.get("active_workflows"):
-            return False
+        if not force:
+            active_tasks = self.list_active()
+            if active_tasks:
+                return False
 
         self._write_queue(self._empty_queue())
         log_operation("QUEUE_INIT", "Queue reset to clean state")

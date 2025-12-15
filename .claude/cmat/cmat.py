@@ -91,7 +91,7 @@ class CMAT:
 
         # Initialize services with paths
         self.queue = QueueService(
-            queue_file=queue_file or str(base / ".claude/queues/task_queue.json")
+            queue_file=queue_file or str(base / ".claude/data/task_queue.json")
         )
 
         self.agents = AgentService(
@@ -103,7 +103,7 @@ class CMAT:
         )
 
         self.workflow = WorkflowService(
-            templates_file=templates_file or str(base / ".claude/queues/workflow_templates.json"),
+            templates_file=templates_file or str(base / ".claude/data/workflow_templates.json"),
             enhancements_dir=_enhancements_dir
         )
 
@@ -115,7 +115,7 @@ class CMAT:
         )
 
         self.learnings = LearningsService(
-            storage_path=str(base / ".claude/learnings"),
+            data_dir=str(base / ".claude/data"),
         )
 
         # Wire up service dependencies

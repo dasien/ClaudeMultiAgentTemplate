@@ -59,12 +59,10 @@ def ensure_directories(base_path: Optional[Path] = None) -> None:
     base = base_path or Path.cwd()
 
     directories = [
-        base / ".claude/queues",
+        base / ".claude/data",
         base / ".claude/logs",
-        base / ".claude/status",
         base / ".claude/agents",
         base / ".claude/skills",
-        base / ".claude/models",
         base / "enhancements",
     ]
 
@@ -81,7 +79,14 @@ def log_operation(operation: str, details: str, logs_dir: Optional[Path] = None)
         details: Details about the operation
         logs_dir: Path to logs directory (defaults to .claude/logs)
     """
-    logs_path = logs_dir or Path(".claude/logs")
+    if logs_dir is None:
+        project_root = find_project_root()
+        if project_root:
+            logs_path = project_root / ".claude/logs"
+        else:
+            logs_path = Path(".claude/logs")
+    else:
+        logs_path = logs_dir
     logs_path.mkdir(parents=True, exist_ok=True)
 
     log_file = logs_path / "queue_operations.log"

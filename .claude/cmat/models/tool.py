@@ -13,7 +13,7 @@ class Tool:
     """
     Represents a Claude Code tool that agents can use.
 
-    Tools are defined in .claude/tools/tools.json and represent
+    Tools are defined in .claude/data/tools.json and represent
     the capabilities available to agents during task execution.
     """
     name: str

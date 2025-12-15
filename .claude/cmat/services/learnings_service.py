@@ -40,7 +40,7 @@ class LearningsService:
     Uses Claude for both extraction (from agent outputs) and retrieval
     (selecting relevant learnings for task context).
 
-    Storage: Simple JSON file at .claude/learnings/learnings.json
+    Storage: Simple JSON file at .claude/data/learnings.json
     """
 
     # Extraction prompt template
@@ -112,25 +112,24 @@ JSON response:"""
 
     def __init__(
         self,
-        storage_path: Optional[str] = None,
+        data_dir: Optional[str] = None,
     ):
         # Resolve path relative to project root, not cwd
-        if storage_path is None:
+        if data_dir is None:
             project_root = find_project_root()
             if project_root:
-                self.storage_path = project_root / ".claude/learnings"
+                self.learnings_file = project_root / ".claude/data/learnings.json"
             else:
-                self.storage_path = Path(".claude/learnings")
+                self.learnings_file = Path(".claude/data/learnings.json")
         else:
-            self.storage_path = Path(storage_path)
+            self.learnings_file = Path(data_dir) / "learnings.json"
 
-        self.learnings_file = self.storage_path / "learnings.json"
         self._cache: Optional[dict[str, Learning]] = None
         self._ensure_storage_exists()
 
     def _ensure_storage_exists(self) -> None:
         """Ensure the storage directory and file exist."""
-        self.storage_path.mkdir(parents=True, exist_ok=True)
+        self.learnings_file.parent.mkdir(parents=True, exist_ok=True)
 
         if not self.learnings_file.exists():
             self._write_learnings({})
@@ -469,7 +468,7 @@ def get_relevant_learnings(
     agent_name: str,
     task_type: str,
     task_description: str,
-    storage_path: str = ".claude/learnings",
+    data_dir: Optional[str] = None,
     limit: int = 5,
 ) -> list[Learning]:
     """
@@ -479,13 +478,13 @@ def get_relevant_learnings(
         agent_name: Name of the agent
         task_type: Type of task
         task_description: Description of the task
-        storage_path: Path to learnings storage
+        data_dir: Path to data directory (defaults to .claude/data/)
         limit: Maximum number of learnings
 
     Returns:
         List of relevant Learning objects
     """
-    service = LearningsService(storage_path)
+    service = LearningsService(data_dir)
     context = RetrievalContext(
         agent_name=agent_name,
         task_type=task_type,

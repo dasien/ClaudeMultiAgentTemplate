@@ -1,5 +1,5 @@
 {
-  "version": "6.0.2",
+  "version": "8.1.0",
   "name": "Claude Multi-Agent Template",
   "description": "Installation manifest - all listed items are required",
   "structure": {
@@ -16,12 +16,22 @@
         "requirements-analyst.md",
         "tester.md"
       ],
+      "cmat": [
+        "Python package for CMAT operations"
+      ],
+      "data": [
+        "learnings.json",
+        "models.json",
+        "task_queue.json",
+        "task_queue_empty.json",
+        "tools.json",
+        "workflow_templates.json"
+      ],
       "docs": [
         "ENHANCEMENT_GUIDE.md",
         "INTEGRATION_GUIDE.md",
         "MCP_INTEGRATION_QUICKSTART.md",
         "QUEUE_SYSTEM_GUIDE.md",
-        "SCRIPTS_REFERENCE.md",
         "SKILLS_GUIDE.md",
         "TASK_PROMPT_DEFAULTS.md",
         "UNDERSTANDING_PROMPTS.md",
@@ -45,74 +55,26 @@
         "atlassian-config.json",
         "github-config.json"
       ],
-      "queues": [
-        "task_queue.json",
-        "task_queue_empty.json",
-        "workflow_templates.json"
-      ],
-      "models": [
-        "models.json"
-      ],
-      "scripts": [
-        "agent-commands.sh",
-        "cmat.sh",
-        "common-commands.sh",
-        "integration-commands.sh",
-        "queue-commands.sh",
-        "skills-commands.sh",
-        "workflow-commands.sh"
-      ],
       "skills": {
         "_files": [
           "SKILL_TEMPLATE.md",
           "skills.json"
         ],
-        "api-design": [
-          "SKILL.md"
-        ],
-        "api-documentation": [
-          "SKILL.md"
-        ],
-        "architecture-patterns": [
-          "SKILL.md"
-        ],
-        "bug-triage": [
-          "SKILL.md"
-        ],
-        "code-refactoring": [
-          "SKILL.md"
-        ],
-        "desktop-ui-design": [
-          "SKILL.md"
-        ],
-        "error-handling": [
-          "SKILL.md"
-        ],
-        "requirements-elicitation": [
-          "SKILL.md"
-        ],
-        "sql-development": [
-          "SKILL.md"
-        ],
-        "technical-writing": [
-          "SKILL.md"
-        ],
-        "test-coverage": [
-          "SKILL.md"
-        ],
-        "test-design-patterns": [
-          "SKILL.md"
-        ],
-        "user-story-writing": [
-          "SKILL.md"
-        ],
-        "web-ui-design": [
-          "SKILL.md"
-        ]
-      },
-      "tools": [
-        "tools.json"
-      ]
+        "api-design": ["SKILL.md"],
+        "api-documentation": ["SKILL.md"],
+        "architecture-patterns": ["SKILL.md"],
+        "bug-triage": ["SKILL.md"],
+        "code-refactoring": ["SKILL.md"],
+        "desktop-ui-design": ["SKILL.md"],
+        "error-handling": ["SKILL.md"],
+        "requirements-elicitation": ["SKILL.md"],
+        "sql-development": ["SKILL.md"],
+        "technical-writing": ["SKILL.md"],
+        "test-coverage": ["SKILL.md"],
+        "test-design-patterns": ["SKILL.md"],
+        "user-story-writing": ["SKILL.md"],
+        "web-ui-design": ["SKILL.md"]
+      }
     }
   }
 }
