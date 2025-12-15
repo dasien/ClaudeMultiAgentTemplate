@@ -17,7 +17,7 @@ import random
 
 from cmat.models.task import Task, TaskStatus, TaskPriority
 from cmat.models.task_metadata import TaskMetadata
-from cmat.utils import get_timestamp, get_datetime_utc, log_operation, log_error
+from cmat.utils import get_timestamp, get_datetime_utc, log_operation, log_error, find_project_root
 
 
 class QueueService:
@@ -28,8 +28,17 @@ class QueueService:
     and managing task lifecycle.
     """
 
-    def __init__(self, queue_file: str = ".claude/queues/task_queue.json"):
-        self.queue_file = Path(queue_file)
+    def __init__(self, queue_file: Optional[str] = None):
+        # Resolve path relative to project root, not cwd
+        if queue_file is None:
+            project_root = find_project_root()
+            if project_root:
+                self.queue_file = project_root / ".claude/queues/task_queue.json"
+            else:
+                self.queue_file = Path(".claude/queues/task_queue.json")
+        else:
+            self.queue_file = Path(queue_file)
+
         self._task_service = None  # Injected via set_services()
         self._ensure_queue_exists()
 

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from cmat.models.skill import Skill
+from cmat.utils import find_project_root
 
 
 class SkillsService:
@@ -19,8 +20,17 @@ class SkillsService:
     and accessing skill definitions.
     """
 
-    def __init__(self, skills_dir: str = ".claude/skills"):
-        self.skills_dir = Path(skills_dir)
+    def __init__(self, skills_dir: Optional[str] = None):
+        # Resolve path relative to project root, not cwd
+        if skills_dir is None:
+            project_root = find_project_root()
+            if project_root:
+                self.skills_dir = project_root / ".claude/skills"
+            else:
+                self.skills_dir = Path(".claude/skills")
+        else:
+            self.skills_dir = Path(skills_dir)
+
         self.skills_file = self.skills_dir / "skills.json"
         self._skills_cache: Optional[dict[str, Skill]] = None
 

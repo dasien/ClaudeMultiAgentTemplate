@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from cmat.models.learning import Learning
-from cmat.utils import get_timestamp, log_operation, log_error
+from cmat.utils import get_timestamp, log_operation, log_error, find_project_root
 
 if TYPE_CHECKING:
     from cmat.models.task import Task
@@ -112,9 +112,18 @@ JSON response:"""
 
     def __init__(
         self,
-        storage_path: str = ".claude/learnings",
+        storage_path: Optional[str] = None,
     ):
-        self.storage_path = Path(storage_path)
+        # Resolve path relative to project root, not cwd
+        if storage_path is None:
+            project_root = find_project_root()
+            if project_root:
+                self.storage_path = project_root / ".claude/learnings"
+            else:
+                self.storage_path = Path(".claude/learnings")
+        else:
+            self.storage_path = Path(storage_path)
+
         self.learnings_file = self.storage_path / "learnings.json"
         self._cache: Optional[dict[str, Learning]] = None
         self._ensure_storage_exists()

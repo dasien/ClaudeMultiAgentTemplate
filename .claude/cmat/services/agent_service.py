@@ -12,7 +12,7 @@ from typing import Optional
 import yaml
 
 from cmat.models.agent import Agent
-from cmat.utils import log_operation, log_error
+from cmat.utils import log_operation, log_error, find_project_root
 
 
 class AgentService:
@@ -23,8 +23,17 @@ class AgentService:
     and accessing agent definitions.
     """
 
-    def __init__(self, agents_dir: str = ".claude/agents"):
-        self.agents_dir = Path(agents_dir)
+    def __init__(self, agents_dir: Optional[str] = None):
+        # Resolve path relative to project root, not cwd
+        if agents_dir is None:
+            project_root = find_project_root()
+            if project_root:
+                self.agents_dir = project_root / ".claude/agents"
+            else:
+                self.agents_dir = Path(".claude/agents")
+        else:
+            self.agents_dir = Path(agents_dir)
+
         self.agents_file = self.agents_dir / "agents.json"
         self._agents_cache: Optional[dict[str, Agent]] = None
 
