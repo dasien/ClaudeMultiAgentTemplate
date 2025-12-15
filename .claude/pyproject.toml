@@ -35,6 +35,9 @@ dev = [
     "ruff>=0.1.0",
 ]
 
+[project.scripts]
+cmat = "cmat.__main__:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["cmat"]
 

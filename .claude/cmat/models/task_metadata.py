@@ -5,7 +5,7 @@ Stores integration links, workflow context, execution details, and cost informat
 associated with a task.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -39,6 +39,10 @@ class TaskMetadata:
     cost_usd: Optional[str] = None
     cost_model: Optional[str] = None
 
+    # Learnings tracking (RAG system)
+    learnings_retrieved: list[str] = field(default_factory=list)  # IDs of learnings used in prompt
+    learnings_created: list[str] = field(default_factory=list)    # IDs of learnings extracted from output
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -59,6 +63,8 @@ class TaskMetadata:
             "cost_cache_read_tokens": self.cost_cache_read_tokens,
             "cost_usd": self.cost_usd,
             "cost_model": self.cost_model,
+            "learnings_retrieved": self.learnings_retrieved,
+            "learnings_created": self.learnings_created,
         }
 
     @classmethod
@@ -82,4 +88,6 @@ class TaskMetadata:
             cost_cache_read_tokens=data.get("cost_cache_read_tokens"),
             cost_usd=data.get("cost_usd"),
             cost_model=data.get("cost_model"),
+            learnings_retrieved=data.get("learnings_retrieved", []),
+            learnings_created=data.get("learnings_created", []),
         )
