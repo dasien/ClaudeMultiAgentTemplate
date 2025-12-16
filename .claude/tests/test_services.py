@@ -8,13 +8,14 @@ import json
 import pytest
 from pathlib import Path
 
-from cmat.models import Task, TaskStatus, TaskPriority, Agent, Learning
+from cmat.models import Task, TaskStatus, TaskPriority, Agent, Learning, ClaudeModel, ModelPricing
 from cmat.services import (
     QueueService,
     AgentService,
     SkillsService,
     LearningsService,
     RetrievalContext,
+    ModelService,
 )
 
 
@@ -500,3 +501,301 @@ class TestLearningsService:
         # After invalidation, returns new count
         service.invalidate_cache()
         assert service.count() == 2
+
+
+class TestModelService:
+    """Tests for ModelService."""
+
+    def test_init_creates_models_file(self, cmat_test_env):
+        """Test that init creates models.json if missing."""
+        data_dir = cmat_test_env / ".claude/data"
+        models_file = data_dir / "models.json"
+        if models_file.exists():
+            models_file.unlink()
+
+        service = ModelService(str(data_dir))
+        # Trigger file creation by loading
+        service.list_all()
+        assert models_file.exists()
+
+    def test_list_all(self, cmat_test_env):
+        """Test listing all models."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        models = service.list_all()
+
+        # Should have default models from the fixture
+        assert len(models) >= 1
+        assert all(isinstance(m, ClaudeModel) for m in models)
+
+    def test_get_model(self, cmat_test_env):
+        """Test getting a model by ID."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Get existing model
+        model = service.get("claude-sonnet-4.5")
+        assert model is not None
+        assert model.name == "Claude Sonnet 4.5"
+
+    def test_get_nonexistent_model(self, cmat_test_env):
+        """Test getting a model that doesn't exist."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        assert service.get("nonexistent-model") is None
+
+    def test_get_by_pattern(self, cmat_test_env):
+        """Test finding model by pattern matching."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Should match claude-sonnet-4.5 pattern
+        model = service.get_by_pattern("claude-sonnet-4-5-20250929")
+        assert model is not None
+        assert "sonnet" in model.id.lower()
+
+    def test_get_default(self, cmat_test_env):
+        """Test getting default model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        default = service.get_default()
+
+        assert default is not None
+        assert isinstance(default, ClaudeModel)
+
+    def test_add_model(self, cmat_test_env):
+        """Test adding a new model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        new_model = ClaudeModel(
+            id="test-model",
+            name="Test Model",
+            description="A test model",
+            pattern="*test-model*",
+            max_tokens=100000,
+            pricing=ModelPricing(
+                input=1.0,
+                output=2.0,
+                cache_write=1.5,
+                cache_read=0.1,
+            ),
+        )
+
+        model_id = service.add(new_model)
+        assert model_id == "test-model"
+
+        # Verify it was added
+        retrieved = service.get("test-model")
+        assert retrieved is not None
+        assert retrieved.name == "Test Model"
+
+    def test_add_duplicate_model(self, cmat_test_env):
+        """Test that adding duplicate model raises error."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Try to add model with existing ID
+        duplicate = ClaudeModel(
+            id="claude-sonnet-4.5",
+            name="Duplicate",
+            description="Duplicate model",
+            pattern="*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+
+        with pytest.raises(ValueError, match="already exists"):
+            service.add(duplicate)
+
+    def test_update_model(self, cmat_test_env):
+        """Test updating an existing model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Get existing model
+        model = service.get("claude-sonnet-4.5")
+        assert model is not None
+
+        # Modify and update
+        model.description = "Updated description"
+        result = service.update(model)
+        assert result is True
+
+        # Verify update
+        service.invalidate_cache()
+        updated = service.get("claude-sonnet-4.5")
+        assert updated.description == "Updated description"
+
+    def test_update_nonexistent_model(self, cmat_test_env):
+        """Test updating a model that doesn't exist."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        fake_model = ClaudeModel(
+            id="nonexistent",
+            name="Fake",
+            description="Fake model",
+            pattern="*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+
+        result = service.update(fake_model)
+        assert result is False
+
+    def test_delete_model(self, cmat_test_env):
+        """Test deleting a model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Add a model to delete
+        new_model = ClaudeModel(
+            id="to-delete",
+            name="To Delete",
+            description="Will be deleted",
+            pattern="*delete*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+        service.add(new_model)
+
+        # Delete it
+        result = service.delete("to-delete")
+        assert result is True
+
+        # Verify deletion
+        assert service.get("to-delete") is None
+
+    def test_delete_nonexistent_model(self, cmat_test_env):
+        """Test deleting a model that doesn't exist."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        result = service.delete("nonexistent")
+        assert result is False
+
+    def test_set_default(self, cmat_test_env):
+        """Test setting default model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Add a new model
+        new_model = ClaudeModel(
+            id="new-default",
+            name="New Default",
+            description="New default model",
+            pattern="*new*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+        service.add(new_model)
+
+        # Set as default
+        result = service.set_default("new-default")
+        assert result is True
+
+        # Verify
+        service.invalidate_cache()
+        default = service.get_default()
+        assert default.id == "new-default"
+
+    def test_set_default_nonexistent(self, cmat_test_env):
+        """Test setting nonexistent model as default."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        result = service.set_default("nonexistent")
+        assert result is False
+
+    def test_extract_from_transcript(self, cmat_test_env, tmp_path):
+        """Test extracting usage from transcript JSONL."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Create a mock transcript file
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text(
+            '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":10,"cache_read_input_tokens":5},"model":"claude-sonnet-4-5-20250929"}}\n'
+            '{"type":"assistant","message":{"usage":{"input_tokens":200,"output_tokens":100,"cache_creation_input_tokens":20,"cache_read_input_tokens":10}}}\n'
+            '{"type":"user","message":{"content":"test"}}\n'
+        )
+
+        usage = service.extract_from_transcript(str(transcript))
+
+        assert usage["input_tokens"] == 300
+        assert usage["output_tokens"] == 150
+        assert usage["cache_creation_tokens"] == 30
+        assert usage["cache_read_tokens"] == 15
+        assert usage["model"] == "claude-sonnet-4-5-20250929"
+
+    def test_extract_from_nonexistent_transcript(self, cmat_test_env):
+        """Test extracting from nonexistent transcript."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        usage = service.extract_from_transcript("/nonexistent/path.jsonl")
+
+        assert usage["input_tokens"] == 0
+        assert usage["output_tokens"] == 0
+        assert usage["model"] is None
+
+    def test_calculate_cost(self, cmat_test_env):
+        """Test cost calculation."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        usage = {
+            "input_tokens": 1000000,  # 1M tokens
+            "output_tokens": 500000,  # 500K tokens
+            "cache_creation_tokens": 0,
+            "cache_read_tokens": 0,
+            "model": "claude-sonnet-4-5-20250929",
+        }
+
+        cost = service.calculate_cost(usage)
+
+        # Sonnet 4.5 pricing: $3/M input, $15/M output
+        # Expected: 1M * $3 + 0.5M * $15 = $3 + $7.5 = $10.5
+        assert cost == pytest.approx(10.5, rel=0.01)
+
+    def test_calculate_cost_with_cache(self, cmat_test_env):
+        """Test cost calculation including cache tokens."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        usage = {
+            "input_tokens": 100000,
+            "output_tokens": 50000,
+            "cache_creation_tokens": 200000,
+            "cache_read_tokens": 300000,
+            "model": "claude-sonnet-4-5-20250929",
+        }
+
+        cost = service.calculate_cost(usage)
+
+        # Sonnet 4.5 pricing per million:
+        # Input: $3.00, Output: $15.00, Cache Write: $3.75, Cache Read: $0.30
+        # Expected:
+        #   100K input * $3.00/M = $0.30
+        #   50K output * $15.00/M = $0.75
+        #   200K cache_write * $3.75/M = $0.75
+        #   300K cache_read * $0.30/M = $0.09
+        #   Total = $1.89
+        assert cost == pytest.approx(1.89, rel=0.01)
+
+    def test_cache_invalidation(self, cmat_test_env):
+        """Test that cache invalidation works."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Load initial state
+        initial_models = service.list_all()
+        initial_count = len(initial_models)
+
+        # Manually add to file
+        models_file = cmat_test_env / ".claude/data/models.json"
+        with open(models_file) as f:
+            data = json.load(f)
+        data["models"]["manual-model"] = {
+            "pattern": "*manual*",
+            "name": "Manual Model",
+            "description": "Manually added",
+            "max_tokens": 100000,
+            "pricing": {
+                "input": 1.0,
+                "output": 2.0,
+                "cache_write": 1.5,
+                "cache_read": 0.1,
+                "currency": "USD",
+                "per_tokens": 1000000,
+            },
+        }
+        with open(models_file, "w") as f:
+            json.dump(data, f)
+
+        # Without invalidation, cache returns old count
+        assert len(service.list_all()) == initial_count
+
+        # After invalidation, returns new count
+        service.invalidate_cache()
+        assert len(service.list_all()) == initial_count + 1

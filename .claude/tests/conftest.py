@@ -109,6 +109,33 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
     with open(temp_dir / ".claude/data/learnings.json", "w") as f:
         json.dump({"version": "1.0.0", "learnings": []}, f)
 
+    # Create models.json with default model
+    models_data = {
+        "models": {
+            "claude-sonnet-4.5": {
+                "pattern": "*sonnet-4-5*|*sonnet-4*",
+                "name": "Claude Sonnet 4.5",
+                "description": "Balanced model for most tasks",
+                "max_tokens": 200000,
+                "pricing": {
+                    "input": 3.00,
+                    "output": 15.00,
+                    "cache_write": 3.75,
+                    "cache_read": 0.30,
+                    "currency": "USD",
+                    "per_tokens": 1000000,
+                },
+            }
+        },
+        "default_model": "claude-sonnet-4.5",
+        "metadata": {
+            "last_updated": "2025-01-01",
+            "pricing_source": "https://www.anthropic.com/pricing",
+        },
+    }
+    with open(temp_dir / ".claude/data/models.json", "w") as f:
+        json.dump(models_data, f)
+
     # Create minimal TASK_PROMPT_DEFAULTS.md
     defaults_content = """# TASK_PROMPT_DEFAULTS
 

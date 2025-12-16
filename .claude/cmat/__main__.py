@@ -17,6 +17,15 @@ Commands:
     agents list                       List all agents
     agents generate                   Regenerate agents.json from markdown
 
+    models list                       List all Claude models
+    models show <id>                  Show model details
+    models set-default <id>           Set default model
+
+    costs extract <task_id> <transcript_path> [session_id]
+                                      Extract costs from transcript
+    costs show <task_id>              Show task cost
+    costs enhancement <name>          Show enhancement total cost
+
     version                           Show CMAT version
 """
 
@@ -236,6 +245,158 @@ def cmd_agents(cmat: CMAT, args: list[str]) -> int:
         return 1
 
 
+def cmd_models(cmat: CMAT, args: list[str]) -> int:
+    """Handle models subcommands."""
+    if not args:
+        print("Usage: cmat models <list|show|set-default>")
+        return 1
+
+    subcmd = args[0]
+
+    if subcmd == "list":
+        models = cmat.models.list_all()
+        default = cmat.models.get_default()
+
+        if not models:
+            print("No models configured.")
+            return 0
+
+        print(f"Available models ({len(models)}):\n")
+        for model in models:
+            is_default = " (default)" if model.id == default.id else ""
+            print(f"  {model.id}{is_default}")
+            print(f"    Name: {model.name}")
+            print(f"    Input:  ${model.pricing.input:.2f}/M tokens")
+            print(f"    Output: ${model.pricing.output:.2f}/M tokens")
+            print()
+        return 0
+
+    elif subcmd == "show":
+        if len(args) < 2:
+            print_error("Usage: cmat models show <id>")
+            return 1
+
+        model_id = args[1]
+        model = cmat.models.get(model_id)
+
+        if not model:
+            print_error(f"Model not found: {model_id}")
+            return 1
+
+        default = cmat.models.get_default()
+        is_default = " (default)" if model.id == default.id else ""
+
+        print(f"Model: {model.id}{is_default}")
+        print(f"  Name: {model.name}")
+        print(f"  Description: {model.description}")
+        print(f"  Pattern: {model.pattern}")
+        print(f"  Max Tokens: {model.max_tokens:,}")
+        print(f"\n  Pricing (per million tokens):")
+        print(f"    Input:       ${model.pricing.input:.2f}")
+        print(f"    Output:      ${model.pricing.output:.2f}")
+        print(f"    Cache Write: ${model.pricing.cache_write:.2f}")
+        print(f"    Cache Read:  ${model.pricing.cache_read:.2f}")
+        return 0
+
+    elif subcmd == "set-default":
+        if len(args) < 2:
+            print_error("Usage: cmat models set-default <id>")
+            return 1
+
+        model_id = args[1]
+        if cmat.models.set_default(model_id):
+            print(f"Default model set to: {model_id}")
+            return 0
+        else:
+            print_error(f"Model not found: {model_id}")
+            return 1
+
+    else:
+        print_error(f"Unknown models command: {subcmd}")
+        return 1
+
+
+def cmd_costs(cmat: CMAT, args: list[str]) -> int:
+    """Handle costs subcommands."""
+    if not args:
+        print("Usage: cmat costs <extract|show|enhancement>")
+        return 1
+
+    subcmd = args[0]
+
+    if subcmd == "extract":
+        if len(args) < 3:
+            print_error("Usage: cmat costs extract <task_id> <transcript_path> [session_id]")
+            return 1
+
+        task_id = args[1]
+        transcript_path = args[2]
+        session_id = args[3] if len(args) > 3 else ""
+
+        # Verify task exists
+        task = cmat.queue.get(task_id)
+        if not task:
+            print_error(f"Task not found: {task_id}")
+            return 1
+
+        cost = cmat.models.extract_and_store(
+            task_id=task_id,
+            transcript_path=transcript_path,
+            session_id=session_id,
+            queue_service=cmat.queue,
+        )
+
+        if cost is not None:
+            print(f"Cost extracted: ${cost:.4f}")
+        else:
+            print("No usage data found in transcript")
+        return 0
+
+    elif subcmd == "show":
+        if len(args) < 2:
+            print_error("Usage: cmat costs show <task_id>")
+            return 1
+
+        task_id = args[1]
+        cost_info = cmat.queue.show_task_cost(task_id)
+
+        if not cost_info:
+            print_error(f"Task not found or no cost data: {task_id}")
+            return 1
+
+        print(f"Cost for task {task_id}:")
+        print(f"  Model: {cost_info.get('cost_model', 'unknown')}")
+        print(f"  Input Tokens:    {cost_info.get('cost_input_tokens', '0'):>12}")
+        print(f"  Output Tokens:   {cost_info.get('cost_output_tokens', '0'):>12}")
+        print(f"  Cache Creation:  {cost_info.get('cost_cache_creation_tokens', '0'):>12}")
+        print(f"  Cache Read:      {cost_info.get('cost_cache_read_tokens', '0'):>12}")
+        print(f"  Total Cost:      ${cost_info.get('cost_usd', '0.0000'):>10}")
+        return 0
+
+    elif subcmd == "enhancement":
+        if len(args) < 2:
+            print_error("Usage: cmat costs enhancement <name>")
+            return 1
+
+        enhancement_name = args[1]
+        cost_info = cmat.queue.show_enhancement_cost(enhancement_name)
+
+        if not cost_info:
+            print(f"No cost data found for enhancement: {enhancement_name}")
+            return 0
+
+        print(f"Cost for enhancement '{enhancement_name}':")
+        print(f"  Tasks:           {cost_info.get('task_count', 0):>12}")
+        print(f"  Input Tokens:    {cost_info.get('total_input_tokens', 0):>12}")
+        print(f"  Output Tokens:   {cost_info.get('total_output_tokens', 0):>12}")
+        print(f"  Total Cost:      ${cost_info.get('total_cost_usd', 0):.4f}")
+        return 0
+
+    else:
+        print_error(f"Unknown costs command: {subcmd}")
+        return 1
+
+
 def main(args: Optional[list[str]] = None) -> int:
     """Main CLI entry point."""
     if args is None:
@@ -265,6 +426,10 @@ def main(args: Optional[list[str]] = None) -> int:
         return cmd_queue(cmat, cmd_args)
     elif command == "agents":
         return cmd_agents(cmat, cmd_args)
+    elif command == "models":
+        return cmd_models(cmat, cmd_args)
+    elif command == "costs":
+        return cmd_costs(cmat, cmd_args)
     else:
         print_error(f"Unknown command: {command}")
         print("Run 'cmat --help' for usage.")
