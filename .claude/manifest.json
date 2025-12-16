@@ -44,7 +44,6 @@
         "enhancement_template_sm.md"
       ],
       "hooks": [
-        "on-subagent-stop.sh",
         "on-session-end-cost.sh"
       ],
       "logs": [],
