@@ -527,7 +527,7 @@ class WorkflowService:
         auto_chain: bool = True,
     ) -> Optional[str]:
         """
-        Start a workflow by creating and queuing the first task.
+        Start a workflow by creating the first task and marking it as active.
 
         Returns the task ID or None if workflow not found.
         """
@@ -572,6 +572,12 @@ class WorkflowService:
             auto_complete=True,
             auto_chain=auto_chain,
         )
+
+        # Start the task (mark as active)
+        started_task = self._queue_service.start(task.id)
+        if not started_task:
+            log_error(f"Failed to start task: {task.id}")
+            return None
 
         log_operation(
             "WORKFLOW_STARTED",
@@ -659,6 +665,12 @@ class WorkflowService:
             auto_complete=True,
             auto_chain=task.auto_chain,  # Inherit from previous task
         )
+
+        # Start the next task (mark as active)
+        started_task = self._queue_service.start(next_task.id)
+        if not started_task:
+            log_error(f"Failed to start chained task: {next_task.id}")
+            return next_task.id  # Return the ID even if start failed
 
         log_operation(
             "AUTO_CHAIN",

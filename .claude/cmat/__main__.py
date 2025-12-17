@@ -5,28 +5,43 @@ Usage:
     python -m cmat <command> [options]
 
 Commands:
-    learnings list                    List all learnings
-    learnings add "<content>"         Add a manual learning
-    learnings delete <id>             Delete a learning
-    learnings show <id>               Show learning details
-    learnings search "<query>"        Search learnings (uses Claude)
+    workflow start <name> <enhancement>   Start a workflow
+    workflow list                         List all workflows
+    workflow show <name>                  Show workflow details
+    workflow validate <name>              Validate a workflow template
 
-    queue status                      Show queue status
+    queue status                          Show queue status
     queue list [pending|active|completed|failed|all]
+    queue add <agent> <title> <source> [--auto-chain]
+    queue start <task_id>                 Start a pending task
+    queue complete <task_id> <result>     Mark task as completed
+    queue fail <task_id> <reason>         Mark task as failed
+    queue cancel <task_id> [reason]       Cancel a task
+    queue rerun <task_id>                 Re-queue a completed/failed task
 
-    agents list                       List all agents
-    agents generate                   Regenerate agents.json from markdown
+    skills list                           List all skills
+    skills show <name>                    Show skill details
+    skills get <agent>                    Get skills for an agent
 
-    models list                       List all Claude models
-    models show <id>                  Show model details
-    models set-default <id>           Set default model
+    learnings list                        List all learnings
+    learnings add "<content>"             Add a manual learning
+    learnings delete <id>                 Delete a learning
+    learnings show <id>                   Show learning details
+    learnings search "<query>"            Search learnings (uses Claude)
+
+    agents list                           List all agents
+    agents generate                       Regenerate agents.json from markdown
+
+    models list                           List all Claude models
+    models show <id>                      Show model details
+    models set-default <id>               Set default model
 
     costs extract <task_id> <transcript_path> [session_id]
-                                      Extract costs from transcript
-    costs show <task_id>              Show task cost
-    costs enhancement <name>          Show enhancement total cost
+                                          Extract costs from transcript
+    costs show <task_id>                  Show task cost
+    costs enhancement <name>              Show enhancement total cost
 
-    version                           Show CMAT version
+    version                               Show CMAT version
 """
 
 import sys
@@ -53,6 +68,379 @@ def print_learning(learning: Learning, verbose: bool = False) -> None:
     if verbose:
         print(f"  Content:\n    {learning.content}")
     print()
+
+
+def cmd_workflow(cmat: CMAT, args: list[str]) -> int:
+    """Handle workflow subcommands."""
+    if not args:
+        print("Usage: cmat workflow <start|list|show|validate> [options]")
+        return 1
+
+    subcmd = args[0]
+
+    if subcmd == "start":
+        if len(args) < 3:
+            print_error("Usage: cmat workflow start <workflow_name> <enhancement_name>")
+            return 1
+
+        workflow_name = args[1]
+        enhancement_name = args[2]
+
+        task_id = cmat.workflow.start_workflow(workflow_name, enhancement_name)
+
+        if task_id:
+            task = cmat.queue.get(task_id)
+            print(f"Workflow started: {workflow_name}")
+            print(f"Enhancement: {enhancement_name}")
+            print(f"Task: {task_id}")
+            if task:
+                print(f"Agent: {task.assigned_agent}")
+                print(f"Status: {task.status.value}")
+            return 0
+        else:
+            print_error(f"Failed to start workflow: {workflow_name}")
+            return 1
+
+    elif subcmd == "list":
+        workflows = cmat.workflow.list_all()
+
+        if not workflows:
+            print("No workflows found.")
+            return 0
+
+        print(f"Available workflows ({len(workflows)}):\n")
+        for wf in workflows:
+            print(f"  {wf.id}")
+            print(f"    Name: {wf.name}")
+            print(f"    Description: {wf.description}")
+            print(f"    Steps: {len(wf.steps)}")
+            print()
+        return 0
+
+    elif subcmd == "show":
+        if len(args) < 2:
+            print_error("Usage: cmat workflow show <name>")
+            return 1
+
+        workflow_name = args[1]
+        wf = cmat.workflow.get(workflow_name)
+
+        if not wf:
+            print_error(f"Workflow not found: {workflow_name}")
+            return 1
+
+        print(f"Workflow: {wf.id}")
+        print(f"  Name: {wf.name}")
+        print(f"  Description: {wf.description}")
+        print(f"\n  Steps ({len(wf.steps)}):")
+
+        for i, step in enumerate(wf.steps):
+            print(f"\n    [{i}] {step.agent}")
+            print(f"        Input: {step.input}")
+            print(f"        Required Output: {step.required_output}")
+            if step.on_status:
+                print(f"        Status Transitions:")
+                for status, transition in step.on_status.items():
+                    next_step = transition.next_step or "(end)"
+                    auto = "auto" if transition.auto_chain else "manual"
+                    print(f"          {status} -> {next_step} ({auto})")
+        return 0
+
+    elif subcmd == "validate":
+        if len(args) < 2:
+            print_error("Usage: cmat workflow validate <name>")
+            return 1
+
+        workflow_name = args[1]
+        wf = cmat.workflow.get(workflow_name)
+
+        if not wf:
+            print_error(f"Workflow not found: {workflow_name}")
+            return 1
+
+        errors = cmat.workflow.validate_template(wf)
+
+        if errors:
+            print(f"Validation errors for '{workflow_name}':")
+            for error in errors:
+                print(f"  - {error}")
+            return 1
+        else:
+            print(f"Workflow '{workflow_name}' is valid.")
+            return 0
+
+    else:
+        print_error(f"Unknown workflow command: {subcmd}")
+        return 1
+
+
+def cmd_queue(cmat: CMAT, args: list[str]) -> int:
+    """Handle queue subcommands."""
+    if not args:
+        print("Usage: cmat queue <status|list|add|start|complete|fail|cancel|rerun> [options]")
+        return 1
+
+    subcmd = args[0]
+
+    if subcmd == "status":
+        status = cmat.queue.status()
+        print("Queue Status:")
+        print(f"  Pending:   {status['pending']}")
+        print(f"  Active:    {status['active']}")
+        print(f"  Completed: {status['completed']}")
+        print(f"  Failed:    {status['failed']}")
+        print(f"  Total:     {status['total']}")
+        return 0
+
+    elif subcmd == "list":
+        queue_type = args[1] if len(args) > 1 else "all"
+        if queue_type == "pending":
+            tasks = cmat.queue.list_pending()
+        elif queue_type == "active":
+            tasks = cmat.queue.list_active()
+        elif queue_type == "completed":
+            tasks = cmat.queue.list_completed()
+        elif queue_type == "failed":
+            tasks = cmat.queue.list_failed()
+        elif queue_type == "all":
+            tasks = cmat.queue.list_all()
+        else:
+            print_error(f"Unknown queue type: {queue_type}")
+            return 1
+
+        if not tasks:
+            print(f"No {queue_type} tasks.")
+            return 0
+
+        print(f"{queue_type.capitalize()} tasks ({len(tasks)}):\n")
+        for task in tasks:
+            print(f"  {task.id}")
+            print(f"    Title: {task.title}")
+            print(f"    Agent: {task.assigned_agent}")
+            print(f"    Status: {task.status.value}")
+            if task.result:
+                print(f"    Result: {task.result}")
+            print()
+        return 0
+
+    elif subcmd == "add":
+        if len(args) < 4:
+            print_error("Usage: cmat queue add <agent> <title> <source_file> [--auto-chain]")
+            return 1
+
+        agent = args[1]
+        title = args[2]
+        source_file = args[3]
+        auto_chain = "--auto-chain" in args
+
+        # Determine task type from agent
+        task_type = cmat.workflow.get_task_type_for_agent(agent)
+
+        task = cmat.queue.add(
+            title=title,
+            assigned_agent=agent,
+            priority="normal",
+            task_type=task_type,
+            source_file=source_file,
+            description=title,
+            auto_complete=True,
+            auto_chain=auto_chain,
+        )
+
+        print(f"Task added: {task.id}")
+        print(f"  Agent: {agent}")
+        print(f"  Title: {title}")
+        print(f"  Auto-chain: {auto_chain}")
+        return 0
+
+    elif subcmd == "start":
+        if len(args) < 2:
+            print_error("Usage: cmat queue start <task_id>")
+            return 1
+
+        task_id = args[1]
+        task = cmat.queue.start(task_id)
+
+        if task:
+            print(f"Task started: {task_id}")
+            print(f"  Agent: {task.assigned_agent}")
+            return 0
+        else:
+            print_error(f"Failed to start task: {task_id}")
+            print("  (Task may not exist or may not be in pending status)")
+            return 1
+
+    elif subcmd == "complete":
+        if len(args) < 3:
+            print_error("Usage: cmat queue complete <task_id> <result>")
+            return 1
+
+        task_id = args[1]
+        result = args[2]
+        task = cmat.queue.complete(task_id, result)
+
+        if task:
+            print(f"Task completed: {task_id}")
+            print(f"  Result: {result}")
+            return 0
+        else:
+            print_error(f"Failed to complete task: {task_id}")
+            print("  (Task may not exist or may not be in active status)")
+            return 1
+
+    elif subcmd == "fail":
+        if len(args) < 3:
+            print_error("Usage: cmat queue fail <task_id> <reason>")
+            return 1
+
+        task_id = args[1]
+        reason = args[2]
+        task = cmat.queue.fail(task_id, reason)
+
+        if task:
+            print(f"Task failed: {task_id}")
+            print(f"  Reason: {reason}")
+            return 0
+        else:
+            print_error(f"Failed to fail task: {task_id}")
+            print("  (Task may not exist or may not be in active status)")
+            return 1
+
+    elif subcmd == "cancel":
+        if len(args) < 2:
+            print_error("Usage: cmat queue cancel <task_id> [reason]")
+            return 1
+
+        task_id = args[1]
+        reason = args[2] if len(args) > 2 else None
+        task = cmat.queue.cancel(task_id, reason)
+
+        if task:
+            print(f"Task cancelled: {task_id}")
+            if reason:
+                print(f"  Reason: {reason}")
+            return 0
+        else:
+            print_error(f"Failed to cancel task: {task_id}")
+            print("  (Task may not exist or may not be pending/active)")
+            return 1
+
+    elif subcmd == "rerun":
+        if len(args) < 2:
+            print_error("Usage: cmat queue rerun <task_id>")
+            return 1
+
+        task_id = args[1]
+        task = cmat.queue.rerun(task_id)
+
+        if task:
+            print(f"Task re-queued: {task_id}")
+            print(f"  Status: pending")
+            return 0
+        else:
+            print_error(f"Failed to rerun task: {task_id}")
+            print("  (Task may not exist or may not be completed/failed)")
+            return 1
+
+    else:
+        print_error(f"Unknown queue command: {subcmd}")
+        return 1
+
+
+def cmd_skills(cmat: CMAT, args: list[str]) -> int:
+    """Handle skills subcommands."""
+    if not args:
+        print("Usage: cmat skills <list|show|get> [options]")
+        return 1
+
+    subcmd = args[0]
+
+    if subcmd == "list":
+        skills = cmat.skills.list_all()
+
+        if not skills:
+            print("No skills found.")
+            return 0
+
+        print(f"Available skills ({len(skills)}):\n")
+
+        # Group by category
+        categories: dict[str, list] = {}
+        for skill in skills:
+            cat = skill.category or "uncategorized"
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(skill)
+
+        for category in sorted(categories.keys()):
+            print(f"  [{category}]")
+            for skill in categories[category]:
+                print(f"    {skill.skill_directory}")
+                print(f"      Name: {skill.name}")
+                print(f"      Description: {skill.description[:60]}..." if len(skill.description) > 60 else f"      Description: {skill.description}")
+            print()
+        return 0
+
+    elif subcmd == "show":
+        if len(args) < 2:
+            print_error("Usage: cmat skills show <skill_directory>")
+            return 1
+
+        skill_dir = args[1]
+        skill = cmat.skills.get(skill_dir)
+
+        if not skill:
+            print_error(f"Skill not found: {skill_dir}")
+            return 1
+
+        print(f"Skill: {skill.skill_directory}")
+        print(f"  Name: {skill.name}")
+        print(f"  Description: {skill.description}")
+        print(f"  Category: {skill.category}")
+        print(f"  Required Tools: {', '.join(skill.required_tools) if skill.required_tools else '(none)'}")
+
+        # Show content preview
+        content = cmat.skills.get_skill_content(skill_dir)
+        if content:
+            lines = content.split('\n')[:10]
+            print(f"\n  Content Preview:")
+            for line in lines:
+                print(f"    {line}")
+            if len(content.split('\n')) > 10:
+                print("    ...")
+        return 0
+
+    elif subcmd == "get":
+        if len(args) < 2:
+            print_error("Usage: cmat skills get <agent_name>")
+            return 1
+
+        agent_name = args[1]
+        agent = cmat.agents.get(agent_name)
+
+        if not agent:
+            print_error(f"Agent not found: {agent_name}")
+            return 1
+
+        if not agent.skills:
+            print(f"Agent '{agent_name}' has no skills assigned.")
+            return 0
+
+        print(f"Skills for agent '{agent_name}':\n")
+        for skill_name in agent.skills:
+            skill = cmat.skills.get(skill_name)
+            if skill:
+                print(f"  {skill_name}")
+                print(f"    Name: {skill.name}")
+                print(f"    Category: {skill.category}")
+            else:
+                print(f"  {skill_name} (not found in registry)")
+            print()
+        return 0
+
+    else:
+        print_error(f"Unknown skills command: {subcmd}")
+        return 1
 
 
 def cmd_learnings(cmat: CMAT, args: list[str]) -> int:
@@ -91,7 +479,7 @@ def cmd_learnings(cmat: CMAT, args: list[str]) -> int:
         learning = Learning.from_user_input(content, tags)
         cmat.learnings.store(learning)
 
-        print(f"✓ Learning added: {learning.id}")
+        print(f"Learning added: {learning.id}")
         print(f"  Summary: {learning.summary}")
         return 0
 
@@ -102,7 +490,7 @@ def cmd_learnings(cmat: CMAT, args: list[str]) -> int:
 
         learning_id = args[1]
         if cmat.learnings.delete(learning_id):
-            print(f"✓ Learning deleted: {learning_id}")
+            print(f"Learning deleted: {learning_id}")
             return 0
         else:
             print_error(f"Learning not found: {learning_id}")
@@ -156,58 +544,6 @@ def cmd_learnings(cmat: CMAT, args: list[str]) -> int:
         return 1
 
 
-def cmd_queue(cmat: CMAT, args: list[str]) -> int:
-    """Handle queue subcommands."""
-    if not args:
-        print("Usage: cmat queue <status|list> [options]")
-        return 1
-
-    subcmd = args[0]
-
-    if subcmd == "status":
-        status = cmat.queue.status()
-        print("Queue Status:")
-        print(f"  Pending:   {status['pending']}")
-        print(f"  Active:    {status['active']}")
-        print(f"  Completed: {status['completed']}")
-        print(f"  Failed:    {status['failed']}")
-        print(f"  Total:     {status['total']}")
-        return 0
-
-    elif subcmd == "list":
-        queue_type = args[1] if len(args) > 1 else "all"
-        if queue_type == "pending":
-            tasks = cmat.queue.list_pending()
-        elif queue_type == "active":
-            tasks = cmat.queue.list_active()
-        elif queue_type == "completed":
-            tasks = cmat.queue.list_completed()
-        elif queue_type == "failed":
-            tasks = cmat.queue.list_failed()
-        elif queue_type == "all":
-            tasks = cmat.queue.list_all()
-        else:
-            print_error(f"Unknown queue type: {queue_type}")
-            return 1
-
-        if not tasks:
-            print(f"No {queue_type} tasks.")
-            return 0
-
-        print(f"{queue_type.capitalize()} tasks ({len(tasks)}):\n")
-        for task in tasks:
-            print(f"  {task.id}")
-            print(f"    Title: {task.title}")
-            print(f"    Agent: {task.assigned_agent}")
-            print(f"    Status: {task.status.value}")
-            print()
-        return 0
-
-    else:
-        print_error(f"Unknown queue command: {subcmd}")
-        return 1
-
-
 def cmd_agents(cmat: CMAT, args: list[str]) -> int:
     """Handle agents subcommands."""
     if not args:
@@ -233,7 +569,7 @@ def cmd_agents(cmat: CMAT, args: list[str]) -> int:
 
     elif subcmd == "generate":
         result = cmat.agents.generate_agents_json()
-        print(f"✓ Generated {result['generated']} agents")
+        print(f"Generated {result['generated']} agents")
         if result['errors']:
             print("\nWarnings:")
             for error in result['errors']:
@@ -420,10 +756,14 @@ def main(args: Optional[list[str]] = None) -> int:
     command = args[0]
     cmd_args = args[1:]
 
-    if command == "learnings":
-        return cmd_learnings(cmat, cmd_args)
+    if command == "workflow":
+        return cmd_workflow(cmat, cmd_args)
     elif command == "queue":
         return cmd_queue(cmat, cmd_args)
+    elif command == "skills":
+        return cmd_skills(cmat, cmd_args)
+    elif command == "learnings":
+        return cmd_learnings(cmat, cmd_args)
     elif command == "agents":
         return cmd_agents(cmat, cmd_args)
     elif command == "models":

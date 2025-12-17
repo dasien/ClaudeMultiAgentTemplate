@@ -1,12 +1,19 @@
 # Customization Guide
 
-This guide shows you how to adapt the Claude Multi-Agent Template for your specific project.
+How to adapt the Claude Multi-Agent Template for your specific project.
+
+**Version**: 8.2.0
 
 ## Overview
 
-The template is designed to be **language-agnostic** and **project-flexible**. Customization involves updating agent definitions, workflow templates, and project-specific documentation to match your needs.
+The template is designed to be **language-agnostic** and **project-flexible**. Customization involves:
 
-**vKey Principle**: The system is driven by **workflow templates** (orchestration) and **agents.json** (capabilities).
+1. **Agent definitions** - Project-specific context in `.claude/agents/*.md`
+2. **Workflow templates** - Custom workflows in `.claude/data/workflow_templates.json`
+3. **Skills** - Domain-specific skills in `.claude/skills/`
+4. **Learnings** - Project knowledge via RAG system
+
+**Key Principle**: The system is driven by **workflow templates** (orchestration) and **agents.json** (capabilities).
 
 ---
 
@@ -38,55 +45,25 @@ Each agent file (`.claude/agents/*.md`) has a "Project-Specific Customization" s
 **Documentation Style**: Google-style docstrings
 ```
 
-### 2. Workflow Templates
+### 2. Add Project Learnings
 
-**File**: `.claude/queues/workflow_templates.json`
-
-Add project-specific workflow templates for repeated patterns:
+Prime the RAG system with project knowledge:
 
 ```bash
-# Create custom workflow
-cmat workflow create api-endpoint "REST API endpoint development"
-
-# Add steps with project-specific outputs
-cmat workflow add-step api-endpoint requirements-analyst \
-    "enhancements/{enhancement_name}/{enhancement_name}.md" \
-    "endpoint_requirements.md"
-
-cmat workflow add-step api-endpoint architect \
-    "{previous_step}/required_output/" \
-    "api_design.md"
-
-cmat workflow add-step api-endpoint implementer \
-    "{previous_step}/required_output/" \
-    "endpoint_implementation.md"
-
-cmat workflow add-step api-endpoint tester \
-    "{previous_step}/required_output/" \
-    "api_tests.md"
-
-# Add transitions
-cmat workflow add-transition api-endpoint 0 READY_FOR_DEVELOPMENT architect true
-cmat workflow add-transition api-endpoint 1 READY_FOR_IMPLEMENTATION implementer true
-cmat workflow add-transition api-endpoint 2 READY_FOR_TESTING tester true
-cmat workflow add-transition api-endpoint 3 TESTING_COMPLETE null false
+cd .claude
+python -m cmat learnings add "This project uses Python 3.11 with FastAPI" --tags python,api
+python -m cmat learnings add "Tests use pytest with pytest-asyncio for async tests" --tags testing
+python -m cmat learnings add "Use snake_case for all Python functions and variables" --tags python,style
+python -m cmat learnings add "API responses must return ISO 8601 timestamps" --tags api,python
 ```
 
-### 3. Skills System
+### 3. Regenerate Agent Registry
 
-Add domain-specific skills for your project:
+After modifying agent files:
 
 ```bash
-# Create custom skill
-mkdir -p .claude/skills/react-component-dev
-# Edit SKILL.md with your domain knowledge
-
-# Register in skills.json
-# Assign to appropriate agents
-# Regenerate: cmat agents generate-json
+python -m cmat agents generate
 ```
-
-See [SKILLS_GUIDE.md](SKILLS_GUIDE.md) for complete instructions.
 
 ---
 
@@ -103,6 +80,12 @@ Update `.claude/agents/implementer.md`:
 **Testing**: pytest with fixtures
 ```
 
+Add learnings:
+```bash
+python -m cmat learnings add "Use type hints for all function parameters and return values" --tags python
+python -m cmat learnings add "Run black formatter before committing" --tags python,style
+```
+
 ### JavaScript/TypeScript Projects
 
 Update `.claude/agents/implementer.md`:
@@ -112,6 +95,12 @@ Update `.claude/agents/implementer.md`:
 **Linter**: ESLint with Airbnb config
 **Package Manager**: npm or yarn
 **Testing**: Jest + React Testing Library
+```
+
+Add learnings:
+```bash
+python -m cmat learnings add "Use strict TypeScript mode for all new files" --tags typescript
+python -m cmat learnings add "Run eslint --fix before committing" --tags javascript,style
 ```
 
 ### Java Projects
@@ -156,46 +145,36 @@ Review code for security vulnerabilities and ensure compliance.
 ## When to Use This Agent
 - After implementation, before testing
 - High-security features
+
+### Status Output
+
+At the end of your response, output a completion block:
+
+\`\`\`yaml
+---
+agent: security-reviewer
+task_id: ${task_id}
+status: <status>
+---
+\`\`\`
+
+**Completion Statuses**:
+- SECURITY_APPROVED - No issues found, ready for testing
+
+**Halt Statuses**:
+- SECURITY_ISSUES: <details> - Vulnerabilities found, needs fixes
 ```
 
 ### Step 2: Regenerate agents.json
 
 ```bash
-cmat agents generate-json
+python -m cmat agents generate
 ```
 
-### Step 3: Add to Workflows
+### Step 3: Verify Agent
 
 ```bash
-# Create workflow with security review
-cmat workflow create secure-feature "Feature with security review"
-
-cmat workflow add-step secure-feature requirements-analyst \
-    "enhancements/{enhancement_name}/{enhancement_name}.md" \
-    "analysis.md"
-
-cmat workflow add-step secure-feature architect \
-    "{previous_step}/required_output/" \
-    "design.md"
-
-cmat workflow add-step secure-feature implementer \
-    "{previous_step}/required_output/" \
-    "implementation.md"
-
-cmat workflow add-step secure-feature security-reviewer \
-    "{previous_step}/required_output/" \
-    "security_review.md"
-
-cmat workflow add-step secure-feature tester \
-    "{previous_step}/required_output/" \
-    "tests.md"
-
-# Add all transitions
-cmat workflow add-transition secure-feature 0 READY_FOR_DEVELOPMENT architect true
-cmat workflow add-transition secure-feature 1 READY_FOR_IMPLEMENTATION implementer true
-cmat workflow add-transition secure-feature 2 READY_FOR_SECURITY_REVIEW security-reviewer true
-cmat workflow add-transition secure-feature 3 SECURITY_APPROVED tester true
-cmat workflow add-transition secure-feature 4 TESTING_COMPLETE null false
+python -m cmat agents list
 ```
 
 ---
@@ -207,6 +186,7 @@ cmat workflow add-transition secure-feature 4 TESTING_COMPLETE null false
 ```bash
 # 1. Create skill directory and file
 mkdir -p .claude/skills/react-hooks
+
 cat > .claude/skills/react-hooks/SKILL.md << 'EOF'
 ---
 name: "React Hooks Best Practices"
@@ -239,38 +219,125 @@ EOF
 # skills: ["error-handling", "code-refactoring", "react-hooks"]
 
 # 4. Regenerate
-cmat agents generate-json
+python -m cmat agents generate
 
-# 5. Test
-cmat skills get implementer
-# Should include "react-hooks"
+# 5. Verify
+python -m cmat agents list
+# Should show "react-hooks" in implementer's skills
 ```
 
 ---
 
-## Workflow Customization Patterns
+## Workflow Customization
 
-### Pattern: Skip Requirements
+### Creating Custom Workflows
 
-For well-defined changes:
-```bash
-cmat workflow create no-req "Skip requirements"
-cmat workflow add-step no-req architect \
-    "enhancements/{enhancement_name}/{enhancement_name}.md" \
-    "design.md"
-# ... add remaining steps
+Workflow templates are stored in `.claude/data/workflow_templates.json`. You can create custom workflows by editing this file directly.
+
+**Example: API Endpoint Workflow**
+
+```json
+{
+  "name": "api-endpoint",
+  "description": "REST API endpoint development",
+  "steps": [
+    {
+      "agent": "requirements-analyst",
+      "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+      "required_output": "endpoint_requirements.md",
+      "on_status": {
+        "READY_FOR_DEVELOPMENT": {
+          "next_step": "architect",
+          "auto_chain": true,
+          "description": "Requirements complete"
+        },
+        "BLOCKED": {
+          "next_step": null,
+          "auto_chain": false,
+          "description": "Cannot proceed"
+        }
+      }
+    },
+    {
+      "agent": "architect",
+      "input": "{previous_step}/required_output/",
+      "required_output": "api_design.md",
+      "on_status": {
+        "READY_FOR_IMPLEMENTATION": {
+          "next_step": "implementer",
+          "auto_chain": true,
+          "description": "Design complete"
+        }
+      }
+    },
+    {
+      "agent": "implementer",
+      "input": "{previous_step}/required_output/",
+      "required_output": "endpoint_implementation.md",
+      "on_status": {
+        "READY_FOR_TESTING": {
+          "next_step": "tester",
+          "auto_chain": true,
+          "description": "Implementation complete"
+        }
+      }
+    },
+    {
+      "agent": "tester",
+      "input": "{previous_step}/required_output/",
+      "required_output": "api_tests.md",
+      "on_status": {
+        "TESTING_COMPLETE": {
+          "next_step": null,
+          "auto_chain": false,
+          "description": "Workflow complete"
+        }
+      }
+    }
+  ]
+}
 ```
 
-### Pattern: Multiple Success Paths
+### Workflow Patterns
 
-For workflows with conditional branching:
-```bash
-cmat workflow add-transition my-workflow 1 READY_FOR_IMPLEMENTATION implementer true
-cmat workflow add-transition my-workflow 1 NEEDS_RESEARCH null false
-cmat workflow add-transition my-workflow 1 NEEDS_APPROVAL null false
+#### Skip Requirements
+For well-defined changes, start directly with architect:
+
+```json
+{
+  "steps": [
+    {
+      "agent": "architect",
+      "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+      "required_output": "design.md"
+    }
+  ]
+}
 ```
 
-Architect can output different statuses depending on situation.
+#### Multiple Success Paths
+Allow different statuses to branch differently:
+
+```json
+{
+  "on_status": {
+    "READY_FOR_IMPLEMENTATION": {
+      "next_step": "implementer",
+      "auto_chain": true
+    },
+    "NEEDS_RESEARCH": {
+      "next_step": null,
+      "auto_chain": false,
+      "description": "Requires additional research"
+    },
+    "NEEDS_APPROVAL": {
+      "next_step": null,
+      "auto_chain": false,
+      "description": "Requires stakeholder approval"
+    }
+  }
+}
+```
 
 ---
 
@@ -279,40 +346,29 @@ Architect can output different statuses depending on situation.
 ### Validate Agent Definitions
 
 ```bash
-# Check agents.json structure
-cmat agents list | jq '.agents[] | {name, role, validations}'
+# List all agents
+python -m cmat agents list
 
-# Verify skills assigned
-cmat skills get <agent-name>
+# Should show agent with correct:
+# - Name
+# - Role
+# - Skills assigned
 ```
 
-### Validate Workflows
+### Verify Learnings
 
 ```bash
-# Check all workflows
-cmat workflow list
+# List learnings
+python -m cmat learnings list
 
-# Validate specific workflow
-cmat workflow validate <workflow-name>
-
-# Show workflow structure
-cmat workflow show <workflow-name>
+# Search for specific topics
+python -m cmat learnings search "testing"
 ```
 
-### Test with Simple Workflow
+### Check Queue Status
 
 ```bash
-# Create minimal test
-cmat workflow create test-custom "Test customizations"
-cmat workflow add-step test-custom requirements-analyst \
-    "enhancements/{enhancement_name}/{enhancement_name}.md" \
-    "test.md"
-cmat workflow add-transition test-custom 0 READY_FOR_DEVELOPMENT null false
-
-# Run it
-mkdir -p enhancements/test-1
-echo "# Test" > enhancements/test-1/test-1.md
-cmat workflow start test-custom test-1
+python -m cmat queue status
 ```
 
 ---
@@ -320,27 +376,38 @@ cmat workflow start test-custom test-1
 ## Best Practices
 
 ### DO:
-- ✅ Customize all "Project-Specific Customization" sections
-- ✅ Create workflows for repeated patterns
-- ✅ Add domain-specific skills
-- ✅ Test customizations with simple workflows first
-- ✅ Document custom workflows in WORKFLOW_GUIDE.md
-- ✅ Keep validations.metadata_required = true for workflow agents
+- Update all "Project-Specific Customization" sections in agent files
+- Add learnings for project conventions and patterns
+- Create workflows for repeated development patterns
+- Add domain-specific skills for your tech stack
+- Test customizations with simple enhancements first
+- Keep `validations.metadata_required = true` for workflow agents
 
 ### DON'T:
-- ❌ Remove agent role boundaries
-- ❌ Make agents too specific
-- ❌ Create too many similar workflows
-- ❌ Skip validation steps in workflows
-- ❌ Forget to regenerate agents.json after changes
+- Remove agent role boundaries
+- Make agents too project-specific (keep them reusable)
+- Create too many similar workflows (consolidate)
+- Skip regenerating agents.json after changes
+- Forget to add learnings for important project patterns
+
+---
+
+## Customization Checklist
+
+- [ ] Updated agent project context sections
+- [ ] Added project learnings (5-10 minimum)
+- [ ] Regenerated agents.json
+- [ ] Created custom workflows (if needed)
+- [ ] Added domain-specific skills (if needed)
+- [ ] Verified with `agents list` and `learnings list`
+- [ ] Tested with a simple enhancement
 
 ---
 
 ## See Also
 
-- **[WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)** - Workflow template management
-- **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system
-- **[agents.json](.claude/agents/agents.json)** - Agent definitions
-- **[workflow_templates.json](.claude/queues/workflow_templates.json)** - Workflow storage
-
----
+- **[.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns
+- **[.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md](.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
+- **[.claude/docs/SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md)** - Skills system
+- **[.claude/docs/LEARNINGS_GUIDE.md](.claude/docs/LEARNINGS_GUIDE.md)** - RAG memory system
+- **[.claude/docs/CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md)** - Command reference
