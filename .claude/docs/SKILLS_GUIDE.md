@@ -1013,7 +1013,7 @@ grep -A 10 "SPECIALIZED SKILLS" enhancements/demo-test/logs/*.log
 ## Further Reading
 
 - **[SKILL_TEMPLATE.md](SKILL_TEMPLATE.md)** - Template for creating skills
-- **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Skills commands reference
+- **[CLI_REFERENCE.md](CLI_REFERENCE.md)** - Skills commands reference
 - **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Customizing skills for your project
 - **[.claude/agents/*.md](.claude/agents/)** - Agent definitions with skill assignments
 

@@ -457,5 +457,5 @@ Tasks track which learnings were used and created:
 
 - [CLI_REFERENCE.md](CLI_REFERENCE.md) - Complete CLI commands
 - [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) - Workflow configuration
-- [STATUS_COMPLETION.md](STATUS_COMPLETION.md) - Status reporting
+- [PROMPT_SYSTEM_GUIDE.md](PROMPT_SYSTEM_GUIDE.md) - Prompt construction and status reporting
 - [COST_TRACKING.md](COST_TRACKING.md) - Cost management details

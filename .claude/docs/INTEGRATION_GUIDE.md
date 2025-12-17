@@ -1,15 +1,20 @@
 # Integration Guide
 
-Complete guide to external system integration in Claude Multi-Agent Template v4.0.
+Complete guide to external system integration (GitHub, Jira, Confluence) in CMAT.
+
+**Version**: 8.2.0
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Quickstart](#quickstart)
+  - [GitHub Setup (5 min)](#github-setup-5-min)
+  - [Atlassian Setup (10 min)](#atlassian-setup-10-min)
 - [Integration Agents](#integration-agents)
 - [GitHub Integration](#github-integration)
 - [Atlassian Integration](#atlassian-integration)
 - [Integration Workflow](#integration-workflow)
-- [Configuration](#configuration)
+- [Configuration Reference](#configuration-reference)
 - [Automation Control](#automation-control)
 - [Troubleshooting](#troubleshooting)
 
@@ -17,7 +22,7 @@ Complete guide to external system integration in Claude Multi-Agent Template v4.
 
 ## Overview
 
-The integration system synchronizes the internal multi-agent workflow with external project management and collaboration platforms. It maintains bidirectional traceability between internal work and external systems.
+The integration system synchronizes CMAT workflows with external project management platforms. It maintains bidirectional traceability between internal work and external systems.
 
 ### Supported Integrations
 
@@ -42,6 +47,236 @@ The integration system synchronizes the internal multi-agent workflow with exter
 - **Automation**: Reduces manual status updates
 - **Consistency**: Single source of truth
 - **Collaboration**: Team sees progress in familiar tools
+
+---
+
+## Quickstart
+
+Get GitHub and Jira/Confluence integration up and running in 15 minutes.
+
+### Prerequisites
+
+- Node.js 16 or higher
+- GitHub account with admin access to repository
+- Jira/Confluence access (for Atlassian integration)
+
+### What You'll Get
+
+After completing this guide:
+- GitHub issues created automatically from requirements
+- Pull requests created from implementations
+- Jira tickets synced with workflow status
+- Documentation published to Confluence
+- Full traceability across all systems
+
+---
+
+### GitHub Setup (5 min)
+
+#### Step 1: Install MCP Server
+
+```bash
+cd .claude/mcp-servers
+npm install @modelcontextprotocol/server-github
+```
+
+#### Step 2: Create GitHub Token
+
+1. Go to https://github.com/settings/tokens
+2. Click "Generate new token (classic)"
+3. Name: "Claude Multi-Agent"
+4. Select scopes:
+   - `repo` (Full control of private repositories)
+5. Click "Generate token"
+6. **Copy token immediately** (you won't see it again)
+
+#### Step 3: Configure Environment
+
+Add to `~/.bashrc` or `~/.zshrc`:
+
+```bash
+export GITHUB_TOKEN="ghp_your_token_here"
+```
+
+Then reload:
+```bash
+source ~/.bashrc  # or ~/.zshrc
+```
+
+#### Step 4: Configure MCP Server
+
+Create `.claude/mcp-servers/github-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/.claude/mcp-servers/node_modules/@modelcontextprotocol/server-github/dist/index.js"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  },
+  "settings": {
+    "default_owner": "your-github-username",
+    "default_repo": "your-repository",
+    "default_branch": "main",
+    "auto_labels": ["multi-agent", "automated"]
+  }
+}
+```
+
+**Update**:
+- Replace `/absolute/path/to/` with your actual path
+- Set `default_owner` to your GitHub username
+- Set `default_repo` to your repository name
+
+#### Step 5: Test
+
+```bash
+# Test authentication
+curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user
+# Should show your GitHub user info
+```
+
+GitHub integration ready!
+
+---
+
+### Atlassian Setup (10 min)
+
+#### Step 1: Get Jira API Token
+
+1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token"
+3. Name: "Claude Multi-Agent"
+4. Click "Create"
+5. **Copy token immediately**
+
+#### Step 2: Configure Environment
+
+Add to `~/.bashrc` or `~/.zshrc`:
+
+```bash
+export JIRA_EMAIL="your-email@company.com"
+export JIRA_API_TOKEN="your_token_here"
+export JIRA_SITE_URL="https://your-company.atlassian.net"
+```
+
+Then reload:
+```bash
+source ~/.bashrc  # or ~/.zshrc
+```
+
+#### Step 3: Install Atlassian MCP Server
+
+**Option A: Use npm package** (if available):
+```bash
+cd .claude/mcp-servers
+npm install @modelcontextprotocol/server-atlassian
+```
+
+**Option B: Build from source**:
+```bash
+cd .claude/mcp-servers
+git clone https://github.com/modelcontextprotocol/servers.git mcp-servers-repo
+cd mcp-servers-repo/src/atlassian
+npm install
+npm run build
+cd ../../..
+```
+
+#### Step 4: Configure MCP Server
+
+Create `.claude/mcp-servers/atlassian-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "atlassian": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/.claude/mcp-servers/node_modules/@modelcontextprotocol/server-atlassian/dist/index.js"
+      ],
+      "env": {
+        "JIRA_EMAIL": "${JIRA_EMAIL}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "JIRA_SITE_URL": "${JIRA_SITE_URL}"
+      }
+    }
+  },
+  "jira": {
+    "default_project": "PROJ",
+    "default_issue_type": "Story",
+    "status_mapping": {
+      "READY_FOR_DEVELOPMENT": "To Do",
+      "READY_FOR_IMPLEMENTATION": "In Progress",
+      "READY_FOR_TESTING": "In Review",
+      "TESTING_COMPLETE": "Testing",
+      "DOCUMENTATION_COMPLETE": "Done"
+    }
+  },
+  "confluence": {
+    "default_space": "PROJ",
+    "default_parent_page": "123456789",
+    "page_labels": ["multi-agent", "automated"]
+  }
+}
+```
+
+**Update**:
+- Replace `/absolute/path/to/` with your actual path
+- Set `default_project` to your Jira project key
+- Update `status_mapping` to match your Jira workflow states exactly
+- Set `default_space` to your Confluence space key
+- Set `default_parent_page` to parent page ID
+
+#### Step 5: Find Your Jira Workflow States
+
+```bash
+curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  "$JIRA_SITE_URL/rest/api/3/status"
+
+# Update status_mapping to match your workflow exactly
+```
+
+#### Step 6: Find Confluence Parent Page ID
+
+1. Go to Confluence space
+2. Navigate to parent page where docs should be created
+3. Click "..." -> "Page Information"
+4. Copy page ID from URL: `/pages/viewinfo.action?pageId=123456789`
+
+#### Step 7: Test
+
+```bash
+# Test Jira authentication
+curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  "$JIRA_SITE_URL/rest/api/3/myself"
+# Should show your Jira user info
+```
+
+Atlassian integration ready!
+
+---
+
+### Enable Auto-Integration
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+
+# Always integrate (recommended for production)
+export AUTO_INTEGRATE="always"
+
+# Or prompt for each integration (recommended for testing)
+export AUTO_INTEGRATE="prompt"
+
+# Or never auto-integrate (manual only)
+export AUTO_INTEGRATE="never"
+```
 
 ---
 
@@ -75,105 +310,15 @@ The system includes two specialized integration coordinator agents:
 - Maintain cross-references
 - Track sprint assignments
 
-**Contract**: `.claude/agents/agent_contracts.json → agents.atlassian-integration-coordinator`
-
 **Configuration**: `.claude/mcp-servers/atlassian-config.json`
 
 ---
 
 ## GitHub Integration
 
-### Setup
+### Integration Workflow
 
-#### 1. Install GitHub MCP Server
-
-```bash
-cd .claude/mcp-servers
-npm install @modelcontextprotocol/server-github
-```
-
-#### 2. Create GitHub Personal Access Token
-
-1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Click "Generate new token (classic)"
-3. Name: "Claude Multi-Agent Integration"
-4. Scopes:
-   - ✅ `repo` - Full control of private repositories
-   - ✅ `write:discussion` - Write discussions
-   - ✅ `project` - Full control of projects
-5. Generate token and save securely
-
-#### 3. Configure Environment
-
-Add to your shell profile (`~/.bashrc`, `~/.zshrc`):
-
-```bash
-export GITHUB_TOKEN="ghp_your_token_here"
-```
-
-Reload:
-```bash
-source ~/.bashrc  # or ~/.zshrc
-```
-
-#### 4. Configure MCP Server
-
-Create or edit `.claude/mcp-servers/github-config.json`:
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/.claude/mcp-servers/node_modules/@modelcontextprotocol/server-github/dist/index.js"
-      ],
-      "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-      }
-    }
-  },
-  "settings": {
-    "default_owner": "your-username",
-    "default_repo": "your-repository",
-    "default_branch": "main",
-    "auto_labels": ["multi-agent", "automated"],
-    "label_mapping": {
-      "READY_FOR_DEVELOPMENT": ["ready-for-dev", "requirements-complete"],
-      "READY_FOR_IMPLEMENTATION": ["architecture-complete", "ready-to-code"],
-      "READY_FOR_TESTING": ["implementation-complete", "needs-testing"],
-      "TESTING_COMPLETE": ["tests-passing", "ready-to-merge"],
-      "DOCUMENTATION_COMPLETE": ["documented", "ready-to-close"]
-    }
-  }
-}
-```
-
-#### 5. Test Configuration
-
-```bash
-# Test GitHub authentication
-curl -H "Authorization: token $GITHUB_TOKEN" \
-  https://api.github.com/user
-
-# Should return your GitHub user info
-
-# Test with agent (dry run)
-echo "test" > test.md
-TASK_ID=$(cmat.sh queue add \
-  "Test GitHub" \
-  "github-integration-coordinator" \
-  "normal" \
-  "integration" \
-  "test.md" \
-  "Test GitHub integration")
-
-cmat.sh queue start $TASK_ID
-```
-
-### GitHub Integration Workflow
-
-#### After Requirements Analysis → READY_FOR_DEVELOPMENT
+#### After Requirements Analysis (READY_FOR_DEVELOPMENT)
 
 **Actions**:
 1. Extract requirements from `analysis_summary.md`
@@ -181,7 +326,6 @@ cmat.sh queue start $TASK_ID
    - Title: Feature name
    - Body: Problem statement, acceptance criteria
    - Labels: `enhancement`, `ready-for-dev`, priority
-   - Assignee: (if configured)
 3. Store issue number in task metadata
 4. Post confirmation comment with internal task ID
 
@@ -194,10 +338,9 @@ https://github.com/owner/repo/issues/145
 
 Labels: enhancement, ready-for-dev, priority:high
 Acceptance Criteria: 3 items
-Cross-reference: Internal task task_1234567890_12345
 ```
 
-#### After Architecture Design → READY_FOR_IMPLEMENTATION
+#### After Architecture (READY_FOR_IMPLEMENTATION)
 
 **Actions**:
 1. Find GitHub issue from task metadata
@@ -205,16 +348,7 @@ Cross-reference: Internal task task_1234567890_12345
 3. Add label: `architecture-complete`
 4. Update milestone (if configured)
 
-**Output**:
-```
-INTEGRATION_COMPLETE
-
-Updated GitHub Issue: #145
-Architecture design comment posted
-Label added: architecture-complete
-```
-
-#### After Implementation → READY_FOR_TESTING
+#### After Implementation (READY_FOR_TESTING)
 
 **Actions**:
 1. Find GitHub issue from task metadata
@@ -223,7 +357,6 @@ Label added: architecture-complete
    - Body: Implementation summary, test notes
    - "Closes #145" reference
    - Labels: `ready-for-review`
-   - Link to Jira ticket
 3. Store PR number in task metadata
 4. Update issue with PR link
 
@@ -238,7 +371,7 @@ Linked to Issue: #145
 Status: Open, awaiting review
 ```
 
-#### After Testing → TESTING_COMPLETE
+#### After Testing (TESTING_COMPLETE)
 
 **Actions**:
 1. Find PR from task metadata
@@ -246,17 +379,7 @@ Status: Open, awaiting review
 3. Add labels: `tests-passing`, `qa-approved`
 4. Request review (if configured)
 
-**Output**:
-```
-INTEGRATION_COMPLETE
-
-Updated Pull Request: #156
-Test results: All tests passed (95% coverage)
-Labels: tests-passing, qa-approved
-Status: Ready to merge
-```
-
-#### After Documentation → DOCUMENTATION_COMPLETE
+#### After Documentation (DOCUMENTATION_COMPLETE)
 
 **Actions**:
 1. Find issue and PR from task metadata
@@ -264,132 +387,27 @@ Status: Ready to merge
 3. Add label: `documented`
 4. Close issue (references merged PR)
 
-**Output**:
-```
-INTEGRATION_COMPLETE
-
-Closed GitHub Issue: #145
-Merged Pull Request: #156
-Documentation published
-Feature complete
-```
-
 ### GitHub Best Practices
 
 **Issue Creation**:
-- ✅ Clear, concise titles (50 chars)
-- ✅ Detailed description with acceptance criteria
-- ✅ Appropriate labels and priority
-- ✅ Cross-reference internal task ID
-- ❌ Avoid generic titles ("Update", "Fix bug")
-- ❌ Avoid missing acceptance criteria
+- Clear, concise titles (50 chars)
+- Detailed description with acceptance criteria
+- Appropriate labels and priority
+- Cross-reference internal task ID
 
 **Pull Request Creation**:
-- ✅ Descriptive title matching issue
-- ✅ Summary of changes (bullet list)
-- ✅ Testing notes and coverage
-- ✅ "Closes #123" reference
-- ❌ Avoid missing issue reference
-- ❌ Avoid untested PRs
+- Descriptive title matching issue
+- Summary of changes (bullet list)
+- Testing notes and coverage
+- "Closes #123" reference
 
 ---
 
 ## Atlassian Integration
 
-### Setup
-
-#### 1. Install Atlassian MCP Server
-
-```bash
-cd .claude/mcp-servers
-# Follow atlassian-mcp installation instructions
-# (See MCP_INTEGRATION_QUICKSTART.md for details)
-```
-
-#### 2. Create Jira API Token
-
-1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
-2. Click "Create API token"
-3. Name: "Claude Multi-Agent Integration"
-4. Copy token and save securely
-
-#### 3. Configure Environment
-
-Add to your shell profile:
-
-```bash
-export JIRA_EMAIL="your-email@company.com"
-export JIRA_API_TOKEN="your_token_here"
-export JIRA_SITE_URL="https://your-company.atlassian.net"
-```
-
-Reload:
-```bash
-source ~/.bashrc  # or ~/.zshrc
-```
-
-#### 4. Configure MCP Server
-
-Create or edit `.claude/mcp-servers/atlassian-config.json`:
-
-```json
-{
-  "mcpServers": {
-    "atlassian": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/.claude/mcp-servers/atlassian-mcp/dist/index.js"
-      ],
-      "env": {
-        "JIRA_EMAIL": "${JIRA_EMAIL}",
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
-        "JIRA_SITE_URL": "${JIRA_SITE_URL}"
-      }
-    }
-  },
-  "jira": {
-    "default_project": "PROJ",
-    "default_issue_type": "Story",
-    "status_mapping": {
-      "READY_FOR_DEVELOPMENT": "To Do",
-      "READY_FOR_IMPLEMENTATION": "In Progress",
-      "READY_FOR_TESTING": "In Review",
-      "TESTING_COMPLETE": "Testing",
-      "DOCUMENTATION_COMPLETE": "Done"
-    }
-  },
-  "confluence": {
-    "default_space": "PROJ",
-    "default_parent_page": "123456789",
-    "page_labels": ["multi-agent", "automated"]
-  }
-}
-```
-
-#### 5. Test Configuration
-
-```bash
-# Test Jira authentication
-curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-  "$JIRA_SITE_URL/rest/api/3/myself"
-
-# Should return your Jira user info
-
-# Test with agent (dry run)
-TASK_ID=$(cmat.sh queue add \
-  "Test Jira" \
-  "atlassian-integration-coordinator" \
-  "normal" \
-  "integration" \
-  "test.md" \
-  "Test Jira integration")
-
-cmat.sh queue start $TASK_ID
-```
-
 ### Jira Integration Workflow
 
-#### After Requirements Analysis → READY_FOR_DEVELOPMENT
+#### After Requirements Analysis (READY_FOR_DEVELOPMENT)
 
 **Actions**:
 1. Extract requirements from `analysis_summary.md`
@@ -413,14 +431,13 @@ https://company.atlassian.net/browse/PROJ-456
 Type: Story
 Priority: High
 Status: To Do
-Labels: multi-agent, automated, enhancement
 ```
 
-#### After Architecture Design → READY_FOR_IMPLEMENTATION
+#### After Architecture (READY_FOR_IMPLEMENTATION)
 
 **Actions**:
 1. Find Jira ticket from task metadata
-2. Transition status: `To Do` → `In Progress`
+2. Transition status: `To Do` -> `In Progress`
 3. Post comment with architecture approach
 4. Publish architecture to Confluence:
    - Create page in project space
@@ -435,51 +452,30 @@ Labels: multi-agent, automated, enhancement
 INTEGRATION_COMPLETE
 
 Updated Jira Ticket: PROJ-456
-Status: To Do → In Progress
+Status: To Do -> In Progress
 
 Confluence Page Created:
 Title: "User Profile - Architecture Design"
 URL: https://company.atlassian.net/wiki/spaces/PROJ/pages/123456
-
-Cross-referenced in Jira
 ```
 
-#### After Implementation → READY_FOR_TESTING
+#### After Implementation (READY_FOR_TESTING)
 
 **Actions**:
 1. Find Jira ticket from task metadata
-2. Transition status: `In Progress` → `In Review`
+2. Transition status: `In Progress` -> `In Review`
 3. Post comment with implementation summary
 4. Link GitHub PR
 
-**Output**:
-```
-INTEGRATION_COMPLETE
-
-Updated Jira Ticket: PROJ-456
-Status: In Progress → In Review
-GitHub PR linked: #156
-```
-
-#### After Testing → TESTING_COMPLETE
+#### After Testing (TESTING_COMPLETE)
 
 **Actions**:
 1. Find Jira ticket from task metadata
-2. Transition status: `In Review` → `Testing` (or `Done`)
+2. Transition status: `In Review` -> `Testing` (or `Done`)
 3. Post comment with test results
 4. Add label: `qa-approved` (if passed)
 
-**Output**:
-```
-INTEGRATION_COMPLETE
-
-Updated Jira Ticket: PROJ-456
-Status: Testing → Done
-Test results: All passed (95% coverage)
-Label: qa-approved
-```
-
-#### After Documentation → DOCUMENTATION_COMPLETE
+#### After Documentation (DOCUMENTATION_COMPLETE)
 
 **Actions**:
 1. Find Jira ticket from task metadata
@@ -493,30 +489,14 @@ Label: qa-approved
 4. Add label: `documented`
 5. Transition to `Done` (if not already)
 
-**Output**:
-```
-INTEGRATION_COMPLETE
-
-Jira Ticket: PROJ-456
-Status: Done
-
-Confluence Pages:
-- Architecture: .../architecture
-- User Guide: .../userguide
-
-Feature complete in all systems
-```
-
 ### Confluence Best Practices
 
 **Page Creation**:
-- ✅ Descriptive titles with feature name
-- ✅ Info macro noting auto-generation
-- ✅ Clear section headings (h2)
-- ✅ Links to Jira and GitHub
-- ✅ Appropriate labels
-- ❌ Avoid generic titles ("Documentation")
-- ❌ Avoid walls of unformatted text
+- Descriptive titles with feature name
+- Info macro noting auto-generation
+- Clear section headings (h2)
+- Links to Jira and GitHub
+- Appropriate labels
 
 ---
 
@@ -524,7 +504,7 @@ Feature complete in all systems
 
 ### Automatic Integration
 
-Integration tasks are created automatically by the `on-subagent-stop.sh` hook when:
+Integration tasks are created automatically when:
 1. Task completes with specific status
 2. Status requires external sync
 3. AUTO_INTEGRATE is not set to "never"
@@ -541,55 +521,23 @@ Integration tasks are created automatically by the `on-subagent-stop.sh` hook wh
 #### Sync Single Task
 ```bash
 # Sync specific completed task
-cmat.sh integration sync task_1234567890_12345
+python -m cmat integration sync <task_id>
 ```
 
 #### Sync All Unsynced Tasks
 ```bash
 # Find and sync all tasks needing integration
-cmat.sh integration sync-all
-
-# Output:
-# 🔍 Scanning for tasks requiring integration...
-# 🔗 Creating integration for task_123 (READY_FOR_DEVELOPMENT)
-# 🔗 Creating integration for task_456 (TESTING_COMPLETE)
-# ✅ Created 2 integration tasks
-```
-
-#### Create Integration Task Manually
-```bash
-# Create integration task for specific status
-cmat.sh integration add \
-  "READY_FOR_DEVELOPMENT" \
-  "enhancements/feature/requirements-analyst/analysis_summary.md" \
-  "requirements-analyst" \
-  "task_1234567890_12345"
-```
-
-### Integration Task Execution
-
-Integration tasks execute like normal tasks:
-
-```bash
-# Check pending integrations
-cmat.sh queue list pending | jq '.[] | select(.assigned_agent | contains("integration"))'
-
-# Start integration task
-cmat.sh queue start task_integration_12345
-
-# Monitor
-cmat.sh queue status
+python -m cmat integration sync-all
 ```
 
 ---
 
-## Configuration
+## Configuration Reference
 
-### Status Mapping
+### GitHub Label Mapping
 
-Map internal workflow statuses to external system states:
+Map internal statuses to GitHub labels:
 
-**GitHub** (`.claude/mcp-servers/github-config.json`):
 ```json
 {
   "label_mapping": {
@@ -602,7 +550,10 @@ Map internal workflow statuses to external system states:
 }
 ```
 
-**Jira** (`.claude/mcp-servers/atlassian-config.json`):
+### Jira Status Mapping
+
+Map internal statuses to Jira workflow states:
+
 ```json
 {
   "status_mapping": {
@@ -618,8 +569,6 @@ Map internal workflow statuses to external system states:
 **Important**: Jira status names must match your Jira workflow exactly (case-sensitive).
 
 ### Project Configuration
-
-Set default project/repository for each integration:
 
 **GitHub**:
 ```json
@@ -669,35 +618,6 @@ export AUTO_INTEGRATE="never"
 
 # Prompt user for each integration (default)
 export AUTO_INTEGRATE="prompt"
-```
-
-**Examples**:
-
-**Always Integrate**:
-```bash
-export AUTO_INTEGRATE="always"
-TASK_ID=$(cmat.sh queue add ... true true)
-cmat.sh queue start $TASK_ID
-# Integration tasks created automatically
-# No prompts
-```
-
-**Never Integrate**:
-```bash
-export AUTO_INTEGRATE="never"
-TASK_ID=$(cmat.sh queue add ... true true)
-cmat.sh queue start $TASK_ID
-# No integration tasks created
-# Sync manually later with: cmat.sh integration sync-all
-```
-
-**Prompt Mode** (default):
-```bash
-# AUTO_INTEGRATE not set or set to "prompt"
-TASK_ID=$(cmat.sh queue add ... true true)
-cmat.sh queue start $TASK_ID
-# When status needs integration:
-# "Create integration task? [Y/n]: "
 ```
 
 ### Per-Session Control
@@ -758,18 +678,16 @@ curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_SITE_URL/rest/api/3/myself"
 **Debug**:
 ```bash
 # Find failed integration
-cmat.sh queue list failed | jq '.[] | select(.assigned_agent | contains("integration"))'
+python -m cmat queue list failed
 
-# Check log
-LOG=$(cmat.sh queue list failed | jq -r '.[-1].id' | xargs -I {} find enhancements -name "*{}_*.log")
-tail -100 "$LOG"
-
-# Common issues:
-# - Authentication (see above)
-# - API rate limits
-# - Invalid project/repo names
-# - Missing permissions
+# Check task log in enhancements directory
 ```
+
+**Common issues**:
+- Authentication (see above)
+- API rate limits
+- Invalid project/repo names
+- Missing permissions
 
 ### GitHub API Rate Limits
 
@@ -784,11 +702,7 @@ curl -H "Authorization: token $GITHUB_TOKEN" \
 # Authenticated: 5000 requests/hour
 # Unauthenticated: 60 requests/hour
 
-# If exceeded:
-# 1. Wait for reset (shown in response)
-# 2. Use authentication (if not already)
-# 3. Reduce integration frequency
-# 4. Batch operations
+# If exceeded: wait for reset or reduce integration frequency
 ```
 
 ### Jira Workflow Transition Errors
@@ -801,16 +715,15 @@ curl -H "Authorization: token $GITHUB_TOKEN" \
 3. Required fields not populated
 4. Transition name incorrect
 
-**Debug**:
+**Fix**:
 ```bash
-# Check ticket's current status
-# Check Jira workflow configuration
-# Verify status_mapping in atlassian-config.json
-# Ensure transition names match exactly
+# Check your workflow states:
+curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  "$JIRA_SITE_URL/rest/api/3/project/$PROJECT_KEY/statuses" | \
+  jq '.[] | .name'
 
-# Fix status_mapping:
-vim .claude/mcp-servers/atlassian-config.json
-# Update status names to match Jira workflow
+# Update status_mapping in atlassian-config.json
+# Match status names exactly (case-sensitive)
 ```
 
 ### Missing Cross-References
@@ -821,44 +734,91 @@ vim .claude/mcp-servers/atlassian-config.json
 
 **Solution**:
 ```bash
-# Manually update metadata
-TASK_ID="task_123"
-cmat.sh queue metadata $TASK_ID github_issue "145"
-cmat.sh queue metadata $TASK_ID jira_ticket "PROJ-456"
+# Update task metadata manually
+python -m cmat queue metadata <task_id> github_issue "145"
+python -m cmat queue metadata <task_id> jira_ticket "PROJ-456"
 
 # Re-run integration
-cmat.sh integration sync $TASK_ID
+python -m cmat integration sync <task_id>
 ```
 
-### Duplicate Issues/Tickets
+### Can't Find Confluence Parent Page ID
 
-**Symptoms**: Multiple issues created for same enhancement
+**Method 1 - From URL**:
+- Open Confluence page
+- Look at URL: `...pageId=123456789`
+- Use that number
 
-**Cause**: Integration ran multiple times or task recreated
-
-**Prevention**:
+**Method 2 - From API**:
 ```bash
-# Check if integration already exists
-cmat.sh queue list all | jq '.completed[] | 
-  select(.metadata.github_issue != null) | 
-  select(.source_file == "enhancements/feature/...")' 
-
-# If exists, don't create new integration task
+curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+  "$JIRA_SITE_URL/wiki/rest/api/space/$SPACE_KEY/content?type=page&title=Your+Page+Title" | \
+  jq '.results[0].id'
 ```
 
-**Cleanup**:
-- Close duplicate GitHub issues manually
-- Link primary issue in ticket description
-- Update task metadata to reference correct issue/ticket
+---
+
+## Security Best Practices
+
+- **Never commit tokens** to version control
+- **Use environment variables** for all credentials
+- **Rotate tokens** regularly (every 90 days)
+- **Limit token scopes** to minimum required
+- **Use .gitignore** for config files with tokens
 
 ---
 
-## Further Reading
+## Quick Reference
 
-- **[MCP_INTEGRATION_QUICKSTART.md](../mcp-servers/MCP_INTEGRATION_QUICKSTART.md)** - Quick setup guide
-- **[github-integration-coordinator.md](../agents/github-integration-coordinator.md)** - GitHub agent details
-- **[atlassian-integration-coordinator.md](../agents/atlassian-integration-coordinator.md)** - Atlassian agent details
-- **[QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md)** - Task queue operations
-- **[SCRIPTS_REFERENCE.md](../SCRIPTS_REFERENCE.md)** - Integration commands
+### Start with Integration
+
+```bash
+# Always integrate
+export AUTO_INTEGRATE="always"
+
+# Start workflow
+python -m cmat workflow start new-feature-development my-feature
+
+# Monitor progress
+python -m cmat queue status
+```
+
+### Manual Integration
+
+```bash
+# Disable auto-integration
+export AUTO_INTEGRATE="never"
+
+# Run workflow
+python -m cmat workflow start ...
+
+# Sync after completion
+python -m cmat integration sync-all
+```
+
+### Check Integration Status
+
+```bash
+# View task metadata
+python -m cmat queue list completed
+
+# Find integration tasks
+python -m cmat queue list active
+```
 
 ---
+
+## External Resources
+
+- **MCP Documentation**: https://modelcontextprotocol.io
+- **GitHub API**: https://docs.github.com/rest
+- **Jira API**: https://developer.atlassian.com/cloud/jira/platform/rest/v3/
+- **Confluence API**: https://developer.atlassian.com/cloud/confluence/rest/v1/
+
+---
+
+## See Also
+
+- **[CLI_REFERENCE.md](CLI_REFERENCE.md)** - Complete command reference
+- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow orchestration
+- **[QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md)** - Task queue management

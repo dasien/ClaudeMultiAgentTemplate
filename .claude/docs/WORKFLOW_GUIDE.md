@@ -1,17 +1,20 @@
 # Workflow Guide
 
-This guide describes workflow patterns and orchestration in the multi-agent system.
+Complete guide to workflow orchestration and template management in CMAT.
+
+**Version**: 8.2.0
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Workflow Architecture](#workflow-architecture)
-- [Command Reference](#command-reference)
-- [Standard Workflows](#standard-workflows)
+- [Template Structure](#template-structure)
+- [CLI Commands](#cli-commands)
+- [Built-in Workflows](#built-in-workflows)
 - [Creating Custom Workflows](#creating-custom-workflows)
-- [Output Structure](#output-structure)
 - [Status Transitions](#status-transitions)
-- [Integration with External Systems](#integration-with-external-systems)
+- [Output Structure](#output-structure)
+- [Common Patterns](#common-patterns)
 - [Best Practices](#best-practices)
 - [Troubleshooting](#troubleshooting)
 
@@ -20,6 +23,7 @@ This guide describes workflow patterns and orchestration in the multi-agent syst
 ## Overview
 
 The multi-agent system uses **workflow templates** to orchestrate agent sequences. Workflows define:
+
 - Which agents execute in which order
 - What inputs each agent receives
 - What outputs each agent must produce
@@ -27,246 +31,434 @@ The multi-agent system uses **workflow templates** to orchestrate agent sequence
 
 **Key Principle**: Workflows are the source of truth for orchestration. Agents are reusable components that workflows connect together.
 
+### Key Benefits
+
+- **Complete Orchestration** - Workflows specify everything: agents, inputs, outputs, transitions
+- **Agent Reusability** - Same agent in different workflows with different inputs/outputs
+- **Flexible Status Handling** - Workflows define what status codes mean
+- **Self-Contained** - Template has all information needed to execute
+- **User Control** - Easy to create and modify workflows via CLI
+
 ---
 
 ## Workflow Architecture
 
-### Workflow-Based Design (v5.0)
+### Design Overview
 
 ```
 Workflow Template (workflow_templates.json)
-  ├─ Step 0: requirements-analyst
-  │    ├─ input: "enhancements/{name}/{name}.md"
-  │    ├─ required_output: "analysis.md"
-  │    └─ on_status:
-  │         └─ READY_FOR_DEVELOPMENT → Step 1
-  │
-  ├─ Step 1: architect
-  │    ├─ input: "{previous_step}/required_output/"
-  │    ├─ required_output: "design.md"
-  │    └─ on_status:
-  │         └─ READY_FOR_IMPLEMENTATION → Step 2
-  │
-  └─ Step 2: implementer
-       ├─ input: "{previous_step}/required_output/"
-       ├─ required_output: "implementation.md"
-       └─ on_status:
-            └─ READY_FOR_TESTING → null (end)
+  |
+  +- Step 0: requirements-analyst
+  |    +- input: "enhancements/{name}/{name}.md"
+  |    +- required_output: "analysis.md"
+  |    +- on_status:
+  |         +- READY_FOR_DEVELOPMENT -> Step 1
+  |
+  +- Step 1: architect
+  |    +- input: "{previous_step}/required_output/"
+  |    +- required_output: "design.md"
+  |    +- on_status:
+  |         +- READY_FOR_IMPLEMENTATION -> Step 2
+  |
+  +- Step 2: implementer
+       +- input: "{previous_step}/required_output/"
+       +- required_output: "implementation.md"
+       +- on_status:
+            +- READY_FOR_TESTING -> null (end)
 ```
 
-**Task Metadata** carries workflow context:
+### Task Metadata
+
+Each task carries workflow context:
+
 ```json
 {
-  "workflow_name": "new_feature_development",
+  "workflow_name": "new-feature-development",
   "workflow_step": 0
 }
 ```
 
-**Hook** uses workflow to determine next steps:
-1. Get workflow_name and workflow_step from task metadata
-2. Load workflow template
-3. Check if status exists in current step's `on_status`
-4. If yes → create next task with step+1
-5. If no → stop workflow
+### Auto-Chain Process
+
+When an agent completes:
+1. System reads `workflow_name` and `workflow_step` from task metadata
+2. Loads workflow template
+3. Checks if output status exists in current step's `on_status`
+4. If found and `auto_chain: true` -> creates and starts next task
+5. If not found -> stops workflow
 
 ---
 
-## Command Reference
+## Template Structure
 
-### Starting Workflows
+### Complete Template Example
 
-```bash
-# Start a workflow from the beginning
-cmat workflow start <workflow_name> <enhancement_name>
-
-# Example
-cmat workflow start new_feature_development user-profiles
+```json
+{
+  "workflows": {
+    "my-workflow": {
+      "name": "My Custom Workflow",
+      "description": "Custom workflow for specific feature type",
+      "steps": [
+        {
+          "agent": "requirements-analyst",
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "analysis.md",
+          "on_status": {
+            "READY_FOR_DEVELOPMENT": {
+              "next_step": "architect",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "architect",
+          "input": "{previous_step}/required_output/",
+          "required_output": "design.md",
+          "on_status": {
+            "READY_FOR_IMPLEMENTATION": {
+              "next_step": "implementer",
+              "auto_chain": true
+            },
+            "NEEDS_RESEARCH": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
+        },
+        {
+          "agent": "implementer",
+          "input": "{previous_step}/required_output/",
+          "required_output": "implementation.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}
 ```
 
-### Managing Templates
+### Field Definitions
 
-```bash
-# Create new template
-cmat workflow create <name> <description>
+**Workflow Level**:
+| Field | Description |
+|-------|-------------|
+| `name` | Human-readable workflow name |
+| `description` | What this workflow is for |
+| `steps` | Array of agent steps (execution order) |
 
-# Add steps
-cmat workflow add-step <name> <agent> <input> <output> [position]
+**Step Level**:
+| Field | Description |
+|-------|-------------|
+| `agent` | Agent name (must exist in agents.json) |
+| `input` | File or directory path (supports placeholders) |
+| `required_output` | Filename to create in `required_output/` |
+| `on_status` | Map of status codes to transitions |
 
-# Add transitions
-cmat workflow add-transition <name> <step> <status> <next_agent> [auto_chain]
+**Transition Level**:
+| Field | Description |
+|-------|-------------|
+| `next_step` | Next agent name or `null` for end |
+| `auto_chain` | Whether to automatically start next step |
 
-# Validate template
-cmat workflow validate <name>
+### Input Path Placeholders
 
-# View template
-cmat workflow show <name>
-```
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `{enhancement_name}` | Enhancement directory name | `user-profiles` |
+| `{previous_step}` | Previous agent's directory path | `enhancements/user-profiles/architect` |
 
-### Example: Creating a Custom Workflow
+**Examples**:
+```json
+// First step - reads spec file
+"input": "enhancements/{enhancement_name}/{enhancement_name}.md"
+// Becomes: enhancements/user-profiles/user-profiles.md
 
-```bash
-# 1. Create template
-cmat workflow create quick-impl "Quick implementation workflow"
-
-# 2. Add steps
-cmat workflow add-step quick-impl architect \
-    "enhancements/{enhancement_name}/{enhancement_name}.md" \
-    "design.md"
-
-cmat workflow add-step quick-impl implementer \
-    "{previous_step}/required_output/" \
-    "code.md"
-
-cmat workflow add-step quick-impl tester \
-    "{previous_step}/required_output/" \
-    "tests.md"
-
-# 3. Add transitions
-cmat workflow add-transition quick-impl 0 READY_FOR_IMPLEMENTATION implementer true
-cmat workflow add-transition quick-impl 1 READY_FOR_TESTING tester true
-cmat workflow add-transition quick-impl 2 TESTING_COMPLETE null false
-
-# 4. Validate
-cmat workflow validate quick-impl
-
-# 5. Use it
-cmat workflow start quick-impl my-feature
+// Later step - reads previous agent's output
+"input": "{previous_step}/required_output/"
+// Becomes: enhancements/user-profiles/architect/required_output/
 ```
 
 ---
 
-## Standard Workflows
+## CLI Commands
 
-### new_feature_development
+### Workflow Operations
 
-**Steps**: requirements-analyst → architect → implementer → tester → documenter (5 steps)
+```bash
+# List all workflows
+python -m cmat workflow list
+
+# Show workflow details
+python -m cmat workflow show <workflow_name>
+
+# Start a workflow
+python -m cmat workflow start <workflow_name> <enhancement_name>
+
+# Validate a workflow template
+python -m cmat workflow validate <workflow_name>
+```
+
+### Example Session
+
+```bash
+# See available workflows
+python -m cmat workflow list
+
+# Examine a workflow
+python -m cmat workflow show new-feature-development
+
+# Start the workflow
+python -m cmat workflow start new-feature-development my-feature
+
+# Monitor progress
+python -m cmat queue status
+python -m cmat queue list active
+```
+
+---
+
+## Built-in Workflows
+
+### new-feature-development (5 steps)
+
+```
+requirements-analyst -> architect -> implementer -> tester -> documenter
+```
 
 **Use For**:
 - New features
 - Major enhancements
 - User-facing changes requiring documentation
 
-**Duration**: 6-12 hours total
+**Transitions**:
+- Step 0: `READY_FOR_DEVELOPMENT` -> architect
+- Step 1: `READY_FOR_IMPLEMENTATION` -> implementer
+- Step 2: `READY_FOR_TESTING` -> tester
+- Step 3: `TESTING_COMPLETE` -> documenter
+- Step 4: `DOCUMENTATION_COMPLETE` -> END
 
 **Start Command**:
 ```bash
-cmat workflow start new_feature_development feature-name
+python -m cmat workflow start new-feature-development feature-name
 ```
 
 ---
 
-### bugfix_workflow
+### bugfix-workflow (4 steps)
 
-**Steps**: requirements-analyst → architect → implementer → tester (4 steps)
+```
+requirements-analyst -> architect -> implementer -> tester
+```
 
 **Use For**:
 - Bug fixes requiring analysis
 - Issues needing design consideration
 
-**Duration**: 2-4 hours total
-
 ---
 
-### hotfix_workflow
+### hotfix-workflow (2 steps)
 
-**Steps**: implementer → tester (2 steps)
+```
+implementer -> tester
+```
 
 **Use For**:
 - Critical production issues
 - Emergency fixes
 - Simple, obvious bugs
 
-**Duration**: 1-2 hours total
-
 ---
 
-### performance_optimization
+### performance-optimization (4 steps)
 
-**Steps**: tester → architect → implementer → tester (4 steps)
+```
+tester -> architect -> implementer -> tester
+```
 
 **Use For**:
 - Performance improvements
 - Optimization work
 
-**Duration**: 3-5 hours total
-
-**Note**: Starts with tester to establish baseline
+**Note**: Starts with tester to establish baseline metrics.
 
 ---
 
-### documentation_update
+### documentation-update (3 steps)
 
-**Steps**: requirements-analyst → documenter → tester (3 steps)
+```
+requirements-analyst -> documenter -> tester
+```
 
 **Use For**:
 - Documentation-only updates
 - Guide creation
 
-**Duration**: 2-3 hours total
-
 ---
 
-### refactoring_workflow
+### refactoring-workflow (4 steps)
 
-**Steps**: architect → implementer → tester → documenter (4 steps)
+```
+architect -> implementer -> tester -> documenter
+```
 
 **Use For**:
 - Code refactoring
 - Technical debt reduction
 
-**Duration**: 4-8 hours total
-
 ---
 
 ## Creating Custom Workflows
 
-See complete guide: [WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)
+### Step-by-Step Guide
 
-Quick example:
+1. **Plan your workflow** - Decide which agents in which order
+2. **Create the template** - Add to `workflow_templates.json`
+3. **Define steps** - Specify input/output for each agent
+4. **Add transitions** - Map status codes to next steps
+5. **Validate** - Check for errors
+6. **Test** - Run with a sample enhancement
+
+### Example: API Development Workflow
+
+Edit `.claude/data/workflow_templates.json`:
+
+```json
+{
+  "workflows": {
+    "api-development": {
+      "name": "API Development",
+      "description": "REST API endpoint development workflow",
+      "steps": [
+        {
+          "agent": "requirements-analyst",
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "endpoint_spec.md",
+          "on_status": {
+            "READY_FOR_DEVELOPMENT": {
+              "next_step": "architect",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "architect",
+          "input": "{previous_step}/required_output/",
+          "required_output": "api_design.md",
+          "on_status": {
+            "READY_FOR_IMPLEMENTATION": {
+              "next_step": "implementer",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "implementer",
+          "input": "{previous_step}/required_output/",
+          "required_output": "endpoint_impl.md",
+          "on_status": {
+            "READY_FOR_TESTING": {
+              "next_step": "tester",
+              "auto_chain": true
+            }
+          }
+        },
+        {
+          "agent": "tester",
+          "input": "{previous_step}/required_output/",
+          "required_output": "api_tests.md",
+          "on_status": {
+            "TESTING_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Then validate and use:
+
 ```bash
-# Create API-focused workflow
-cmat workflow create api-endpoint "REST API endpoint development"
+python -m cmat workflow validate api-development
+python -m cmat workflow start api-development add-payment-endpoint
+```
 
-cmat workflow add-step api-endpoint requirements-analyst \
-    "enhancements/{enhancement_name}/{enhancement_name}.md" \
-    "endpoint_spec.md"
+---
 
-cmat workflow add-step api-endpoint architect \
-    "{previous_step}/required_output/" \
-    "api_design.md"
+## Status Transitions
 
-cmat workflow add-step api-endpoint implementer \
-    "{previous_step}/required_output/" \
-    "endpoint_impl.md"
+### How Transitions Work
 
-cmat workflow add-step api-endpoint tester \
-    "{previous_step}/required_output/" \
-    "api_tests.md"
+1. Agent outputs a completion block with status code
+2. System reads workflow template and current step
+3. System checks if status exists in step's `on_status` map
+4. If **found** -> Get `next_step` and `auto_chain` settings
+5. If **not found** -> Stop workflow
 
-# Add transitions
-cmat workflow add-transition api-endpoint 0 READY_FOR_DEVELOPMENT architect true
-cmat workflow add-transition api-endpoint 1 READY_FOR_IMPLEMENTATION implementer true
-cmat workflow add-transition api-endpoint 2 READY_FOR_TESTING tester true
-cmat workflow add-transition api-endpoint 3 TESTING_COMPLETE null false
+**Simple Rule**: Status in `on_status` -> continue. Status not in `on_status` -> stop.
 
-# Use it
-cmat workflow start api-endpoint add-payment-endpoint
+### Standard Status Codes
+
+**Completion Statuses** (workflow continues):
+| Status | Description | Typical Next Step |
+|--------|-------------|-------------------|
+| `READY_FOR_DEVELOPMENT` | Requirements analysis complete | architect |
+| `READY_FOR_IMPLEMENTATION` | Architecture/design complete | implementer |
+| `READY_FOR_TESTING` | Code complete | tester |
+| `TESTING_COMPLETE` | Tests passed | documenter or END |
+| `DOCUMENTATION_COMPLETE` | Docs finished | END |
+
+**Halt Statuses** (workflow stops):
+| Status | Description | Action Required |
+|--------|-------------|-----------------|
+| `BLOCKED: <reason>` | Cannot proceed | Resolve blocker |
+| `NEEDS_CLARIFICATION: <what>` | Need more info | Provide clarification |
+| `TESTS_FAILED: <details>` | Tests didn't pass | Fix failures |
+| `BUILD_FAILED` | Build errors | Fix build |
+
+### Defining Transitions
+
+Each step can have multiple transitions for different outcomes:
+
+```json
+{
+  "agent": "architect",
+  "on_status": {
+    "READY_FOR_IMPLEMENTATION": {
+      "next_step": "implementer",
+      "auto_chain": true
+    },
+    "NEEDS_RESEARCH": {
+      "next_step": null,
+      "auto_chain": false
+    }
+  }
+}
 ```
 
 ---
 
 ## Output Structure
 
-### Directory Convention (v5.0)
+### Directory Convention
 
 All agents use standardized output structure:
 
 ```
 enhancements/{enhancement_name}/{agent}/
-├── required_output/
-│   └── {workflow-specified-filename}
-└── optional_output/
-    └── [agent's additional files]
++-- required_output/
+|   +-- {workflow-specified-filename}
++-- optional_output/
+    +-- [agent's additional files]
 ```
 
 **Workflow Specifies**:
@@ -278,7 +470,8 @@ enhancements/{enhancement_name}/{agent}/
 - Required file in that directory
 - Optional files in `optional_output/`
 
-**Example Flow**:
+### Example Flow
+
 ```
 Step 0: requirements-analyst
   Input:  enhancements/my-feature/my-feature.md (file)
@@ -295,110 +488,123 @@ Step 2: implementer
 
 ---
 
-## Status Transitions
+## Common Patterns
 
-### How Status Transitions Work
+### Skip Requirements Analysis
 
-1. Agent outputs a status code (e.g., `READY_FOR_IMPLEMENTATION`)
-2. Hook reads workflow template and current step
-3. Hook checks if status exists in step's `on_status` map
-4. If **found** → Get `next_step` and `auto_chain` settings
-5. If **not found** → Stop workflow
+For well-defined features where requirements are already clear:
 
-**Simple Rule**: Status in `on_status` → continue. Status not in `on_status` → stop.
-
-### Common Status Patterns
-
-**Success Statuses**:
-- `READY_FOR_DEVELOPMENT` - Requirements complete
-- `READY_FOR_IMPLEMENTATION` - Architecture complete
-- `READY_FOR_TESTING` - Code complete
-- `TESTING_COMPLETE` - Tests passed
-- `DOCUMENTATION_COMPLETE` - Docs finished
-
-**Blocking Statuses**:
-- `BLOCKED: <reason>` - Cannot proceed
-- `NEEDS_CLARIFICATION: <what>` - Need more info
-- `TESTS_FAILED: <details>` - Tests didn't pass
-
-**Example Workflow Step**:
 ```json
 {
-  "agent": "architect",
-  "input": "{previous_step}/required_output/",
-  "required_output": "design.md",
+  "skip-analysis": {
+    "name": "Skip Analysis Workflow",
+    "description": "Start directly with architecture",
+    "steps": [
+      {
+        "agent": "architect",
+        "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+        "required_output": "design.md",
+        "on_status": {
+          "READY_FOR_IMPLEMENTATION": {
+            "next_step": "implementer",
+            "auto_chain": true
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+### Add Security Review
+
+Insert a security review step before testing:
+
+```json
+{
+  "agent": "implementer",
   "on_status": {
-    "READY_FOR_IMPLEMENTATION": {
-      "next_step": "implementer",
+    "READY_FOR_TESTING": {
+      "next_step": "code-reviewer",
+      "auto_chain": true
+    }
+  }
+},
+{
+  "agent": "code-reviewer",
+  "input": "{previous_step}/required_output/",
+  "required_output": "security_review.md",
+  "on_status": {
+    "SECURITY_APPROVED": {
+      "next_step": "tester",
       "auto_chain": true
     }
   }
 }
 ```
 
-If architect outputs anything other than `READY_FOR_IMPLEMENTATION`, workflow stops.
+### Multiple Outcomes
 
----
+Handle different agent outcomes:
 
-## Integration with External Systems
-
-See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) for complete setup.
-
-**Quick Overview**:
-```bash
-# Control integration behavior
-export AUTO_INTEGRATE="always"  # Auto-create integration tasks
-export AUTO_INTEGRATE="never"   # Skip integration
-export AUTO_INTEGRATE="prompt"  # Ask each time (default)
-
-# Manual sync
-cmat integration sync <task_id>
-cmat integration sync-all
+```json
+{
+  "agent": "tester",
+  "on_status": {
+    "TESTING_COMPLETE": {
+      "next_step": "documenter",
+      "auto_chain": true
+    },
+    "TESTS_FAILED": {
+      "next_step": null,
+      "auto_chain": false
+    }
+  }
+}
 ```
 
 ---
 
 ## Best Practices
 
-### Starting a New Feature
+### Workflow Design
 
-1. **Create Enhancement Spec**: `enhancements/feature/feature.md`
-2. **Choose Workflow**: Use built-in or create custom
-3. **Start Workflow**: `cmat workflow start <workflow> <feature>`
-4. **Monitor**: `cmat queue status`
+**DO**:
+- Keep workflows focused (single purpose)
+- Include minimum necessary steps
+- Use standard status codes
+- Always include a testing step
+- Document when to use the workflow
+
+**DON'T**:
+- Create too many similar workflows
+- Skip testing steps
+- Use vague status codes
+- Make workflows too generic
+
+### Status Handling
+
+**DO**:
+- Use standard status patterns (`READY_FOR_*`, `*_COMPLETE`)
+- Add transitions for all expected success statuses
+- Let unexpected statuses stop workflow naturally
+- Use descriptive status codes
+
+**DON'T**:
+- Add transitions for every possible status
+- Use vague status codes
+- Forget that missing status = workflow stops
 
 ### Choosing the Right Workflow
 
-**Use new_feature_development** when:
-- Requirements unclear
-- Complex architecture needed
-- User-facing changes
-- Need comprehensive documentation
-
-**Use hotfix_workflow** when:
-- Production emergency
-- Fix is simple and obvious
-- Speed is critical
-
-**Create custom workflow** when:
-- Repeated pattern specific to your domain
-- Need specialized agent sequence
-- Built-in workflows don't fit
-
-### Workflow Design Principles
-
-**DO**:
-- ✅ Keep workflows focused (single purpose)
-- ✅ Include minimum necessary steps
-- ✅ Use standard status codes
-- ✅ Always include testing step
-- ✅ Document when to use the workflow
-
-**DON'T**:
-- ❌ Create too many similar workflows
-- ❌ Skip testing steps
-- ❌ Use vague status codes
-- ❌ Make workflows too generic
+| Scenario | Recommended Workflow |
+|----------|---------------------|
+| New feature, unclear requirements | new-feature-development |
+| Bug with known fix | hotfix-workflow |
+| Bug needing investigation | bugfix-workflow |
+| Performance issue | performance-optimization |
+| Documentation only | documentation-update |
+| Code cleanup | refactoring-workflow |
 
 ---
 
@@ -409,10 +615,10 @@ cmat integration sync-all
 **Check**:
 ```bash
 # Workflow exists?
-cmat workflow list
+python -m cmat workflow list
 
 # Template valid?
-cmat workflow validate <workflow>
+python -m cmat workflow validate <workflow>
 
 # Enhancement spec exists?
 ls enhancements/<name>/<name>.md
@@ -423,13 +629,10 @@ ls enhancements/<name>/<name>.md
 **Diagnosis**:
 ```bash
 # Check last task status
-cmat queue list completed | jq '.[-1]'
+python -m cmat queue list completed
 
-# View task log
-tail -100 enhancements/*/logs/*.log
-
-# Check if status in workflow
-cmat workflow show <workflow> | grep "status-code"
+# View task details
+python -m cmat queue show <task_id>
 ```
 
 **Common Causes**:
@@ -442,44 +645,36 @@ cmat workflow show <workflow> | grep "status-code"
 **Check**:
 ```bash
 # Verify directory structure
-ls -la enhancements/feature/agent/
+ls -la enhancements/<feature>/<agent>/
 
 # Should see: required_output/ directory
 
-# Check required file
-ls enhancements/feature/agent/required_output/
-
-# Check metadata header
-head -10 enhancements/feature/agent/required_output/file.md
+# Check required file exists
+ls enhancements/<feature>/<agent>/required_output/
 ```
 
 ---
-
 
 ## Quick Reference
 
 ```bash
-# Workflow template management
-cmat workflow create <n> <desc>
-cmat workflow list
-cmat workflow show <name>
-cmat workflow validate <name>
-cmat workflow start <name> <enhancement>
+# Workflow operations
+python -m cmat workflow list
+python -m cmat workflow show <name>
+python -m cmat workflow start <name> <enhancement>
+python -m cmat workflow validate <name>
 
-# Step management
-cmat workflow add-step <n> <agent> <input> <output>
-cmat workflow edit-step <n> <step> [input] [output]
-cmat workflow remove-step <n> <step>
-
-# Transition management
-cmat workflow add-transition <n> <step> <status> <next> [auto]
-cmat workflow list-transitions <n> <step>
-
-# Queue operations
-cmat queue status
-cmat queue list <type>
+# Queue monitoring
+python -m cmat queue status
+python -m cmat queue list active
+python -m cmat queue list completed
 ```
 
 ---
 
-**For complete workflow template documentation, see [WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)**
+## See Also
+
+- **[CLI_REFERENCE.md](CLI_REFERENCE.md)** - Complete command reference
+- **[QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md)** - Task queue management
+- **[PROMPT_SYSTEM_GUIDE.md](PROMPT_SYSTEM_GUIDE.md)** - Prompt construction and status reporting
+- **[ENHANCEMENT_GUIDE.md](ENHANCEMENT_GUIDE.md)** - Creating enhancement specs

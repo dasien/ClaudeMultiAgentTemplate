@@ -320,4 +320,4 @@ ls -ld enhancements/my-feature/
 - **[QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md)** - Complete queue system documentation
 - **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns and orchestration
 - **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - External system integration
-- **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Command reference
+- **[CLI_REFERENCE.md](CLI_REFERENCE.md)** - Command reference

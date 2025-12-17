@@ -28,15 +28,16 @@
         "workflow_templates.json"
       ],
       "docs": [
+        "CLI_REFERENCE.md",
+        "COST_TRACKING.md",
         "ENHANCEMENT_GUIDE.md",
         "INTEGRATION_GUIDE.md",
-        "MCP_INTEGRATION_QUICKSTART.md",
+        "LEARNINGS_GUIDE.md",
+        "PROMPT_SYSTEM_GUIDE.md",
         "QUEUE_SYSTEM_GUIDE.md",
         "SKILLS_GUIDE.md",
         "TASK_PROMPT_DEFAULTS.md",
-        "UNDERSTANDING_PROMPTS.md",
-        "WORKFLOW_GUIDE.md",
-        "WORKFLOW_TEMPLATE_GUIDE.md"
+        "WORKFLOW_GUIDE.md"
       ],
       "enhancement-templates": [
         "bugfix_template.md",
