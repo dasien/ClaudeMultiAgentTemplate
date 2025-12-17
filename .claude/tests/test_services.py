@@ -799,3 +799,157 @@ class TestModelService:
         # After invalidation, returns new count
         service.invalidate_cache()
         assert len(service.list_all()) == initial_count + 1
+
+
+class TestTaskServiceStatusExtraction:
+    """Tests for TaskService.extract_status() method."""
+
+    def test_extract_yaml_completion_block(self):
+        """Test extracting status from YAML completion block."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Some agent output here...
+
+Done with implementation.
+
+---
+agent: implementer
+task_id: task_1234567890_12345
+status: READY_FOR_TESTING
+---
+"""
+        status = service.extract_status(output)
+        assert status == "READY_FOR_TESTING"
+
+    def test_extract_yaml_completion_block_with_halt_status(self):
+        """Test extracting halt status from YAML completion block."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+I encountered an issue...
+
+---
+agent: implementer
+task_id: task_1234567890_12345
+status: BLOCKED: Missing database schema
+---
+"""
+        status = service.extract_status(output)
+        assert status == "BLOCKED: Missing database schema"
+
+    def test_extract_multiple_completion_blocks_returns_last(self):
+        """Test that the last completion block is returned."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+First attempt...
+
+---
+agent: implementer
+task_id: task_123
+status: BLOCKED: Initial issue
+---
+
+After fixing the issue...
+
+---
+agent: implementer
+task_id: task_123
+status: READY_FOR_TESTING
+---
+"""
+        status = service.extract_status(output)
+        assert status == "READY_FOR_TESTING"
+
+    def test_legacy_fallback_ready_for_pattern(self):
+        """Test fallback to legacy READY_FOR_* pattern."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        # Old format without YAML block
+        output = """
+Implementation complete.
+
+**Status: READY_FOR_TESTING**
+"""
+        status = service.extract_status(output)
+        assert status == "READY_FOR_TESTING"
+
+    def test_legacy_fallback_complete_pattern(self):
+        """Test fallback to legacy *_COMPLETE pattern."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Documentation finished.
+
+DOCUMENTATION_COMPLETE
+"""
+        status = service.extract_status(output)
+        assert status == "DOCUMENTATION_COMPLETE"
+
+    def test_legacy_fallback_blocked_pattern(self):
+        """Test fallback to legacy BLOCKED: pattern."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Cannot proceed.
+
+BLOCKED: Missing API credentials
+"""
+        status = service.extract_status(output)
+        assert status == "BLOCKED: Missing API credentials"
+
+    def test_no_status_returns_none(self):
+        """Test that no status returns None."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Some output without any status indicator.
+Just regular text here.
+"""
+        status = service.extract_status(output)
+        assert status is None
+
+    def test_empty_output_returns_none(self):
+        """Test that empty output returns None."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+        assert service.extract_status("") is None
+        assert service.extract_status(None) is None
+
+    def test_yaml_block_takes_priority_over_legacy(self):
+        """Test that YAML block is preferred over legacy patterns."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        # Output has both YAML block and legacy pattern
+        output = """
+Implementation done.
+
+READY_FOR_INTEGRATION
+
+---
+agent: implementer
+task_id: task_123
+status: READY_FOR_TESTING
+---
+"""
+        status = service.extract_status(output)
+        # Should return from YAML block, not legacy pattern
+        assert status == "READY_FOR_TESTING"

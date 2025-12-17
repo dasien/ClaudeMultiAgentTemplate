@@ -18,17 +18,30 @@ class StepTransition:
     When an agent outputs a status matching the name, the workflow
     engine uses this to determine the next step and whether to
     automatically chain to it.
+
+    Transitions can be:
+    - Completion transitions: auto_chain=True, next_step set - workflow continues
+    - Halt transitions: auto_chain=False or next_step=None - workflow stops for intervention
     """
     name: str
     next_step: Optional[str]
     auto_chain: bool = True
+    description: Optional[str] = None  # Optional description shown to agent
+
+    @property
+    def is_halt_status(self) -> bool:
+        """Returns True if this transition halts the workflow."""
+        return not self.auto_chain or self.next_step is None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             "next_step": self.next_step,
             "auto_chain": self.auto_chain,
         }
+        if self.description:
+            result["description"] = self.description
+        return result
 
     @classmethod
     def from_dict(cls, name: str, data: dict) -> "StepTransition":
@@ -37,6 +50,7 @@ class StepTransition:
             name=name,
             next_step=data.get("next_step"),
             auto_chain=data.get("auto_chain", True),
+            description=data.get("description"),
         )
 
     def to_json(self) -> str:

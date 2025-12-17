@@ -14,6 +14,16 @@
             "READY_FOR_DEVELOPMENT": {
               "next_step": "architect",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Requirements are unclear and need stakeholder input"
             }
           }
         },
@@ -25,6 +35,16 @@
             "READY_FOR_IMPLEMENTATION": {
               "next_step": "implementer",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_RESEARCH": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Technical unknowns require investigation before proceeding"
             }
           }
         },
@@ -40,6 +60,16 @@
             "READY_FOR_INTEGRATION": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "BUILD_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Code does not compile or build successfully"
             }
           }
         },
@@ -51,6 +81,16 @@
             "TESTING_COMPLETE": {
               "next_step": "documenter",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "One or more tests did not pass"
             }
           }
         },
@@ -62,6 +102,16 @@
             "DOCUMENTATION_COMPLETE": {
               "next_step": null,
               "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Need more information to complete documentation"
             }
           }
         }
@@ -79,6 +129,16 @@
             "READY_FOR_DEVELOPMENT": {
               "next_step": "architect",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Bug details are unclear and need more information"
             }
           }
         },
@@ -90,6 +150,16 @@
             "READY_FOR_IMPLEMENTATION": {
               "next_step": "implementer",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_RESEARCH": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Root cause requires further investigation"
             }
           }
         },
@@ -101,6 +171,16 @@
             "READY_FOR_TESTING": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "BUILD_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Code does not compile or build successfully"
             }
           }
         },
@@ -112,6 +192,16 @@
             "TESTING_COMPLETE": {
               "next_step": null,
               "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "One or more tests did not pass"
             }
           }
         }
@@ -129,6 +219,16 @@
             "READY_FOR_TESTING": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "BUILD_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Code does not compile or build successfully"
             }
           }
         },
@@ -140,6 +240,16 @@
             "TESTING_COMPLETE": {
               "next_step": null,
               "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "One or more tests did not pass"
             }
           }
         }
@@ -157,6 +267,16 @@
             "BASELINE_COMPLETE": {
               "next_step": "architect",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Unable to establish baseline metrics"
             }
           }
         },
@@ -168,6 +288,16 @@
             "READY_FOR_IMPLEMENTATION": {
               "next_step": "implementer",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_RESEARCH": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Performance bottlenecks require further investigation"
             }
           }
         },
@@ -179,6 +309,16 @@
             "READY_FOR_TESTING": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "BUILD_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Code does not compile or build successfully"
             }
           }
         },
@@ -190,6 +330,16 @@
             "TESTING_COMPLETE": {
               "next_step": null,
               "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Performance did not meet targets"
             }
           }
         }
@@ -207,6 +357,16 @@
             "READY_FOR_DOCUMENTATION": {
               "next_step": "documenter",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Documentation scope is unclear"
             }
           }
         },
@@ -218,6 +378,16 @@
             "DOCUMENTATION_COMPLETE": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Need more information to complete documentation"
             }
           }
         },
@@ -229,6 +399,16 @@
             "TESTING_COMPLETE": {
               "next_step": null,
               "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Documentation validation failed"
             }
           }
         }
@@ -246,6 +426,16 @@
             "READY_FOR_IMPLEMENTATION": {
               "next_step": "implementer",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_RESEARCH": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Codebase complexity requires further analysis"
             }
           }
         },
@@ -257,6 +447,16 @@
             "READY_FOR_TESTING": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "BUILD_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Code does not compile or build successfully"
             }
           }
         },
@@ -268,6 +468,16 @@
             "TESTING_COMPLETE": {
               "next_step": "documenter",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Regression tests failed"
             }
           }
         },
@@ -279,6 +489,16 @@
             "DOCUMENTATION_COMPLETE": {
               "next_step": null,
               "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Need more information to document changes"
             }
           }
         }
@@ -296,6 +516,16 @@
             "READY_FOR_TECH_BREAKDOWN": {
               "next_step": "architect",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Requirements are unclear and need stakeholder input"
             }
           }
         },
@@ -307,6 +537,16 @@
             "READY_FOR_DEVELOPMENT": {
               "next_step": "implementer",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_RESEARCH": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Technical unknowns require investigation before proceeding"
             }
           }
         },
@@ -318,6 +558,16 @@
             "READY_FOR_TESTING": {
               "next_step": "tester",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "BUILD_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Code does not compile or build successfully"
             }
           }
         },
@@ -329,6 +579,16 @@
             "TESTING_COMPLETE": {
               "next_step": "documenter",
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "TESTS_FAILED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "One or more tests did not pass"
             }
           }
         },
@@ -340,6 +600,16 @@
             "ENHANCEMENT_COMPLETE": {
               "next_step": null,
               "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
+            },
+            "NEEDS_CLARIFICATION": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Need more information to complete documentation"
             }
           }
         }

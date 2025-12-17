@@ -275,6 +275,56 @@ class WorkflowService:
             return None
         return template.get_step(step_index)
 
+    def format_statuses_for_prompt(self, step: WorkflowStep) -> str:
+        """
+        Format the step's status transitions for inclusion in agent prompts.
+
+        Separates statuses into completion (workflow continues) and halt
+        (requires intervention) groups based on auto_chain and next_step.
+
+        Args:
+            step: The WorkflowStep to format statuses for
+
+        Returns:
+            Formatted string with completion and halt status sections
+        """
+        completion_statuses = []
+        halt_statuses = []
+
+        for status_name, transition in step.on_status.items():
+            if transition.is_halt_status:
+                # Halt status - include description if available
+                if transition.description:
+                    halt_statuses.append(f"- `{status_name}` - {transition.description}")
+                else:
+                    # Default descriptions for common halt patterns
+                    halt_statuses.append(f"- `{status_name}`")
+            else:
+                # Completion status
+                completion_statuses.append(f"- `{status_name}`")
+
+        sections = []
+
+        if completion_statuses:
+            sections.append(
+                "**Completion Statuses (workflow continues automatically):**\n"
+                + "\n".join(completion_statuses)
+            )
+
+        if halt_statuses:
+            sections.append(
+                "**Halt Statuses (stops workflow, requires human intervention):**\n"
+                + "\n".join(halt_statuses)
+            )
+
+        if not sections:
+            return "(No workflow-defined statuses)"
+
+        result = "\n\n".join(sections)
+        result += "\n\nChoose a completion status if your work is successful. Choose a halt status if you encountered an issue that prevents progression."
+
+        return result
+
     def get_next_step(
             self,
             workflow_id: str,
@@ -656,9 +706,8 @@ class WorkflowService:
         if workflow_name and step_index is not None:
             step = self.get_step_at_index(workflow_name, int(step_index))
             if step:
-                # Build expected statuses string
-                statuses = [f"- `{s}`" for s in step.on_status.keys()]
-                expected_statuses = "\n".join(statuses) if statuses else expected_statuses
+                # Build expected statuses string with completion/halt grouping
+                expected_statuses = self.format_statuses_for_prompt(step)
                 required_output = step.required_output or required_output
 
         # Execute task

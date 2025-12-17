@@ -38,8 +38,20 @@ class TaskService:
     Builds prompts from templates, invokes Claude, and extracts status.
     """
 
-    # Regex patterns for status extraction
-    STATUS_PATTERNS = [
+    # Regex pattern for YAML frontmatter completion block
+    # Matches: ---\nagent: ...\ntask_id: ...\nstatus: <STATUS>\n---
+    COMPLETION_BLOCK_PATTERN = re.compile(
+        r"^---\s*\n"
+        r"agent:\s*\S+\s*\n"
+        r"task_id:\s*\S+\s*\n"
+        r"status:\s*(.+?)\s*\n"
+        r"---\s*$",
+        re.MULTILINE,
+    )
+
+    # Legacy regex patterns for backward compatibility
+    # Used as fallback if YAML completion block not found
+    LEGACY_STATUS_PATTERNS = [
         r"(READY_FOR_[A-Z_]+)",
         r"([A-Z_]+_COMPLETE)",
         r"(BLOCKED:[^\n*]+)",
@@ -216,12 +228,31 @@ class TaskService:
         """
         Extract completion status from agent output.
 
-        Looks for patterns like READY_FOR_*, *_COMPLETE, BLOCKED:, etc.
+        Primary method: Parse YAML frontmatter completion block at end of output.
+        Expected format:
+            ---
+            agent: <agent_name>
+            task_id: <task_id>
+            status: <STATUS>
+            ---
+
+        Fallback: Legacy regex patterns for backward compatibility with older
+        agent outputs that don't include the completion block.
         """
-        # Check last portion of output (status usually at end)
+        if not output:
+            return None
+
+        # Check last portion of output (completion block should be at end)
         check_text = output[-5000:] if len(output) > 5000 else output
 
-        for pattern in self.STATUS_PATTERNS:
+        # Primary: Try to find YAML completion block
+        matches = self.COMPLETION_BLOCK_PATTERN.findall(check_text)
+        if matches:
+            # Return the last match (most recent completion block)
+            return matches[-1].strip()
+
+        # Fallback: Try legacy status patterns for backward compatibility
+        for pattern in self.LEGACY_STATUS_PATTERNS:
             matches = re.findall(pattern, check_text)
             if matches:
                 # Return the last match (most recent status)

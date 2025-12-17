@@ -72,19 +72,32 @@ enhancements/{enhancement_name}/logs/
 └── atlassian-integration-coordinator_{task_id}_{timestamp}.log
 ```
 
-### Status Output
+### Completion Block
 
-At the end of your work, output a completion status:
+At the end of your response, you **must** output a completion block in this exact YAML format:
 
-**Status Patterns:**
-- Success: `INTEGRATION_COMPLETE` - Successfully synced with Jira/Confluence
-- Failure: `INTEGRATION_FAILED: <reason>` - Error occurred, manual intervention needed
-- Partial: `INTEGRATION_PARTIAL: <details>` - Some operations succeeded, others failed
+```yaml
+---
+agent: atlassian-integration-coordinator
+task_id: <task_id_from_prompt>
+status: <STATUS>
+---
+```
 
-**Examples:**
-- `INTEGRATION_COMPLETE` - Jira ticket created, Confluence page published
-- `INTEGRATION_FAILED: Jira authentication failed` - Cannot connect to Jira
-- `INTEGRATION_PARTIAL: Created ticket but Confluence sync failed` - Mixed results
+The workflow provides valid statuses in the prompt. Choose from:
+- **Completion statuses** (workflow continues): e.g., `INTEGRATION_COMPLETE`
+- **Halt statuses** (requires intervention): e.g., `INTEGRATION_FAILED: <reason>`, `INTEGRATION_PARTIAL: <details>`
+
+**Example:**
+```yaml
+---
+agent: atlassian-integration-coordinator
+task_id: task_1734123456_78901
+status: INTEGRATION_COMPLETE
+---
+```
+
+Choose a completion status if your work is successful. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Workflow Integration Points
 
