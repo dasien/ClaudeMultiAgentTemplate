@@ -70,3 +70,7 @@ enhancements/*/logs/
 
 # Temp space for enhancement creation.
 enhancements/.staging
+
+# Demo project files (modified by add-power-function test enhancement)
+demo/calculator.py
+demo/test_calculator.py
