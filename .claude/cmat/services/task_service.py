@@ -282,10 +282,11 @@ class TaskService:
         output_dir = f"{enhancement_dir}/{agent.agent_file}"
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-        # Create log file
-        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        # Create log file in enhancement's logs directory
+        enhancement_logs_dir = Path(enhancement_dir) / "logs"
+        enhancement_logs_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = self.logs_dir / f"{agent.agent_file}_{task.id}_{timestamp}.log"
+        log_file = enhancement_logs_dir / f"{agent.agent_file}_{task.id}_{timestamp}.log"
 
         # Build prompt
         prompt = self.build_prompt(

@@ -1,1 +1,319 @@
-[]
+{
+  "version": "1.0.0",
+  "last_updated": "2025-12-22T14:51:46Z",
+  "count": 18,
+  "learnings": [
+    {
+      "id": "learn_1766411525_54071",
+      "summary": "Clearly define requirements and acceptance criteria",
+      "content": "The enhancement specification includes explicit requirements, acceptance criteria, and test cases. This level of detail helps ensure the implementation aligns with the desired functionality and reduces the risk of ambiguity or misunderstandings.",
+      "tags": [
+        "requirements",
+        "testing",
+        "documentation"
+      ],
+      "applies_to": [
+        "analysis",
+        "implementation"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766411457_55160",
+      "confidence": 0.8,
+      "created": "2025-12-22T13:52:05Z"
+    },
+    {
+      "id": "learn_1766411525_31401",
+      "summary": "Follow existing patterns and conventions",
+      "content": "The enhancement is designed to follow the same patterns and conventions as the existing calculator functionality. This helps maintain consistency and makes the changes more predictable and easier to understand for developers working on the codebase.",
+      "tags": [
+        "architecture",
+        "design-patterns"
+      ],
+      "applies_to": [
+        "implementation"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766411457_55160",
+      "confidence": 0.7,
+      "created": "2025-12-22T13:52:05Z"
+    },
+    {
+      "id": "learn_1766411525_17891",
+      "summary": "Explicitly define edge cases and error handling",
+      "content": "The requirements specification proactively identifies edge cases like 0^0 and negative exponents, and defines the expected behavior. This helps ensure the implementation is robust and handles all potential inputs correctly.",
+      "tags": [
+        "error-handling",
+        "testing"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766411457_55160",
+      "confidence": 0.8,
+      "created": "2025-12-22T13:52:05Z"
+    },
+    {
+      "id": "learn_1766414619_14374",
+      "summary": "Follow established coding patterns and conventions",
+      "content": "The requirements-analyst agent demonstrates that it is important to follow the existing coding patterns and conventions in the codebase when implementing new features. By aligning the `power` function with the structure and error handling of the existing `calculator.py` and `test_calculator.py` files, the new functionality will integrate seamlessly with the rest of the system.",
+      "tags": [
+        "coding-conventions",
+        "architecture",
+        "testing"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414550_52021",
+      "confidence": 0.9,
+      "created": "2025-12-22T14:43:39Z"
+    },
+    {
+      "id": "learn_1766414619_60785",
+      "summary": "Clearly define edge cases and error handling",
+      "content": "The requirements-analyst agent's thorough examination of edge cases, such as `0^0` and `0^(negative)`, shows the importance of proactively identifying and handling potential errors. By specifying these cases upfront, the implementation can ensure a robust and reliable system that gracefully handles exceptional situations.",
+      "tags": [
+        "error-handling",
+        "testing"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414550_52021",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:43:39Z"
+    },
+    {
+      "id": "learn_1766414619_15929",
+      "summary": "Provide clear and unambiguous acceptance criteria",
+      "content": "The requirements-analyst agent's report highlights the value of defining clear, measurable acceptance criteria for new features. By having 6 well-specified acceptance criteria, the implementation can be verified against a concrete set of expectations, reducing the risk of misunderstandings or incomplete work.",
+      "tags": [
+        "requirements",
+        "testing"
+      ],
+      "applies_to": [
+        "analysis",
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414550_52021",
+      "confidence": 0.9,
+      "created": "2025-12-22T14:43:39Z"
+    },
+    {
+      "id": "learn_1766414711_51985",
+      "summary": "Follow existing architectural patterns",
+      "content": "The plan for the add-power-function feature follows the same architectural pattern as other existing operations in the calculator codebase. This helps maintain consistency and allows reusing existing error handling, CLI integration, and testing infrastructure.",
+      "tags": [
+        "python",
+        "architecture",
+        "api-design"
+      ],
+      "applies_to": [
+        "implementation",
+        "analysis"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414619_59276",
+      "confidence": 0.9,
+      "created": "2025-12-22T14:45:11Z"
+    },
+    {
+      "id": "learn_1766414711_62914",
+      "summary": "Explicitly handle edge cases",
+      "content": "The plan includes explicit handling for the `0^(negative)` edge case, raising a `ValueError` consistently with the existing `divide` function. This ensures the new `power` function behaves similarly to other operations and avoids unexpected behavior.",
+      "tags": [
+        "python",
+        "error-handling"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414619_59276",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:45:11Z"
+    },
+    {
+      "id": "learn_1766414711_68590",
+      "summary": "Use semantic parameter names",
+      "content": "The `power` function uses meaningful parameter names like `base` and `exponent`, while maintaining consistency with the existing CLI parameter names `a` and `b`. This improves readability and makes the intent clear, even for users familiar with the existing calculator commands.",
+      "tags": [
+        "python",
+        "api-design"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414619_59276",
+      "confidence": 0.7,
+      "created": "2025-12-22T14:45:11Z"
+    },
+    {
+      "id": "learn_1766414882_39333",
+      "summary": "Implement a consistent CLI interface",
+      "content": "The agent followed a consistent pattern for adding a new command to the calculator CLI. It added a subparser, handled the command in the main dispatch, and updated the docstrings. This ensures the new power function is integrated seamlessly into the existing CLI.",
+      "tags": [
+        "python",
+        "cli",
+        "architecture"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414711_17770",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:48:02Z"
+    },
+    {
+      "id": "learn_1766414882_99917",
+      "summary": "Write comprehensive tests for new functionality",
+      "content": "The agent added 8 new test methods covering various power function scenarios, including edge cases like 0 to a negative power. This ensures the new feature is thoroughly validated and regression-free.",
+      "tags": [
+        "python",
+        "testing"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414711_17770",
+      "confidence": 0.9,
+      "created": "2025-12-22T14:48:02Z"
+    },
+    {
+      "id": "learn_1766414882_45184",
+      "summary": "Provide clear error messages for failures",
+      "content": "The agent added error handling for the power function, returning a clear error message when the input is invalid (e.g. 0 to a negative power). This improves the user experience by surfacing the problem and its cause.",
+      "tags": [
+        "python",
+        "error-handling"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414711_17770",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:48:02Z"
+    },
+    {
+      "id": "learn_1766415024_20616",
+      "summary": "Comprehensive testing approach",
+      "content": "The agent used a thorough testing strategy, covering unit tests, CLI integration, edge cases, and regressions. This ensures the implementation meets all requirements and maintains quality over time.",
+      "tags": [
+        "testing",
+        "quality-assurance"
+      ],
+      "applies_to": [
+        "implementation",
+        "analysis",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414882_87785",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:50:24Z"
+    },
+    {
+      "id": "learn_1766415024_84445",
+      "summary": "Detailed test reporting",
+      "content": "The agent generated a comprehensive test summary report, including test results by category, key findings, and the test output file created. This level of reporting provides full transparency and traceability for the testing process.",
+      "tags": [
+        "testing",
+        "documentation"
+      ],
+      "applies_to": [
+        "analysis",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414882_87785",
+      "confidence": 0.7,
+      "created": "2025-12-22T14:50:24Z"
+    },
+    {
+      "id": "learn_1766415024_26663",
+      "summary": "Robust error handling",
+      "content": "The agent verified that the implementation handles the `0^(negative)` edge case correctly, raising a `ValueError` with a non-zero exit code. This demonstrates a focus on anticipating and handling potential errors.",
+      "tags": [
+        "error-handling",
+        "quality-assurance"
+      ],
+      "applies_to": [
+        "implementation",
+        "analysis",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766414882_87785",
+      "confidence": 0.9,
+      "created": "2025-12-22T14:50:24Z"
+    },
+    {
+      "id": "learn_1766415106_66130",
+      "summary": "Follow project-specific documentation conventions",
+      "content": "The documenter agent followed the established patterns for the calculator application, including providing clear, practical examples for users at all technical levels. This ensures documentation consistency across the project and makes it easier for developers to understand and use the features.",
+      "tags": [
+        "documentation",
+        "conventions"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766415024_70453",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:51:46Z"
+    },
+    {
+      "id": "learn_1766415106_19166",
+      "summary": "Provide comprehensive test coverage",
+      "content": "The documenter agent summarized the 8 test cases covering the power function, ensuring thorough testing of the feature. This demonstrates the importance of having well-documented test suites to validate functionality and catch regressions.",
+      "tags": [
+        "testing",
+        "quality"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766415024_70453",
+      "confidence": 0.9,
+      "created": "2025-12-22T14:51:46Z"
+    },
+    {
+      "id": "learn_1766415106_44986",
+      "summary": "Document edge cases and special handling",
+      "content": "The documenter agent included a comprehensive table of special input handling for the power function. This level of detail in the documentation helps users understand the boundaries and limitations of the feature, reducing support overhead and improving user experience.",
+      "tags": [
+        "documentation",
+        "error-handling"
+      ],
+      "applies_to": [
+        "implementation",
+        "review"
+      ],
+      "source_type": "agent_output",
+      "source_task_id": "task_1766415024_70453",
+      "confidence": 0.8,
+      "created": "2025-12-22T14:51:46Z"
+    }
+  ]
+}

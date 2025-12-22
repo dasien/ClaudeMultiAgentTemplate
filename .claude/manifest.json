@@ -17,7 +17,7 @@
         "tester.md"
       ],
       "cmat": [
-        "Python package for CMAT operations"
+        "cmat.py"
       ],
       "data": [
         "learnings.json",

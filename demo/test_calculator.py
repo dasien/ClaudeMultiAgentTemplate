@@ -1,7 +1,7 @@
 """Tests for the calculator module."""
 
 import pytest
-from calculator import add, subtract, multiply, divide
+from calculator import add, subtract, multiply, divide, power
 
 
 class TestAdd:
@@ -61,3 +61,32 @@ class TestDivide:
 
     def test_divide_negative_numbers(self):
         assert divide(-12, 4) == -3.0
+
+
+class TestPower:
+    """Tests for the power function."""
+
+    def test_power_positive_exponent(self):
+        assert power(2, 3) == 8.0
+
+    def test_power_zero_exponent(self):
+        assert power(10, 0) == 1.0
+
+    def test_power_negative_exponent(self):
+        assert power(2, -1) == 0.5
+
+    def test_power_zero_to_zero(self):
+        assert power(0, 0) == 1.0
+
+    def test_power_zero_base_positive_exp(self):
+        assert power(0, 5) == 0.0
+
+    def test_power_negative_base_even_exp(self):
+        assert power(-2, 2) == 4.0
+
+    def test_power_negative_base_odd_exp(self):
+        assert power(-2, 3) == -8.0
+
+    def test_power_zero_to_negative_raises(self):
+        with pytest.raises(ValueError, match="Cannot raise zero to a negative power"):
+            power(0, -1)

@@ -525,9 +525,17 @@ class WorkflowService:
         enhancement_name: str,
         description: str = "",
         auto_chain: bool = True,
+        execute: bool = True,
     ) -> Optional[str]:
         """
-        Start a workflow by creating the first task and marking it as active.
+        Start a workflow by creating the first task and executing it.
+
+        Args:
+            workflow_name: Name of the workflow template
+            enhancement_name: Name of the enhancement to process
+            description: Optional task description
+            auto_chain: Whether to auto-chain to next steps
+            execute: Whether to execute the task (True) or just create it (False)
 
         Returns the task ID or None if workflow not found.
         """
@@ -556,7 +564,7 @@ class WorkflowService:
         # Determine task type from agent role
         task_type = self.get_task_type_for_agent(first_step.agent)
 
-        # Create task
+        # Create task (in pending state)
         task = self._queue_service.add(
             title=f"{workflow_name}: {first_step.agent}",
             assigned_agent=first_step.agent,
@@ -573,16 +581,14 @@ class WorkflowService:
             auto_chain=auto_chain,
         )
 
-        # Start the task (mark as active)
-        started_task = self._queue_service.start(task.id)
-        if not started_task:
-            log_error(f"Failed to start task: {task.id}")
-            return None
-
         log_operation(
             "WORKFLOW_STARTED",
             f"Workflow: {workflow_name}, Enhancement: {enhancement_name}, Task: {task.id}"
         )
+
+        # Execute the task if requested (run_task handles start + execute)
+        if execute:
+            self.run_task(task.id)
 
         return task.id
 
@@ -649,7 +655,7 @@ class WorkflowService:
         # Determine task type
         task_type = self.get_task_type_for_agent(next_step.agent)
 
-        # Create next task
+        # Create next task (in pending state)
         next_task = self._queue_service.add(
             title=f"{workflow_name}: {next_step.agent}",
             assigned_agent=next_step.agent,
@@ -666,16 +672,13 @@ class WorkflowService:
             auto_chain=task.auto_chain,  # Inherit from previous task
         )
 
-        # Start the next task (mark as active)
-        started_task = self._queue_service.start(next_task.id)
-        if not started_task:
-            log_error(f"Failed to start chained task: {next_task.id}")
-            return next_task.id  # Return the ID even if start failed
-
         log_operation(
             "AUTO_CHAIN",
             f"Chained from {task_id} to {next_task.id} ({next_step.agent})"
         )
+
+        # Execute the chained task (run_task handles start + execute)
+        self.run_task(next_task.id)
 
         return next_task.id
 
