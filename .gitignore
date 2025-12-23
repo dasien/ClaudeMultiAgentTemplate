@@ -71,6 +71,6 @@ enhancements/*/logs/
 # Temp space for enhancement creation.
 enhancements/.staging
 
-# Demo project files (modified by add-power-function test enhancement)
+# Demo calculator files - reset with: git checkout -- demo/calculator.py demo/test_calculator.py
 demo/calculator.py
 demo/test_calculator.py
