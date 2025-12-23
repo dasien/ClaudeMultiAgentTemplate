@@ -10,7 +10,6 @@ Usage:
     python demo/calculator.py subtract 10 4  # Returns 6.0
     python demo/calculator.py multiply 3 7   # Returns 21.0
     python demo/calculator.py divide 15 3    # Returns 5.0
-    python demo/calculator.py power 2 3      # Returns 8.0
 """
 
 import argparse
@@ -37,13 +36,6 @@ def divide(a: float, b: float) -> float:
     if b == 0:
         raise ValueError("Cannot divide by zero")
     return a / b
-
-
-def power(base: float, exponent: float) -> float:
-    """Raise base to the power of exponent."""
-    if base == 0 and exponent < 0:
-        raise ValueError("Cannot raise zero to a negative power")
-    return base ** exponent
 
 
 def main():
@@ -73,11 +65,6 @@ def main():
     div_parser.add_argument("a", type=float, help="First number (dividend)")
     div_parser.add_argument("b", type=float, help="Second number (divisor)")
 
-    # power command
-    pow_parser = subparsers.add_parser("power", help="Raise a number to a power")
-    pow_parser.add_argument("a", type=float, help="Base number")
-    pow_parser.add_argument("b", type=float, help="Exponent")
-
     args = parser.parse_args()
 
     if args.command == "add":
@@ -89,12 +76,6 @@ def main():
     elif args.command == "divide":
         try:
             print(divide(args.a, args.b))
-        except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-    elif args.command == "power":
-        try:
-            print(power(args.a, args.b))
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
