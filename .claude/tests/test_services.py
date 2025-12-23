@@ -1,0 +1,960 @@
+"""
+Unit tests for CMAT services.
+
+These tests don't require Claude CLI - they test service logic in isolation.
+"""
+
+import json
+import pytest
+from pathlib import Path
+
+from cmat.models import Task, TaskStatus, TaskPriority, Agent, Learning, ClaudeModel, ModelPricing
+from cmat.services import (
+    QueueService,
+    AgentService,
+    SkillsService,
+    LearningsService,
+    RetrievalContext,
+    ModelService,
+)
+
+
+class TestQueueService:
+    """Tests for QueueService."""
+
+    def test_init_creates_queue_file(self, cmat_test_env):
+        """Test that init creates queue file if missing."""
+        queue_file = cmat_test_env / ".claude/data/task_queue.json"
+        queue_file.unlink()  # Remove existing file
+
+        service = QueueService(str(queue_file))
+        assert queue_file.exists()
+
+    def test_add_task(self, cmat_test_env):
+        """Test adding a task to the queue."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test Task",
+            assigned_agent="test-agent",
+            priority="high",
+            task_type="analysis",
+            source_file="test.md",
+            description="A test task",
+        )
+
+        assert task.id.startswith("task_")
+        assert task.title == "Test Task"
+        assert task.status == TaskStatus.PENDING
+
+    def test_get_task(self, cmat_test_env):
+        """Test retrieving a task by ID."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test Task",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="Test",
+        )
+
+        retrieved = service.get(task.id)
+        assert retrieved is not None
+        assert retrieved.id == task.id
+        assert retrieved.title == "Test Task"
+
+    def test_get_nonexistent_task(self, cmat_test_env):
+        """Test getting a task that doesn't exist."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        assert service.get("nonexistent_id") is None
+
+    def test_start_task(self, cmat_test_env):
+        """Test starting a task moves it to active."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="Test",
+        )
+
+        started = service.start(task.id)
+        assert started is not None
+        assert started.status == TaskStatus.ACTIVE
+
+        # Verify it's in active list
+        active = service.list_active()
+        assert any(t.id == task.id for t in active)
+
+        # Verify it's not in pending
+        pending = service.list_pending()
+        assert not any(t.id == task.id for t in pending)
+
+    def test_complete_task(self, cmat_test_env):
+        """Test completing a task."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="Test",
+        )
+
+        service.start(task.id)
+        completed = service.complete(task.id, "READY_FOR_IMPLEMENTATION")
+
+        assert completed is not None
+        assert completed.status == TaskStatus.COMPLETED
+        assert completed.result == "READY_FOR_IMPLEMENTATION"
+
+        # Verify it's in completed list
+        completed_list = service.list_completed()
+        assert any(t.id == task.id for t in completed_list)
+
+    def test_fail_task(self, cmat_test_env):
+        """Test failing a task."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="Test",
+        )
+
+        service.start(task.id)
+        failed = service.fail(task.id, "Something went wrong")
+
+        assert failed is not None
+        assert failed.status == TaskStatus.FAILED
+        assert failed.result == "Something went wrong"  # fail() stores in result
+
+    def test_cancel_pending_task(self, cmat_test_env):
+        """Test cancelling a pending task."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="Test",
+        )
+
+        result = service.cancel(task.id, "No longer needed")
+        assert result is not None  # cancel() returns the task
+        assert result.status == TaskStatus.CANCELLED
+
+    def test_rerun_task(self, cmat_test_env):
+        """Test rerunning a completed task."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="Test",
+        )
+
+        service.start(task.id)
+        service.complete(task.id, "DONE")
+
+        # Rerun the task
+        rerun = service.rerun(task.id)
+        assert rerun is not None
+        assert rerun.status == TaskStatus.PENDING
+        assert rerun.result is None  # Reset
+
+    def test_status(self, cmat_test_env):
+        """Test queue status summary."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        # Add some tasks
+        t1 = service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
+        t2 = service.add("Task 2", "agent", "normal", "analysis", "t.md", "Test")
+        t3 = service.add("Task 3", "agent", "normal", "analysis", "t.md", "Test")
+
+        service.start(t2.id)
+        service.start(t3.id)
+        service.complete(t3.id, "DONE")
+
+        status = service.status()
+        assert status["pending"] == 1
+        assert status["active"] == 1
+        assert status["completed"] == 1
+        assert status["failed"] == 0
+        assert status["total"] == 3
+
+    def test_init_queue(self, cmat_test_env):
+        """Test resetting queue to clean state."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
+        service.add("Task 2", "agent", "normal", "analysis", "t.md", "Test")
+
+        # Reset queue
+        result = service.init(force=True)
+        assert result is True
+
+        status = service.status()
+        assert status["total"] == 0
+
+
+class TestAgentService:
+    """Tests for AgentService."""
+
+    def test_list_empty(self, cmat_test_env):
+        """Test listing agents when none exist."""
+        service = AgentService(str(cmat_test_env / ".claude/agents"))
+        agents = service.list_all()
+        assert agents == []
+
+    def test_add_and_get_agent(self, cmat_test_env):
+        """Test adding and retrieving an agent."""
+        service = AgentService(str(cmat_test_env / ".claude/agents"))
+
+        agent = Agent(
+            name="Test Agent",
+            agent_file="test-agent",
+            role="testing",
+            description="A test agent",
+            tools=["Read", "Write"],
+            skills=["testing"],
+        )
+
+        service.add(agent)
+        retrieved = service.get("test-agent")
+
+        assert retrieved is not None
+        assert retrieved.name == "Test Agent"
+        assert retrieved.role == "testing"
+
+    def test_get_by_name(self, cmat_test_env):
+        """Test getting agent by display name."""
+        service = AgentService(str(cmat_test_env / ".claude/agents"))
+
+        agent = Agent(
+            name="My Agent",
+            agent_file="my-agent",
+            role="testing",
+            description="Test",
+        )
+        service.add(agent)
+
+        found = service.get_by_name("My Agent")
+        assert found is not None
+        assert found.agent_file == "my-agent"
+
+    def test_get_by_role(self, cmat_test_env):
+        """Test getting agents by role."""
+        service = AgentService(str(cmat_test_env / ".claude/agents"))
+
+        service.add(Agent(name="A1", agent_file="a1", role="testing", description="Test"))
+        service.add(Agent(name="A2", agent_file="a2", role="testing", description="Test"))
+        service.add(Agent(name="A3", agent_file="a3", role="design", description="Test"))
+
+        testing_agents = service.get_by_role("testing")
+        assert len(testing_agents) == 2
+
+    def test_generate_agents_json(self, cmat_test_env, sample_agent_md):
+        """Test generating agents.json from markdown files."""
+        service = AgentService(str(cmat_test_env / ".claude/agents"))
+
+        result = service.generate_agents_json()
+
+        assert result["generated"] == 1
+        assert result["errors"] == []
+
+        # Verify agent was loaded
+        agent = service.get("test-agent")
+        assert agent is not None
+        assert agent.name == "Test Agent"
+        assert agent.role == "testing"
+        assert "Read" in agent.tools
+
+    def test_generate_skips_templates(self, cmat_test_env):
+        """Test that generate_agents_json skips template files."""
+        service = AgentService(str(cmat_test_env / ".claude/agents"))
+
+        # Create a template file
+        template = cmat_test_env / ".claude/agents/AGENT_TEMPLATE.md"
+        template.write_text("""---
+name: "Template"
+role: "template"
+description: "A template"
+---
+Template content
+""")
+
+        result = service.generate_agents_json(skip_templates=True)
+        assert result["generated"] == 0
+
+
+class TestSkillsService:
+    """Tests for SkillsService."""
+
+    def test_list_empty(self, cmat_test_env):
+        """Test listing skills when none exist."""
+        service = SkillsService(str(cmat_test_env / ".claude/skills"))
+        skills = service.list_all()
+        assert skills == []
+
+    def test_build_skills_prompt_empty(self, cmat_test_env):
+        """Test building prompt with no skills."""
+        service = SkillsService(str(cmat_test_env / ".claude/skills"))
+        prompt = service.build_skills_prompt([])
+        assert prompt == ""
+
+    def test_build_skills_prompt(self, cmat_test_env):
+        """Test building skills prompt with on-demand skill invocation."""
+        service = SkillsService(str(cmat_test_env / ".claude/skills"))
+
+        # Create skill directory with SKILL.md (expected structure)
+        skill_dir = cmat_test_env / ".claude/skills/test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# Test Skill\n\nThis is a test skill.")
+
+        # Create skills.json with correct key names
+        skills_data = {
+            "skills": [{
+                "name": "test-skill",
+                "description": "A test skill",
+                "skill-directory": "test-skill",
+                "category": "testing",
+            }]
+        }
+        with open(cmat_test_env / ".claude/skills/skills.json", "w") as f:
+            json.dump(skills_data, f)
+
+        service.invalidate_cache()
+        prompt = service.build_skills_prompt(["test-skill"])
+
+        # Check for header and skill reference (not full content - uses Skill tool)
+        assert "SPECIALIZED SKILLS" in prompt
+        assert "test-skill" in prompt
+        assert "A test skill" in prompt  # Description is included
+        assert "Skill tool" in prompt  # Instructions for on-demand invocation
+        # Full skill content should NOT be in prompt (loaded on-demand via Skill tool)
+        assert "This is a test skill" not in prompt
+
+
+class TestLearningsService:
+    """Tests for LearningsService (without Claude calls)."""
+
+    def test_init_creates_directory(self, cmat_test_env):
+        """Test that init creates data directory and learnings.json file."""
+        import shutil
+        data_path = cmat_test_env / ".claude/data"
+        shutil.rmtree(data_path)  # Remove existing
+
+        service = LearningsService(str(data_path))
+        assert data_path.exists()
+        assert (data_path / "learnings.json").exists()
+
+    def test_store_and_get(self, cmat_test_env):
+        """Test storing and retrieving a learning."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        learning = Learning.from_user_input(
+            "Always use pytest fixtures",
+            tags=["testing"],
+        )
+
+        learning_id = service.store(learning)
+        assert learning_id == learning.id
+
+        retrieved = service.get(learning.id)
+        assert retrieved is not None
+        assert retrieved.summary == learning.summary
+
+    def test_delete(self, cmat_test_env):
+        """Test deleting a learning."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        learning = Learning.from_user_input("Test learning")
+        service.store(learning)
+
+        result = service.delete(learning.id)
+        assert result is True
+
+        assert service.get(learning.id) is None
+
+    def test_delete_nonexistent(self, cmat_test_env):
+        """Test deleting non-existent learning."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+        result = service.delete("nonexistent_id")
+        assert result is False
+
+    def test_list_all(self, cmat_test_env):
+        """Test listing all learnings."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        l1 = Learning.from_user_input("Learning 1", tags=["python"])
+        l2 = Learning.from_user_input("Learning 2", tags=["testing"])
+
+        service.store(l1)
+        service.store(l2)
+
+        learnings = service.list_all()
+        assert len(learnings) == 2
+
+    def test_list_by_tags(self, cmat_test_env):
+        """Test filtering learnings by tags."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        l1 = Learning.from_user_input("Python tip", tags=["python"])
+        l2 = Learning.from_user_input("Testing tip", tags=["testing"])
+        l3 = Learning.from_user_input("Python testing", tags=["python", "testing"])
+
+        service.store(l1)
+        service.store(l2)
+        service.store(l3)
+
+        python_learnings = service.list_by_tags(["python"])
+        assert len(python_learnings) == 2  # l1 and l3
+
+        testing_learnings = service.list_by_tags(["testing"])
+        assert len(testing_learnings) == 2  # l2 and l3
+
+    def test_count(self, cmat_test_env):
+        """Test counting learnings."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        assert service.count() == 0
+
+        service.store(Learning.from_user_input("Test 1"))
+        service.store(Learning.from_user_input("Test 2"))
+
+        assert service.count() == 2
+
+    def test_build_learnings_prompt_empty(self, cmat_test_env):
+        """Test building prompt with no learnings."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+        prompt = service.build_learnings_prompt([])
+        assert prompt == ""
+
+    def test_build_learnings_prompt(self, cmat_test_env):
+        """Test building learnings prompt."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        learnings = [
+            Learning(
+                id="test1",
+                summary="Use dataclasses",
+                content="Prefer dataclasses for DTOs",
+                tags=["python"],
+                confidence=0.8,
+            ),
+            Learning(
+                id="test2",
+                summary="Write tests first",
+                content="TDD approach",
+                tags=["testing"],
+                confidence=0.9,
+            ),
+        ]
+
+        prompt = service.build_learnings_prompt(learnings)
+
+        assert "RELEVANT LEARNINGS" in prompt
+        assert "Use dataclasses" in prompt
+        assert "Write tests first" in prompt
+        assert "80%" in prompt
+        assert "90%" in prompt
+
+    def test_cache_invalidation(self, cmat_test_env):
+        """Test that cache invalidation works."""
+        service = LearningsService(str(cmat_test_env / ".claude/data"))
+
+        learning = Learning.from_user_input("Test")
+        service.store(learning)
+
+        # Manually modify the file
+        learnings_file = cmat_test_env / ".claude/data/learnings.json"
+        with open(learnings_file) as f:
+            data = json.load(f)
+        data["learnings"].append({
+            "id": "manual_add",
+            "summary": "Manually added",
+            "content": "Content",
+            "tags": [],
+            "applies_to": [],
+            "source_type": "user_feedback",
+            "source_task_id": None,
+            "confidence": 0.5,
+            "created": "2025-01-01T00:00:00Z",
+        })
+        with open(learnings_file, "w") as f:
+            json.dump(data, f)
+
+        # Without invalidation, cache returns old count
+        assert service.count() == 1
+
+        # After invalidation, returns new count
+        service.invalidate_cache()
+        assert service.count() == 2
+
+
+class TestModelService:
+    """Tests for ModelService."""
+
+    def test_init_creates_models_file(self, cmat_test_env):
+        """Test that init creates models.json if missing."""
+        data_dir = cmat_test_env / ".claude/data"
+        models_file = data_dir / "models.json"
+        if models_file.exists():
+            models_file.unlink()
+
+        service = ModelService(str(data_dir))
+        # Trigger file creation by loading
+        service.list_all()
+        assert models_file.exists()
+
+    def test_list_all(self, cmat_test_env):
+        """Test listing all models."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        models = service.list_all()
+
+        # Should have default models from the fixture
+        assert len(models) >= 1
+        assert all(isinstance(m, ClaudeModel) for m in models)
+
+    def test_get_model(self, cmat_test_env):
+        """Test getting a model by ID."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Get existing model
+        model = service.get("claude-sonnet-4.5")
+        assert model is not None
+        assert model.name == "Claude Sonnet 4.5"
+
+    def test_get_nonexistent_model(self, cmat_test_env):
+        """Test getting a model that doesn't exist."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        assert service.get("nonexistent-model") is None
+
+    def test_get_by_pattern(self, cmat_test_env):
+        """Test finding model by pattern matching."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Should match claude-sonnet-4.5 pattern
+        model = service.get_by_pattern("claude-sonnet-4-5-20250929")
+        assert model is not None
+        assert "sonnet" in model.id.lower()
+
+    def test_get_default(self, cmat_test_env):
+        """Test getting default model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        default = service.get_default()
+
+        assert default is not None
+        assert isinstance(default, ClaudeModel)
+
+    def test_add_model(self, cmat_test_env):
+        """Test adding a new model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        new_model = ClaudeModel(
+            id="test-model",
+            name="Test Model",
+            description="A test model",
+            pattern="*test-model*",
+            max_tokens=100000,
+            pricing=ModelPricing(
+                input=1.0,
+                output=2.0,
+                cache_write=1.5,
+                cache_read=0.1,
+            ),
+        )
+
+        model_id = service.add(new_model)
+        assert model_id == "test-model"
+
+        # Verify it was added
+        retrieved = service.get("test-model")
+        assert retrieved is not None
+        assert retrieved.name == "Test Model"
+
+    def test_add_duplicate_model(self, cmat_test_env):
+        """Test that adding duplicate model raises error."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Try to add model with existing ID
+        duplicate = ClaudeModel(
+            id="claude-sonnet-4.5",
+            name="Duplicate",
+            description="Duplicate model",
+            pattern="*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+
+        with pytest.raises(ValueError, match="already exists"):
+            service.add(duplicate)
+
+    def test_update_model(self, cmat_test_env):
+        """Test updating an existing model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Get existing model
+        model = service.get("claude-sonnet-4.5")
+        assert model is not None
+
+        # Modify and update
+        model.description = "Updated description"
+        result = service.update(model)
+        assert result is True
+
+        # Verify update
+        service.invalidate_cache()
+        updated = service.get("claude-sonnet-4.5")
+        assert updated.description == "Updated description"
+
+    def test_update_nonexistent_model(self, cmat_test_env):
+        """Test updating a model that doesn't exist."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        fake_model = ClaudeModel(
+            id="nonexistent",
+            name="Fake",
+            description="Fake model",
+            pattern="*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+
+        result = service.update(fake_model)
+        assert result is False
+
+    def test_delete_model(self, cmat_test_env):
+        """Test deleting a model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Add a model to delete
+        new_model = ClaudeModel(
+            id="to-delete",
+            name="To Delete",
+            description="Will be deleted",
+            pattern="*delete*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+        service.add(new_model)
+
+        # Delete it
+        result = service.delete("to-delete")
+        assert result is True
+
+        # Verify deletion
+        assert service.get("to-delete") is None
+
+    def test_delete_nonexistent_model(self, cmat_test_env):
+        """Test deleting a model that doesn't exist."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        result = service.delete("nonexistent")
+        assert result is False
+
+    def test_set_default(self, cmat_test_env):
+        """Test setting default model."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Add a new model
+        new_model = ClaudeModel(
+            id="new-default",
+            name="New Default",
+            description="New default model",
+            pattern="*new*",
+            max_tokens=100000,
+            pricing=ModelPricing(input=1.0, output=2.0, cache_write=1.5, cache_read=0.1),
+        )
+        service.add(new_model)
+
+        # Set as default
+        result = service.set_default("new-default")
+        assert result is True
+
+        # Verify
+        service.invalidate_cache()
+        default = service.get_default()
+        assert default.id == "new-default"
+
+    def test_set_default_nonexistent(self, cmat_test_env):
+        """Test setting nonexistent model as default."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        result = service.set_default("nonexistent")
+        assert result is False
+
+    def test_extract_from_transcript(self, cmat_test_env, tmp_path):
+        """Test extracting usage from transcript JSONL."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Create a mock transcript file
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text(
+            '{"type":"assistant","message":{"usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":10,"cache_read_input_tokens":5},"model":"claude-sonnet-4-5-20250929"}}\n'
+            '{"type":"assistant","message":{"usage":{"input_tokens":200,"output_tokens":100,"cache_creation_input_tokens":20,"cache_read_input_tokens":10}}}\n'
+            '{"type":"user","message":{"content":"test"}}\n'
+        )
+
+        usage = service.extract_from_transcript(str(transcript))
+
+        assert usage["input_tokens"] == 300
+        assert usage["output_tokens"] == 150
+        assert usage["cache_creation_tokens"] == 30
+        assert usage["cache_read_tokens"] == 15
+        assert usage["model"] == "claude-sonnet-4-5-20250929"
+
+    def test_extract_from_nonexistent_transcript(self, cmat_test_env):
+        """Test extracting from nonexistent transcript."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+        usage = service.extract_from_transcript("/nonexistent/path.jsonl")
+
+        assert usage["input_tokens"] == 0
+        assert usage["output_tokens"] == 0
+        assert usage["model"] is None
+
+    def test_calculate_cost(self, cmat_test_env):
+        """Test cost calculation."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        usage = {
+            "input_tokens": 1000000,  # 1M tokens
+            "output_tokens": 500000,  # 500K tokens
+            "cache_creation_tokens": 0,
+            "cache_read_tokens": 0,
+            "model": "claude-sonnet-4-5-20250929",
+        }
+
+        cost = service.calculate_cost(usage)
+
+        # Sonnet 4.5 pricing: $3/M input, $15/M output
+        # Expected: 1M * $3 + 0.5M * $15 = $3 + $7.5 = $10.5
+        assert cost == pytest.approx(10.5, rel=0.01)
+
+    def test_calculate_cost_with_cache(self, cmat_test_env):
+        """Test cost calculation including cache tokens."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        usage = {
+            "input_tokens": 100000,
+            "output_tokens": 50000,
+            "cache_creation_tokens": 200000,
+            "cache_read_tokens": 300000,
+            "model": "claude-sonnet-4-5-20250929",
+        }
+
+        cost = service.calculate_cost(usage)
+
+        # Sonnet 4.5 pricing per million:
+        # Input: $3.00, Output: $15.00, Cache Write: $3.75, Cache Read: $0.30
+        # Expected:
+        #   100K input * $3.00/M = $0.30
+        #   50K output * $15.00/M = $0.75
+        #   200K cache_write * $3.75/M = $0.75
+        #   300K cache_read * $0.30/M = $0.09
+        #   Total = $1.89
+        assert cost == pytest.approx(1.89, rel=0.01)
+
+    def test_cache_invalidation(self, cmat_test_env):
+        """Test that cache invalidation works."""
+        service = ModelService(str(cmat_test_env / ".claude/data"))
+
+        # Load initial state
+        initial_models = service.list_all()
+        initial_count = len(initial_models)
+
+        # Manually add to file
+        models_file = cmat_test_env / ".claude/data/models.json"
+        with open(models_file) as f:
+            data = json.load(f)
+        data["models"]["manual-model"] = {
+            "pattern": "*manual*",
+            "name": "Manual Model",
+            "description": "Manually added",
+            "max_tokens": 100000,
+            "pricing": {
+                "input": 1.0,
+                "output": 2.0,
+                "cache_write": 1.5,
+                "cache_read": 0.1,
+                "currency": "USD",
+                "per_tokens": 1000000,
+            },
+        }
+        with open(models_file, "w") as f:
+            json.dump(data, f)
+
+        # Without invalidation, cache returns old count
+        assert len(service.list_all()) == initial_count
+
+        # After invalidation, returns new count
+        service.invalidate_cache()
+        assert len(service.list_all()) == initial_count + 1
+
+
+class TestTaskServiceStatusExtraction:
+    """Tests for TaskService.extract_status() method."""
+
+    def test_extract_yaml_completion_block(self):
+        """Test extracting status from YAML completion block."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Some agent output here...
+
+Done with implementation.
+
+---
+agent: implementer
+task_id: task_1234567890_12345
+status: READY_FOR_TESTING
+---
+"""
+        status = service.extract_status(output)
+        assert status == "READY_FOR_TESTING"
+
+    def test_extract_yaml_completion_block_with_halt_status(self):
+        """Test extracting halt status from YAML completion block."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+I encountered an issue...
+
+---
+agent: implementer
+task_id: task_1234567890_12345
+status: BLOCKED: Missing database schema
+---
+"""
+        status = service.extract_status(output)
+        assert status == "BLOCKED: Missing database schema"
+
+    def test_extract_multiple_completion_blocks_returns_last(self):
+        """Test that the last completion block is returned."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+First attempt...
+
+---
+agent: implementer
+task_id: task_123
+status: BLOCKED: Initial issue
+---
+
+After fixing the issue...
+
+---
+agent: implementer
+task_id: task_123
+status: READY_FOR_TESTING
+---
+"""
+        status = service.extract_status(output)
+        assert status == "READY_FOR_TESTING"
+
+    def test_legacy_fallback_ready_for_pattern(self):
+        """Test fallback to legacy READY_FOR_* pattern."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        # Old format without YAML block
+        output = """
+Implementation complete.
+
+**Status: READY_FOR_TESTING**
+"""
+        status = service.extract_status(output)
+        assert status == "READY_FOR_TESTING"
+
+    def test_legacy_fallback_complete_pattern(self):
+        """Test fallback to legacy *_COMPLETE pattern."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Documentation finished.
+
+DOCUMENTATION_COMPLETE
+"""
+        status = service.extract_status(output)
+        assert status == "DOCUMENTATION_COMPLETE"
+
+    def test_legacy_fallback_blocked_pattern(self):
+        """Test fallback to legacy BLOCKED: pattern."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Cannot proceed.
+
+BLOCKED: Missing API credentials
+"""
+        status = service.extract_status(output)
+        assert status == "BLOCKED: Missing API credentials"
+
+    def test_no_status_returns_none(self):
+        """Test that no status returns None."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        output = """
+Some output without any status indicator.
+Just regular text here.
+"""
+        status = service.extract_status(output)
+        assert status is None
+
+    def test_empty_output_returns_none(self):
+        """Test that empty output returns None."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+        assert service.extract_status("") is None
+        assert service.extract_status(None) is None
+
+    def test_yaml_block_takes_priority_over_legacy(self):
+        """Test that YAML block is preferred over legacy patterns."""
+        from cmat.services.task_service import TaskService
+
+        service = TaskService()
+
+        # Output has both YAML block and legacy pattern
+        output = """
+Implementation done.
+
+READY_FOR_INTEGRATION
+
+---
+agent: implementer
+task_id: task_123
+status: READY_FOR_TESTING
+---
+"""
+        status = service.extract_status(output)
+        # Should return from YAML block, not legacy pattern
+        assert status == "READY_FOR_TESTING"

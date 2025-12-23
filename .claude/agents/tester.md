@@ -100,21 +100,32 @@ status: <your-completion-status>
 ---
 ```
 
-### Status Output
+### Completion Block
 
-At the end of your work, output a completion status. The workflow will use this status to determine next steps.
+At the end of your response, you **must** output a completion block in this exact YAML format:
 
-**Status Patterns:**
-- Success: Output a status indicating testing is complete (e.g., `TESTING_COMPLETE`, `TESTS_PASSED`)
-- Tests Failed: `TESTS_FAILED: <details>` when tests do not pass
-- Blocked: `BLOCKED: <specific reason>` when you cannot proceed
+```yaml
+---
+agent: tester
+task_id: <task_id_from_prompt>
+status: <STATUS>
+---
+```
 
-**Examples:**
-- `TESTING_COMPLETE` - All tests passed, implementation validated
-- `TESTS_FAILED: 3 unit tests failing in auth module` - Implementation needs fixes
-- `BLOCKED: Missing test environment configuration` - Cannot run tests
+The workflow provides valid statuses in the prompt. Choose from:
+- **Completion statuses** (workflow continues): e.g., `TESTING_COMPLETE`, `BASELINE_COMPLETE`
+- **Halt statuses** (requires intervention): e.g., `BLOCKED: <reason>`, `TESTS_FAILED: <details>`
 
-The workflow template defines which statuses trigger automatic transitions to next agents.
+**Example:**
+```yaml
+---
+agent: tester
+task_id: task_1734123456_78901
+status: TESTING_COMPLETE
+---
+```
+
+Choose a completion status if your work is successful and ready for the next phase. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Output Standards
 

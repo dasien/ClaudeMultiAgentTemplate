@@ -70,3 +70,7 @@ enhancements/*/logs/
 
 # Temp space for enhancement creation.
 enhancements/.staging
+
+# Demo calculator files - reset with: git checkout -- demo/calculator.py demo/test_calculator.py
+demo/calculator.py
+demo/test_calculator.py

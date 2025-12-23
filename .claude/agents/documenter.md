@@ -98,21 +98,32 @@ status: <your-completion-status>
 ---
 ```
 
-### Status Output
+### Completion Block
 
-At the end of your work, output a completion status. The workflow will use this status to determine next steps.
+At the end of your response, you **must** output a completion block in this exact YAML format:
 
-**Status Patterns:**
-- Success: Output a status indicating documentation is complete (e.g., `DOCUMENTATION_COMPLETE`)
-- Blocked: `BLOCKED: <specific reason>` when you cannot proceed without intervention
-- Needs Input: `NEEDS_CLARIFICATION: <what you need>` when you need more information
+```yaml
+---
+agent: documenter
+task_id: <task_id_from_prompt>
+status: <STATUS>
+---
+```
 
-**Examples:**
-- `DOCUMENTATION_COMPLETE` - Documentation finished, enhancement fully complete
-- `BLOCKED: Missing technical details for API documentation` - Need more info
-- `NEEDS_CLARIFICATION: Unclear which features are user-facing` - Need guidance
+The workflow provides valid statuses in the prompt. Choose from:
+- **Completion statuses** (workflow continues): e.g., `DOCUMENTATION_COMPLETE`, `ENHANCEMENT_COMPLETE`
+- **Halt statuses** (requires intervention): e.g., `BLOCKED: <reason>`, `NEEDS_CLARIFICATION: <question>`
 
-The workflow template defines which statuses trigger automatic transitions to next agents.
+**Example:**
+```yaml
+---
+agent: documenter
+task_id: task_1734123456_78901
+status: DOCUMENTATION_COMPLETE
+---
+```
+
+Choose a completion status if your work is successful and ready for the next phase. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Output Standards
 

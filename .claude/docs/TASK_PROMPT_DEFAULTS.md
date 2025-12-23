@@ -64,18 +64,24 @@ These might include:
 - Alternative approaches considered
 - Risk assessments
 
-## Status Output
+## Completion Block
 
-At the end of your response, output your completion status.
+At the end of your response, you **must** output a completion block in this exact format:
 
-**Expected Statuses for This Workflow:**
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
 ${expected_statuses}
 
-**Other Acceptable Statuses:**
-- `BLOCKED: <specific reason>` - Cannot proceed without intervention
-- `NEEDS_CLARIFICATION: <what you need>` - Need more information before proceeding
-
-**Important:** Only the expected statuses listed above will trigger automatic workflow progression. Any other status will stop the workflow and require manual intervention.
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -132,19 +138,24 @@ These might include:
 - Data model designs
 - Technology research
 
-## Status Output
+## Completion Block
 
-At the end of your response, output your completion status.
+At the end of your response, you **must** output a completion block in this exact format:
 
-**Expected Statuses for This Workflow:**
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
 ${expected_statuses}
 
-**Other Acceptable Statuses:**
-- `BLOCKED: <specific reason>` - Cannot proceed without intervention
-- `NEEDS_RESEARCH: <topic>` - Technical unknowns require investigation
-- `NEEDS_CLARIFICATION: <what you need>` - Need more information before proceeding
-
-**Important:** Only the expected statuses listed above will trigger automatic workflow progression. Any other status will stop the workflow and require manual intervention.
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -201,19 +212,24 @@ These might include:
 - Refactoring documentation
 - Performance considerations
 
-## Status Output
+## Completion Block
 
-At the end of your response, output your completion status.
+At the end of your response, you **must** output a completion block in this exact format:
 
-**Expected Statuses for This Workflow:**
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
 ${expected_statuses}
 
-**Other Acceptable Statuses:**
-- `BLOCKED: <specific reason>` - Cannot proceed without intervention
-- `BUILD_FAILED: <error>` - Compilation or build errors
-- `NEEDS_CLARIFICATION: <what you need>` - Need more information before proceeding
-
-**Important:** Only the expected statuses listed above will trigger automatic workflow progression. Any other status will stop the workflow and require manual intervention.
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -270,19 +286,24 @@ These might include:
 - Performance test data
 - Bug reports
 
-## Status Output
+## Completion Block
 
-At the end of your response, output your completion status.
+At the end of your response, you **must** output a completion block in this exact format:
 
-**Expected Statuses for This Workflow:**
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
 ${expected_statuses}
 
-**Other Acceptable Statuses:**
-- `BLOCKED: <specific reason>` - Cannot proceed without intervention
-- `TESTS_FAILED: <details>` - Tests did not pass
-- `NEEDS_CLARIFICATION: <what you need>` - Need more information before proceeding
-
-**Important:** Only the expected statuses listed above will trigger automatic workflow progression. Any other status will stop the workflow and require manual intervention.
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -339,18 +360,24 @@ These might include:
 - Additional examples
 - Tutorial content
 
-## Status Output
+## Completion Block
 
-At the end of your response, output your completion status.
+At the end of your response, you **must** output a completion block in this exact format:
 
-**Expected Statuses for This Workflow:**
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
 ${expected_statuses}
 
-**Other Acceptable Statuses:**
-- `BLOCKED: <specific reason>` - Cannot proceed without intervention
-- `NEEDS_CLARIFICATION: <what you need>` - Need more information before proceeding
-
-**Important:** Only the expected statuses listed above will trigger automatic workflow progression. Any other status will stop the workflow and require manual intervention.
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -397,18 +424,24 @@ These might include:
 - Sync reports
 - Error details
 
-## Status Output
+## Completion Block
 
-At the end of your response, output your completion status.
+At the end of your response, you **must** output a completion block in this exact format:
 
-**Expected Statuses for This Workflow:**
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
 ${expected_statuses}
 
-**Other Acceptable Statuses:**
-- `INTEGRATION_FAILED: <reason>` - External system integration failed
-- `BLOCKED: <specific reason>` - Cannot proceed without intervention
-
-**Important:** Only the expected statuses listed above will trigger automatic workflow progression. Any other status will stop the workflow and require manual intervention.
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 

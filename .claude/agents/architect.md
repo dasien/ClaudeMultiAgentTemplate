@@ -100,21 +100,32 @@ status: <your-completion-status>
 ---
 ```
 
-### Status Output
+### Completion Block
 
-At the end of your work, output a completion status. The workflow will use this status to determine next steps.
+At the end of your response, you **must** output a completion block in this exact YAML format:
 
-**Status Patterns:**
-- Success: Output a status indicating readiness for the next phase (e.g., `READY_FOR_IMPLEMENTATION`, `DESIGN_COMPLETE`)
-- Blocked: `BLOCKED: <specific reason>` when you cannot proceed without intervention
-- Needs Input: `NEEDS_CLARIFICATION: <what you need>` when you need more information
+```yaml
+---
+agent: architect
+task_id: <task_id_from_prompt>
+status: <STATUS>
+---
+```
 
-**Examples:**
-- `READY_FOR_IMPLEMENTATION` - Architecture and design complete
-- `BLOCKED: Technology choice requires stakeholder approval` - Waiting on decision
-- `NEEDS_RESEARCH: Performance impact of chosen database` - Technical unknowns remain
+The workflow provides valid statuses in the prompt. Choose from:
+- **Completion statuses** (workflow continues): e.g., `READY_FOR_IMPLEMENTATION`, `READY_FOR_DEVELOPMENT`
+- **Halt statuses** (requires intervention): e.g., `BLOCKED: <reason>`, `NEEDS_RESEARCH: <topic>`
 
-The workflow template defines which statuses trigger automatic transitions to next agents.
+**Example:**
+```yaml
+---
+agent: architect
+task_id: task_1734123456_78901
+status: READY_FOR_IMPLEMENTATION
+---
+```
+
+Choose a completion status if your work is successful and ready for the next phase. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Output Standards
 

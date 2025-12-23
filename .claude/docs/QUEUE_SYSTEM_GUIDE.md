@@ -1,100 +1,58 @@
 # Queue System Guide
 
-Complete guide to the task queue system in Claude Multi-Agent Template.
+Complete guide to the task queue system in CMAT.
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Queue Architecture](#queue-architecture)
-- [Task Lifecycle](#task-lifecycle)
-- [Queue Operations](#queue-operations)
-- [Automation Modes](#automation-modes)
-- [Task Metadata](#task-metadata)
-- [Queue Management](#queue-management)
-- [Integration with Workflows](#integration-with-workflows)
-- [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
-
----
+**Version**: 8.2.0
 
 ## Overview
 
-The queue system manages the lifecycle of all agent tasks in the multi-agent workflow. It provides:
+The queue system manages the lifecycle of all agent tasks. It provides:
 
-- **Task Organization**: Pending, active, completed, and failed queues
-- **Agent Coordination**: Tracks which agents are available or busy
-- **Workflow Automation**: Supports manual, semi-automated, and fully automated workflows
-- **State Tracking**: Complete history of task execution
-- **Integration Hooks**: Triggers for external system synchronization
-
-### Key Components
-
-**task_queue.json**: Central data store containing:
-- `pending_tasks` - Tasks waiting to be started
-- `active_workflows` - Currently executing tasks
-- `completed_tasks` - Successfully finished tasks
-- `failed_tasks` - Tasks that encountered errors
-- `agent_status` - Current state of each agent
-
-**queue-commands.sh**: Queue operations script
-**workflow-commands.sh**: Workflow orchestration
-**on-subagent-stop.sh**: Hook for automatic workflow progression
+- **Task Organization**: Tracks tasks by status (pending, active, completed, failed)
+- **Agent Coordination**: Monitors which agents are busy or available
+- **Workflow Support**: Carries workflow context for auto-chaining
+- **Cost Tracking**: Records token usage and costs per task
+- **Learnings Integration**: Tracks which learnings were used/created
 
 ---
 
 ## Queue Architecture
 
-### Queue Structure
+### Data Storage
+
+All queue data is stored in `.claude/data/task_queue.json`.
+
+### Task Structure
 
 ```json
 {
-  "pending_tasks": [
-    {
-      "id": "task_1234567890_12345",
-      "title": "Analyze requirements",
-      "assigned_agent": "requirements-analyst",
-      "priority": "high",
-      "task_type": "analysis",
-      "description": "Analyze feature requirements",
-      "source_file": "enhancements/feature/feature.md",
-      "created": "2025-10-24T14:00:00Z",
-      "status": "pending",
-      "started": null,
-      "completed": null,
-      "result": null,
-      "auto_complete": false,
-      "auto_chain": false,
-      "metadata": {
-        "github_issue": null,
-        "jira_ticket": null,
-        "github_pr": null,
-        "confluence_page": null,
-        "parent_task_id": null,
-        "workflow_status": null,
-        "cost_input_tokens": null,
-        "cost_output_tokens": null,
-        "cost_cache_creation_tokens": null,
-        "cost_cache_read_tokens": null,
-        "cost_usd": null,
-        "cost_model": null,
-        "session_id": null
-      }
-    }
-  ],
-  "active_workflows": [],
-  "completed_tasks": [],
-  "failed_tasks": [],
-  "agent_status": {
-    "requirements-analyst": {
-      "status": "idle",
-      "last_activity": "2025-10-24T13:30:00Z",
-      "current_task": null
-    },
-    "architect": {
-      "status": "active",
-      "last_activity": "2025-10-24T14:30:00Z",
-      "current_task": "task_1234567890_12346"
-    }
+  "id": "task_1702345678_12345",
+  "title": "Workflow: new-feature - step 0",
+  "assigned_agent": "requirements-analyst",
+  "priority": "high",
+  "task_type": "analysis",
+  "description": "Analyze feature requirements",
+  "source_file": "enhancements/feature/feature.md",
+  "status": "pending",
+  "created": "2024-12-12T10:00:00Z",
+  "started": null,
+  "completed": null,
+  "result": null,
+  "auto_complete": true,
+  "auto_chain": true,
+  "metadata": {
+    "workflow_name": "new-feature-development",
+    "workflow_step": "0",
+    "enhancement_title": "feature",
+    "cost_input_tokens": "12345",
+    "cost_output_tokens": "3456",
+    "cost_cache_creation_tokens": "0",
+    "cost_cache_read_tokens": "8901",
+    "cost_usd": "0.0789",
+    "cost_model": "claude-sonnet-4-20250514",
+    "session_id": "abc123",
+    "learnings_retrieved": ["learn_123", "learn_456"],
+    "learnings_created": ["learn_789"]
   }
 }
 ```
@@ -102,64 +60,48 @@ The queue system manages the lifecycle of all agent tasks in the multi-agent wor
 ### Task Properties
 
 **Core Properties**:
-- `id` - Unique task identifier (format: `task_<timestamp>_<pid>`)
-- `title` - Short descriptive title
-- `assigned_agent` - Agent responsible for execution
-- `priority` - Task priority (critical, high, normal, low)
-- `task_type` - Type of work (analysis, technical_analysis, implementation, testing, documentation, integration)
-- `description` - Detailed task description
-- `source_file` - Path to input file for agent
-- `status` - Current state (pending, active, completed, failed)
-- `created` - Task creation timestamp (ISO 8601)
-- `started` - Execution start timestamp
-- `completed` - Completion timestamp
-- `result` - Completion status or error message
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique ID: `task_<timestamp>_<pid>` |
+| `title` | string | Short descriptive title |
+| `assigned_agent` | string | Agent responsible for execution |
+| `priority` | enum | `critical`, `high`, `normal`, `low` |
+| `task_type` | string | Type: `analysis`, `implementation`, `testing`, etc. |
+| `description` | string | Detailed task description |
+| `source_file` | string | Path to input file |
+| `status` | enum | `pending`, `active`, `completed`, `failed`, `cancelled` |
+| `created` | string | ISO 8601 creation timestamp |
+| `started` | string | ISO 8601 start timestamp |
+| `completed` | string | ISO 8601 completion timestamp |
+| `result` | string | Completion status code or error |
 
 **Automation Properties**:
-- `auto_complete` - Automatically complete without user prompt
-- `auto_chain` - Automatically chain to next agent
+| Property | Type | Description |
+|----------|------|-------------|
+| `auto_complete` | boolean | Auto-complete without user prompt |
+| `auto_chain` | boolean | Auto-chain to next workflow step |
 
 **Metadata Properties**:
-- `github_issue` - Linked GitHub issue number
-- `github_pr` - Linked GitHub PR number
-- `jira_ticket` - Linked Jira ticket key
-- `confluence_page` - Linked Confluence page ID
-- `parent_task_id` - Parent task reference
-- `workflow_status` - Current workflow state
-- `cost_input_tokens` - Input tokens used by task
-- `cost_output_tokens` - Output tokens generated by task
-- `cost_cache_creation_tokens` - Cache creation tokens
-- `cost_cache_read_tokens` - Cache read tokens
-- `cost_usd` - Total cost in USD
-- `cost_model` - Model used (e.g., "claude-sonnet-4.5")
-- `session_id` - Claude session identifier
-
-### Agent Status
-
-Each agent maintains status:
-- `status` - Current state (idle, active)
-- `last_activity` - Last status update timestamp
-- `current_task` - Currently executing task ID (if active)
+| Property | Type | Description |
+|----------|------|-------------|
+| `workflow_name` | string | Name of workflow template |
+| `workflow_step` | string | Current step index |
+| `enhancement_title` | string | Enhancement being worked on |
+| `cost_input_tokens` | string | Input tokens used |
+| `cost_output_tokens` | string | Output tokens generated |
+| `cost_cache_creation_tokens` | string | Cache creation tokens |
+| `cost_cache_read_tokens` | string | Cache read tokens |
+| `cost_usd` | string | Total cost in USD |
+| `cost_model` | string | Model used |
+| `session_id` | string | Claude session ID |
+| `learnings_retrieved` | array | Learning IDs used in prompt |
+| `learnings_created` | array | Learning IDs extracted from output |
 
 ---
 
 ## Task Lifecycle
 
-### Standard Lifecycle Flow
-
-```
-1. CREATE (pending_tasks)
-   ↓
-2. START (moved to active_workflows)
-   ↓
-3. EXECUTE (agent processes task)
-   ↓
-4. COMPLETE (moved to completed_tasks)
-   ↓
-5. CHAIN (optional - create next task)
-```
-
-### State Diagram
+### State Transitions
 
 ```
 ┌─────────┐
@@ -167,1193 +109,353 @@ Each agent maintains status:
 └────┬────┘
      │
      ↓
-┌─────────┐     ┌──────────┐
-│ Pending │────→│ Canceled │
-└────┬────┘     └──────────┘
-     ↑ rerun
+┌─────────┐     ┌───────────┐
+│ Pending │────→│ Cancelled │
+└────┬────┘     └───────────┘
+     │ start
+     ↓
+┌─────────┐     ┌───────────┐
+│ Active  │────→│ Cancelled │
+└────┬────┘     └───────────┘
      │
-     ↓ start
-┌─────────┐     ┌──────────┐
-│ Active  │────→│ Canceled │
-└────┬────┘     └──────────┘
-     │
-     ├──→ fail ────→ ┌────────┐
-     │               │ Failed │──┐
-     │               └────────┘  │
-     │                           │ rerun
-     ↓ complete                  │
-┌───────────┐                    │
-│ Completed │────────────────────┘
+     ├──→ fail ──→ ┌────────┐
+     │             │ Failed │──┐
+     │             └────────┘  │
+     │                         │ rerun
+     ↓ complete                │
+┌───────────┐                  │
+│ Completed │──────────────────┘
 └─────┬─────┘
-      │
-      ↓ auto-chain
+      │ auto-chain (if enabled)
+      ↓
 ┌─────────────┐
 │ Next Task   │
 │ (Pending)   │
 └─────────────┘
 ```
 
-**Note**: The `rerun` command moves tasks from `Completed` or `Failed` back to `Pending`, preserving workflow metadata for auto-chain continuation.
-
-### Detailed Lifecycle Steps
+### Lifecycle Steps
 
 #### 1. Task Creation
 
-```bash
-cmat.sh queue add <title> <agent> <priority> <type> <source> <description> [auto_complete] [auto_chain]
-```
+A task is created when:
+- User manually adds a task
+- Workflow is started
+- Auto-chain creates follow-up task
 
-**Actions**:
-1. Generate unique task ID
-2. Create task object with properties
-3. Add to `pending_tasks` array
-4. Log creation operation
-5. Return task ID
-
-**Output**:
-```
-task_1234567890_12345
-```
+**Initial State**:
+- `status`: `pending`
+- `created`: Current timestamp
+- `started`, `completed`, `result`: null
 
 #### 2. Task Start
 
-```bash
-cmat.sh queue start task_1234567890_12345
-```
+When a task starts:
+- `status` changes to `active`
+- `started` set to current timestamp
+- Agent status updated to `active`
 
-**Actions**:
-1. Find task in `pending_tasks`
-2. Set `status` to "active"
-3. Record `started` timestamp
-4. Move to `active_workflows`
-5. Update agent status to "active"
-6. Load agent configuration
-7. Load agent skills
-8. Build prompt with task details and skills
-9. Invoke Claude with agent prompt
-10. Stream output to console and log file
+#### 3. Task Execution
 
-**Output**:
-```
-=== Starting Agent Execution ===
-Start Time: 2025-10-24T14:30:00Z
-Agent: requirements-analyst
-Task ID: task_1234567890_12345
-Source File: enhancements/feature/feature.md
-Enhancement: feature
-Output Directory: requirements-analyst
-Root Document: analysis_summary.md
-Log: enhancements/feature/logs/requirements-analyst_task_123_20251024_143000.log
+The assigned agent processes the task:
+- Reads input from `source_file`
+- Retrieves relevant learnings
+- Executes work
+- Creates output in `required_output/`
+- Reports status via completion block
 
-[Agent execution output...]
+#### 4. Task Completion
 
-════════════════════════════════════════════════════════════
-                    COST INFORMATION
-════════════════════════════════════════════════════════════
+When task completes successfully:
+- `status` changes to `completed`
+- `completed` set to current timestamp
+- `result` contains status code (e.g., `READY_FOR_TESTING`)
+- Agent status updated to `idle`
+- Cost metadata updated (via hook)
 
-  Model:                 claude-sonnet-4.5
-  Input Tokens:          1,234
-  Output Tokens:         567
-  Cache Creation:        890 tokens
-  Cache Read:            456 tokens
-  Total Cost:            $0.0234 USD
+#### 5. Auto-Chain (Optional)
 
-  Session ID:            01234567-89ab-cdef-0123-456789abcdef
-════════════════════════════════════════════════════════════
+If `auto_chain` is true and status has a transition:
+- Next task is created based on workflow template
+- New task enters pending state
+- Workflow continues automatically
 
-=== Agent Execution Complete ===
-End Time: 2025-10-24T14:45:00Z
-Duration: 900s
-Exit Code: 0
-Exit Status: READY_FOR_DEVELOPMENT
+---
 
-```
+## CLI Commands
 
-#### 3. Task Completion
+### queue status
 
-**Automatic** (if `auto_complete: true`):
-```bash
-# System automatically extracts status from agent output
-# and completes task without user prompt
-```
-
-**Manual** (if `auto_complete: false`):
-```bash
-# System shows detected status
-Detected Status: READY_FOR_DEVELOPMENT
-Auto-completing task with status: READY_FOR_DEVELOPMENT
-Proceed? [Y/n]:
-
-# User confirms or manually completes:
-cmat.sh queue complete task_1234567890_12345 "READY_FOR_DEVELOPMENT" --auto-chain
-```
-
-**Actions**:
-1. Find task in `active_workflows`
-2. Set `status` to "completed"
-3. Set `result` to completion status
-4. Record `completed` timestamp
-5. Move to `completed_tasks`
-6. Update agent status to "idle"
-7. Log completion operation
-8. Trigger auto-chain if enabled
-
-#### 4. Auto-Chaining (Optional)
-
-**If `auto_chain: true`**:
+Show summary counts.
 
 ```bash
-# System automatically:
-# 1. Validates current agent outputs
-# 2. Determines next agent from contract
-# 3. Builds source path
-# 4. Creates next task (inherits automation flags)
-# 5. Starts next task
+python -m cmat queue status
 ```
 
 **Output**:
 ```
-🔍 Validating outputs from requirements-analyst...
-✅ Output validation passed: analysis_summary.md
-📋 Next agent: architect (from contract)
-✅ Auto-chained to architect: task_1234567890_12346
-   Source: enhancements/feature/requirements-analyst/analysis_summary.md
-   Inherited automation: auto_complete=true, auto_chain=true
-🚀 Auto-starting next task...
+Queue Status:
+  Pending:   2
+  Active:    1
+  Completed: 15
+  Failed:    0
+  Total:     18
+```
+
+### queue list
+
+List tasks by status.
+
+```bash
+python -m cmat queue list [pending|active|completed|failed|all]
+```
+
+**Examples**:
+```bash
+# List pending tasks
+python -m cmat queue list pending
+
+# List all tasks
+python -m cmat queue list all
+
+# List failed tasks
+python -m cmat queue list failed
 ```
 
 ---
 
-## Queue Operations
+## QueueService API
 
-### Adding Tasks
+The `QueueService` class provides programmatic access to queue operations.
 
-#### Basic Task
-```bash
-TASK_ID=$(cmat.sh queue add \
-  "Task title" \
-  "agent-name" \
-  "priority" \
-  "task-type" \
-  "source-file" \
-  "Description")
+### Core Methods
 
-echo "Created: $TASK_ID"
+```python
+# Get task by ID
+task = queue_service.get(task_id)
+
+# Add new task
+task = queue_service.add(task_data)
+
+# Start a task
+queue_service.start(task_id)
+
+# Complete a task
+queue_service.complete(task_id, result)
+
+# Fail a task
+queue_service.fail(task_id, error)
+
+# Cancel a task
+queue_service.cancel(task_id, reason)
+
+# Rerun a task
+queue_service.rerun(task_id)
 ```
 
-#### With Automation
-```bash
-# Semi-automated (auto-complete only)
-TASK_ID=$(cmat.sh queue add \
-  "Design architecture" \
-  "architect" \
-  "high" \
-  "technical_analysis" \
-  "enhancements/feature/requirements-analyst/analysis_summary.md" \
-  "Create technical design" \
-  true \
-  false)
+### Listing Methods
 
-# Fully automated (auto-complete + auto-chain)
-TASK_ID=$(cmat.sh queue add \
-  "Complete workflow" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/feature/feature.md" \
-  "Full feature development" \
-  true \
-  true)
+```python
+# List by status
+pending = queue_service.list_pending()
+active = queue_service.list_active()
+completed = queue_service.list_completed()
+failed = queue_service.list_failed()
+all_tasks = queue_service.list_all()
+
+# Get status summary
+status = queue_service.status()
+# Returns: {"pending": 2, "active": 1, "completed": 15, "failed": 0, "total": 18}
 ```
 
-### Starting Tasks
+### Metadata Methods
 
-```bash
-# Start single task
-cmat.sh queue start task_1234567890_12345
+```python
+# Update single metadata field
+queue_service.update_single_metadata(task_id, "cost_usd", "0.0789")
 
-# Start next pending task (first in queue)
-NEXT_TASK=$(cmat.sh queue list pending | jq -r '.[0].id')
-cmat.sh queue start $NEXT_TASK
-```
+# Get task cost info
+cost_info = queue_service.show_task_cost(task_id)
 
-### Completing Tasks
-
-```bash
-# With default status
-cmat.sh queue complete task_1234567890_12345
-
-# With specific status
-cmat.sh queue complete task_1234567890_12345 "READY_FOR_DEVELOPMENT"
-
-# With auto-chain
-cmat.sh queue complete task_1234567890_12345 "READY_FOR_DEVELOPMENT" --auto-chain
-
-# With blocking reason
-cmat.sh queue complete task_1234567890_12345 "BLOCKED: Missing API specification"
-```
-
-### Canceling Tasks
-
-```bash
-# Cancel specific task
-cmat.sh queue cancel task_1234567890_12345 "Requirements changed"
-
-# Cancel all pending and active
-cmat.sh queue cancel-all "Project scope changed"
-```
-
-### Failing Tasks
-
-```bash
-# Mark task as failed
-cmat.sh queue fail task_1234567890_12345 "Agent execution timeout"
-```
-
-### Re-running Tasks
-
-Re-queue a completed or failed task for re-execution:
-
-```bash
-# Re-queue task (requires manual start)
-cmat.sh queue rerun task_1234567890_12345
-
-# Re-queue and start immediately
-cmat.sh queue rerun task_1234567890_12345 --start
-```
-
-**What It Does**:
-- ✅ Finds task in `completed_tasks` or `failed_tasks`
-- ✅ Resets task state (`status`, `started`, `completed`, `result`)
-- ✅ Moves task back to `pending_tasks`
-- ✅ Preserves workflow metadata for auto-chain continuation
-- ✅ Optionally starts task immediately with `--start`
-
-**Use Cases**:
-- **BLOCKED tasks**: Task completed with `BLOCKED: <reason>` status, stopping the workflow. After resolving the blocker, re-run to continue the workflow.
-- **Failed tasks**: Task failed due to a transient error or external issue. After fixing, re-run to retry.
-- **Updated output**: Need fresh output from an agent after making changes to inputs or configurations.
-
-**Example - Continuing a Blocked Workflow**:
-```bash
-# 1. Task completes with BLOCKED status
-# Result: "BLOCKED: Missing database schema"
-# Workflow stops because BLOCKED isn't in on_status transitions
-
-# 2. You manually resolve the blocker (create the schema)
-
-# 3. Re-run the blocked task
-cmat.sh queue rerun task_1234567890_12345 --start
-
-# 4. Agent now produces valid status (e.g., READY_FOR_IMPLEMENTATION)
-# 5. Auto-chain continues the workflow
-```
-
-### Viewing Queue Status
-
-```bash
-# Full status display
-cmat.sh queue status
-
-# List specific queue
-cmat.sh queue list pending
-cmat.sh queue list active
-cmat.sh queue list completed
-cmat.sh queue list failed
-cmat.sh queue list all
-
-# Compact format
-cmat.sh queue list pending compact
-```
-
-### Updating Metadata
-
-```bash
-# Add GitHub issue
-cmat.sh queue metadata task_123 github_issue "145"
-
-# Add Jira ticket
-cmat.sh queue metadata task_123 jira_ticket "PROJ-456"
-
-# Link parent task
-cmat.sh queue metadata task_456 parent_task_id "task_123"
-
-# Update workflow status
-cmat.sh queue metadata task_123 workflow_status "READY_FOR_TESTING"
-```
-
-### Previewing Task Prompts
-
-Preview the exact prompt that will be sent to an agent before starting a task:
-
-```bash
-# Preview prompt for pending task
-cmat.sh queue preview-prompt task_1234567890_12345
-
-# Save prompt to file for review
-cmat.sh queue preview-prompt task_123 > prompt_review.txt
-```
-
-**What's Included**:
-- Complete task template with all variables substituted
-- Injected skills specific to the agent
-- Contract status codes for success/failure
-- All configuration and context values
-
-**Use Cases**:
-- **Debugging**: Verify prompt construction before execution
-- **Template Testing**: Validate variable substitution is correct
-- **Skills Verification**: Confirm correct skills are included
-- **Documentation**: Generate example prompts for reference
-
-### Clearing Finished Tasks
-
-Remove completed and failed tasks to keep queue size manageable:
-
-```bash
-# Interactive (prompts for confirmation)
-cmat.sh queue clear-finished
-
-# Force mode (no prompt - for scripts/automation)
-cmat.sh queue clear-finished --force
-```
-
-**Best Practice - Archive Before Clearing**:
-
-```bash
-# Create archive directory
-mkdir -p archive
-
-# Archive finished tasks with timestamp
-DATE=$(date +%Y%m%d_%H%M%S)
-cmat.sh queue list completed > "archive/completed_$DATE.json"
-cmat.sh queue list failed > "archive/failed_$DATE.json"
-
-# Then clear
-cmat.sh queue clear-finished
-```
-
-**What It Does**:
-- ✅ Clears all `completed_tasks` and `failed_tasks` arrays
-- ✅ Preserves all `pending` and `active` tasks
-- ✅ Logs operation to queue_operations.log
-- ✅ Reduces queue file size for better performance
-
-**When to Use**:
-- Regular maintenance to prevent queue file bloat
-- After completing major milestones
-- Before archiving project state
-- When queue operations slow down
-
----
-
-## Automation Modes
-
-The queue system supports three automation levels:
-
-### 1. Manual Mode (Default)
-
-**Settings**: `auto_complete: false`, `auto_chain: false`
-
-**Behavior**:
-- Agent executes and outputs status
-- System prompts: "Complete with status X? [Y/n]"
-- User must confirm completion
-- System prompts: "Chain to next agent? [Y/n]"
-- User must confirm chaining
-
-**Use When**:
-- Learning the system
-- Uncertain about agent output quality
-- Need to review results before proceeding
-- Want full control over workflow
-
-**Example**:
-```bash
-TASK_ID=$(cmat.sh queue add \
-  "Analyze feature" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/feature/feature.md" \
-  "Manual analysis" \
-  false \
-  false)
-
-cmat.sh queue start $TASK_ID
-# ... agent runs ...
-# Detected Status: READY_FOR_DEVELOPMENT
-# Auto-completing task with status: READY_FOR_DEVELOPMENT
-# Proceed? [Y/n]: █
-```
-
-### 2. Semi-Automated Mode
-
-**Settings**: `auto_complete: true`, `auto_chain: false`
-
-**Behavior**:
-- Agent executes and outputs status
-- System automatically completes task
-- System prompts: "Chain to next agent? [Y/n]"
-- User must confirm chaining
-
-**Use When**:
-- Trust agent output quality
-- Want to review before chaining
-- Selective workflow progression
-- Testing specific agents
-
-**Example**:
-```bash
-TASK_ID=$(cmat.sh queue add \
-  "Design architecture" \
-  "architect" \
-  "high" \
-  "technical_analysis" \
-  "enhancements/feature/requirements-analyst/analysis_summary.md" \
-  "Semi-auto design" \
-  true \
-  false)
-
-cmat.sh queue start $TASK_ID
-# ... agent runs ...
-# Detected Status: READY_FOR_IMPLEMENTATION
-# ✅ Task completed automatically
-# Create next task for implementer? [Y/n]: █
-```
-
-### 3. Fully Automated Mode
-
-**Settings**: `auto_complete: true`, `auto_chain: true`
-
-**Behavior**:
-- Agent executes and outputs status
-- System automatically completes task
-- System automatically chains to next agent
-- System automatically starts next task
-- Entire workflow runs hands-off
-
-**Use When**:
-- Standard workflows you trust
-- Batch processing multiple features
-- Overnight/unattended execution
-- Production workflow runs
-
-**Example**:
-```bash
-TASK_ID=$(cmat.sh queue add \
-  "Full feature workflow" \
-  "requirements-analyst" \
-  "high" \
-  "analysis" \
-  "enhancements/feature/feature.md" \
-  "Complete automated workflow" \
-  true \
-  true)
-
-cmat.sh queue start $TASK_ID
-# ... runs entire workflow automatically ...
-# Requirements → Architecture → Implementation → Testing → Documentation
-# ✅ Workflow complete: 5 agents, 2 hours
-```
-
-### Automation Inheritance
-
-Child tasks inherit automation settings from parent:
-
-```bash
-# Parent task: auto_complete=true, auto_chain=true
-PARENT=$(cmat.sh queue add "Feature" "requirements-analyst" ... true true)
-cmat.sh queue start $PARENT
-
-# Child tasks automatically created with SAME automation:
-# - Architect task: auto_complete=true, auto_chain=true
-# - Implementer task: auto_complete=true, auto_chain=true
-# - Tester task: auto_complete=true, auto_chain=true
-# - Documenter task: auto_complete=true, auto_chain=true
-```
-
-**Override inheritance** (manual):
-```bash
-# Create child without automation
-CHILD=$(cmat.sh queue add "Child" "architect" ... false false)
-```
-
----
-
-## Task Metadata
-
-Task metadata stores cross-references to external systems and workflow context.
-
-### Standard Metadata Fields
-
-**GitHub Integration**:
-- `github_issue` - Issue number (e.g., "145")
-- `github_issue_url` - Full issue URL
-- `github_pr` - Pull request number
-- `github_pr_url` - Full PR URL
-- `github_synced_at` - Last sync timestamp
-
-**Jira Integration**:
-- `jira_ticket` - Ticket key (e.g., "PROJ-456")
-- `jira_ticket_url` - Full ticket URL
-- `jira_synced_at` - Last sync timestamp
-
-**Confluence Integration**:
-- `confluence_page` - Page ID
-- `confluence_url` - Full page URL
-
-**Workflow Context**:
-- `parent_task_id` - Parent task reference
-- `workflow_status` - Current workflow state
-- `previous_agent` - Agent that created this task
-
-**Cost Tracking** (automatically populated):
-- `cost_input_tokens` - Input tokens consumed
-- `cost_output_tokens` - Output tokens generated
-- `cost_cache_creation_tokens` - Prompt caching write tokens
-- `cost_cache_read_tokens` - Prompt caching read tokens
-- `cost_usd` - Total cost in USD
-- `cost_model` - Model used (e.g., "claude-sonnet-4.5")
-- `session_id` - Claude session identifier
-
-### Working with Metadata
-
-#### View Task Metadata
-```bash
-# View specific task
-cmat.sh queue list completed | jq '.[] | select(.id == "task_123") | .metadata'
-
-# View all tasks with GitHub issues
-cmat.sh queue list all | jq '.completed[] | select(.metadata.github_issue != null) | {id, title, github_issue: .metadata.github_issue}'
-```
-
-#### Update Metadata
-```bash
-# Single field
-cmat.sh queue metadata task_123 github_issue "145"
-
-# Multiple fields (via script)
-cmat.sh queue metadata task_123 github_issue "145"
-cmat.sh queue metadata task_123 github_issue_url "https://github.com/owner/repo/issues/145"
-cmat.sh queue metadata task_123 github_synced_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-```
-
-#### Query by Metadata
-```bash
-# Find tasks linked to GitHub issue
-cmat.sh queue list all | jq '.completed[] | select(.metadata.github_issue == "145")'
-
-# Find tasks without Jira ticket
-cmat.sh queue list completed | jq '.[] | select(.metadata.jira_ticket == null) | {id, title, status: .result}'
-
-# Find integration tasks
-cmat.sh queue list all | jq '.completed[] | select(.assigned_agent | contains("integration"))'
-```
-
-### Metadata Best Practices
-
-**DO**:
-- ✅ Update metadata immediately after external sync
-- ✅ Store URLs for easy access
-- ✅ Use metadata for cross-system traceability
-- ✅ Query metadata to find related work
-- ✅ Include parent_task_id for task relationships
-
-**DON'T**:
-- ❌ Store sensitive data in metadata
-- ❌ Assume metadata fields exist (check for null)
-- ❌ Forget to sync after external changes
-- ❌ Use metadata for large data (use files instead)
-
----
-
-## Cost Tracking
-
-The queue system automatically tracks token usage and costs for all agent tasks via the `on-session-end-cost.sh` hook.
-
-### How Cost Tracking Works
-
-**Automatic Extraction**:
-1. When an agent task completes, the `SessionEnd` hook triggers
-2. Hook reads the session transcript (JSONL format)
-3. Extracts token usage from all assistant messages:
-   - Input tokens
-   - Output tokens
-   - Cache creation tokens
-   - Cache read tokens
-4. Calculates cost based on model pricing
-5. Stores cost data in task metadata
-
-**Supported Models**:
-- **Claude Sonnet 4.5** (default):
-  - Input: $3.00 per million tokens
-  - Output: $15.00 per million tokens
-  - Cache write: $3.75 per million tokens
-  - Cache read: $0.30 per million tokens
-
-- **Claude Haiku**:
-  - Input: $0.25 per million tokens
-  - Output: $1.25 per million tokens
-  - Cache write: $0.30 per million tokens
-  - Cache read: $0.03 per million tokens
-
-- **Claude Opus 4**:
-  - Input: $15.00 per million tokens
-  - Output: $75.00 per million tokens
-  - Cache write: $18.75 per million tokens
-  - Cache read: $1.50 per million tokens
-
-### Cost Metadata Fields
-
-After task completion, the following metadata fields are populated:
-
-```json
-{
-  "metadata": {
-    "cost_input_tokens": 1234,
-    "cost_output_tokens": 567,
-    "cost_cache_creation_tokens": 890,
-    "cost_cache_read_tokens": 456,
-    "cost_usd": 0.0234,
-    "cost_model": "claude-sonnet-4.5",
-    "session_id": "01234567-89ab-cdef-0123-456789abcdef"
-  }
-}
-```
-
-### Viewing Costs
-
-#### Single Task Cost
-```bash
-# View cost for specific task
-cmat.sh queue show-task-cost task_1234567890_12345
-
-# Output: 0.0234
-```
-
-#### Enhancement-Level Cost
-```bash
-# View total cost for all tasks in an enhancement
-cmat.sh queue show-enhancement-cost my-feature
-
-# Output: 0.1567  (sum of all related tasks)
-```
-
-#### Detailed Cost Report
-```bash
-# View full cost breakdown for a task
-cmat.sh queue list completed | jq '.[] | select(.id == "task_123") | {
-  id,
-  title,
-  cost_usd: .metadata.cost_usd,
-  input_tokens: .metadata.cost_input_tokens,
-  output_tokens: .metadata.cost_output_tokens,
-  cache_creation: .metadata.cost_cache_creation_tokens,
-  cache_read: .metadata.cost_cache_read_tokens,
-  model: .metadata.cost_model
-}'
-```
-
-#### Cost Analysis Queries
-```bash
-# Total cost across all completed tasks
-cmat.sh queue list completed | jq '[.[] | .metadata.cost_usd // 0 | tonumber] | add'
-
-# Most expensive tasks
-cmat.sh queue list completed | jq '.[] | {id, title, cost: (.metadata.cost_usd // 0 | tonumber)} | select(.cost > 0)' | jq -s 'sort_by(.cost) | reverse | .[0:10]'
-
-# Costs by agent
-cmat.sh queue list completed | jq 'group_by(.assigned_agent) | map({agent: .[0].assigned_agent, total_cost: (map(.metadata.cost_usd // "0" | tonumber) | add), task_count: length})'
-
-# Tasks with high token usage
-cmat.sh queue list completed | jq '.[] | select((.metadata.cost_input_tokens // 0) > 10000) | {id, title, input_tokens: .metadata.cost_input_tokens, cost: .metadata.cost_usd}'
-```
-
-### Cost Logging
-
-Cost information is appended to task log files automatically:
-
-```
-════════════════════════════════════════════════════════════
-                    COST INFORMATION
-════════════════════════════════════════════════════════════
-
-  Model:                 claude-sonnet-4.5
-  Input Tokens:          1,234
-  Output Tokens:         567
-  Cache Creation:        890 tokens
-  Cache Read:            456 tokens
-  Total Cost:            $0.0234 USD
-
-  Session ID:            01234567-89ab-cdef-0123-456789abcdef
-
-════════════════════════════════════════════════════════════
-```
-
-### Cost Tracking Best Practices
-
-**DO**:
-- ✅ Review costs after workflow completion
-- ✅ Track costs per enhancement for budgeting
-- ✅ Monitor high-cost tasks for optimization opportunities
-- ✅ Use cost data to compare agent efficiency
-- ✅ Check task logs for detailed cost breakdowns
-
-**DON'T**:
-- ❌ Assume all tasks will have cost data (some may fail before completion)
-- ❌ Manually edit cost metadata (it's automatically managed)
-- ❌ Forget that costs accumulate across workflows
-- ❌ Ignore cache metrics (cache usage significantly reduces costs)
-
-### Troubleshooting Cost Tracking
-
-**No cost data for a task**:
-- Task may have failed before completion
-- Transcript file may not be available
-- Hook may not be configured (check `.claude/settings.json`)
-
-**Cost seems incorrect**:
-- Verify model detection is correct (check `cost_model` field)
-- Check transcript file exists and contains usage data
-- Review pricing in `on-session-end-cost.sh` for accuracy
-
-**Cost not appearing in logs**:
-- Ensure `CMAT_CURRENT_LOG_FILE` environment variable is set during task execution
-- Verify log file has write permissions
-- Check hook execution didn't error (see queue_operations.log)
-
----
-
-## Queue Management
-
-### Monitoring Queue Health
-
-```bash
-# Check queue status regularly
-cmat.sh queue status
-
-# Watch for changes (Linux/Mac)
-watch -n 5 'cmat.sh queue status'
-
-# Count tasks by status
-cmat.sh queue list all | jq '{
-  pending: .pending | length,
-  active: .active | length,
-  completed: .completed | length,
-  failed: .failed | length
-}'
-
-# Find stuck active tasks (running > 1 hour)
-cmat.sh queue list active | jq --arg now "$(date -u +%s)" '.[] | 
-  select(($now | tonumber) - (.started | fromdateiso8601) > 3600) | 
-  {id, title, agent: .assigned_agent, started}'
-```
-
-### Queue Cleanup
-
-```bash
-# Archive old completed tasks (manual backup)
-cmat.sh queue list completed | jq '.' > archive/completed_$(date +%Y%m%d).json
-
-# Clear completed tasks (careful!)
-# First backup:
-cp .claude/queues/task_queue.json .claude/queues/task_queue_backup.json
-# Then edit manually or use jq:
-jq '.completed_tasks = []' .claude/queues/task_queue.json > temp.json && mv temp.json .claude/queues/task_queue.json
-```
-
-### Recovering from Errors
-
-#### Stuck Active Task
-```bash
-# Cancel stuck task
-cmat.sh queue cancel task_123 "Agent hung, restarting"
-
-# Re-create task
-TASK_ID=$(cmat.sh queue add ...)
-cmat.sh queue start $TASK_ID
-```
-
-#### Failed Task Retry
-```bash
-# Find failed task details
-cmat.sh queue list failed | jq '.[] | {id, title, result}'
-
-# Use the rerun command to retry (recommended - preserves all task properties)
-cmat.sh queue rerun task_123 --start
-
-# Or re-create task with same parameters (legacy approach)
-# (Extract from failed task metadata)
-TASK_ID=$(cmat.sh queue add \
-  "$(jq -r '.failed[0].title' .claude/queues/task_queue.json)" \
-  "$(jq -r '.failed[0].assigned_agent' .claude/queues/task_queue.json)" \
-  "$(jq -r '.failed[0].priority' .claude/queues/task_queue.json)" \
-  "$(jq -r '.failed[0].task_type' .claude/queues/task_queue.json)" \
-  "$(jq -r '.failed[0].source_file' .claude/queues/task_queue.json)" \
-  "$(jq -r '.failed[0].description' .claude/queues/task_queue.json)")
-```
-
-#### Queue Corruption
-```bash
-# Validate queue JSON
-jq '.' .claude/queues/task_queue.json
-
-# If invalid, restore from backup
-cp .claude/queues/task_queue_backup.json .claude/queues/task_queue.json
-
-# Or reset to empty queue
-cp .claude/queues/task_queue_empty.json .claude/queues/task_queue.json
+# Get enhancement total cost
+total = queue_service.show_enhancement_cost("my-feature")
 ```
 
 ---
 
 ## Integration with Workflows
 
-### Contract-Based Workflow
+### Workflow Context
 
-The queue system integrates with the contract-based workflow system:
+When tasks are created from workflows, they carry context in metadata:
 
-```bash
-# 1. Task completes with status
-cmat.sh queue complete task_123 "READY_FOR_DEVELOPMENT"
-
-# 2. Hook validates outputs
-workflow validate requirements-analyst enhancements/feature
-
-# 3. Hook determines next agent
-NEXT_AGENT=$(workflow next-agent requirements-analyst "READY_FOR_DEVELOPMENT")
-# Returns: architect
-
-# 4. Hook builds source path
-SOURCE=$(workflow next-source feature architect requirements-analyst)
-# Returns: enhancements/feature/requirements-analyst/analysis_summary.md
-
-# 5. Hook creates next task
-NEXT_ID=$(queue add "Design $FEATURE" "$NEXT_AGENT" ...)
-
-# 6. If auto-chain enabled, start next task
-queue start $NEXT_ID
+```json
+{
+  "metadata": {
+    "workflow_name": "new-feature-development",
+    "workflow_step": "0",
+    "enhancement_title": "my-feature"
+  }
+}
 ```
 
-### Integration Tasks
+### Auto-Chain Process
 
-Integration tasks sync workflow state to external systems:
+1. Task completes with status (e.g., `READY_FOR_TESTING`)
+2. System checks task's `auto_chain` flag
+3. If true, looks up workflow template
+4. Finds current step's `on_status` transitions
+5. If status matches and `auto_chain: true`:
+   - Creates new task for next step
+   - Copies workflow context
+   - Increments step number
+   - New task enters pending state
 
-```bash
-# Automatically created by hook when status needs integration
-# For status: READY_FOR_DEVELOPMENT
-integration add \
-  "READY_FOR_DEVELOPMENT" \
-  "enhancements/feature/requirements-analyst/analysis_summary.md" \
-  "requirements-analyst" \
-  "task_123"
+### Workflow Metadata Preservation
 
-# Creates task assigned to:
-# - github-integration-coordinator (creates issue)
-# - atlassian-integration-coordinator (creates Jira ticket)
+The following metadata is preserved during auto-chain:
+- `workflow_name`
+- `enhancement_title`
+
+Updated during auto-chain:
+- `workflow_step` (incremented)
+
+---
+
+## Cost Tracking
+
+### How Costs Are Recorded
+
+1. Task completes and session ends
+2. `on-session-end-cost.sh` hook fires
+3. Hook calls `python -m cmat costs extract`
+4. `ModelService` parses transcript for usage
+5. Cost metadata updated on task
+
+### Cost Metadata Fields
+
+```json
+{
+  "metadata": {
+    "cost_input_tokens": "12345",
+    "cost_output_tokens": "3456",
+    "cost_cache_creation_tokens": "0",
+    "cost_cache_read_tokens": "8901",
+    "cost_usd": "0.0789",
+    "cost_model": "claude-sonnet-4-20250514",
+    "session_id": "abc123"
+  }
+}
 ```
 
-### Hook Execution Flow
+### Viewing Costs
 
-**on-subagent-stop.sh**:
 ```bash
-#!/bin/bash
+# Single task cost
+python -m cmat costs show task_1702345678_12345
 
-# 1. Extract task ID and status from completion
-TASK_ID="$1"
-STATUS="$2"
-
-# 2. If integration enabled and status needs sync
-if needs_integration "$STATUS"; then
-    # Create integration task
-    integration add "$STATUS" "$SOURCE" "$AGENT" "$TASK_ID"
-fi
-
-# 3. If auto-chain enabled
-if [ "$AUTO_CHAIN" = "true" ]; then
-    # Validate outputs
-    workflow validate "$AGENT" "$ENHANCEMENT_DIR"
-    
-    # Chain to next agent
-    workflow auto-chain "$TASK_ID" "$STATUS"
-fi
+# Enhancement total
+python -m cmat costs enhancement my-feature
 ```
+
+---
+
+## Learnings Integration
+
+### Learnings Metadata
+
+Tasks track which learnings were used and created:
+
+```json
+{
+  "metadata": {
+    "learnings_retrieved": ["learn_123", "learn_456"],
+    "learnings_created": ["learn_789"]
+  }
+}
+```
+
+### Flow
+
+1. **Before execution**: Relevant learnings retrieved based on task context
+2. **During execution**: Learnings injected into agent prompt
+3. **After execution**: New learnings extracted from output
+4. **Metadata updated**: Learning IDs recorded on task
 
 ---
 
 ## Best Practices
 
-### Task Organization
+### Task Management
 
-**DO**:
-- ✅ Use descriptive task titles
-- ✅ Include enhancement name in title
-- ✅ Set appropriate priority
-- ✅ Use correct task_type
-- ✅ Provide detailed descriptions
-- ✅ Use auto-chain for standard workflows
-- ✅ Monitor queue regularly
+1. **Clear titles**: Use descriptive titles that identify the work
+2. **Proper priority**: Set appropriate priority for ordering
+3. **Source files**: Always specify valid source file paths
+4. **Workflow context**: Preserve workflow metadata for traceability
 
-**DON'T**:
-- ❌ Use generic titles ("Task 1", "Test")
-- ❌ Mark everything as critical
-- ❌ Skip source_file specification
-- ❌ Use wrong task_type
-- ❌ Leave tasks stuck in active state
-- ❌ Ignore failed tasks
+### Cost Management
 
-### Automation Strategy
+1. **Monitor costs**: Regularly check enhancement costs
+2. **Review high-cost tasks**: Investigate unusually expensive tasks
+3. **Model selection**: Use appropriate model for task complexity
 
-**Start with Manual**:
-```bash
-# First time with new enhancement type
-TASK_ID=$(cmat.sh queue add ... false false)
-cmat.sh queue start $TASK_ID
-# Review each step carefully
-```
+### Debugging
 
-**Transition to Semi-Auto**:
-```bash
-# Once confident in output quality
-TASK_ID=$(cmat.sh queue add ... true false)
-cmat.sh queue start $TASK_ID
-# Review before chaining
-```
-
-**Use Full-Auto for Production**:
-```bash
-# For well-tested workflows
-export AUTO_INTEGRATE="always"
-TASK_ID=$(cmat.sh queue add ... true true)
-cmat.sh queue start $TASK_ID
-# Let it run completely
-```
-
-### Queue Maintenance
-
-**Daily**:
-```bash
-# Check queue status
-cmat.sh queue status
-
-# Review completed tasks
-cmat.sh queue list completed | jq '.[-5:] | .[] | {title, agent: .assigned_agent, status: .result}'
-
-# Check for failed tasks
-cmat.sh queue list failed | jq 'length'
-```
-
-**Weekly**:
-```bash
-# Archive completed tasks
-cmat.sh queue list completed | jq '.' > archive/completed_$(date +%Y%m%d).json
-
-# Review integration sync status
-cmat.sh queue list completed | jq '.[] | select(.metadata.github_issue == null) | {id, title}'
-```
-
-**Monthly**:
-```bash
-# Analyze workflow performance
-cmat.sh queue list completed | jq '.[] | {
-  agent: .assigned_agent,
-  duration: ((.completed | fromdateiso8601) - (.started | fromdateiso8601))
-}' | jq -s 'group_by(.agent) | map({
-  agent: .[0].agent,
-  avg_duration: (map(.duration) | add / length)
-})'
-
-# Clean up very old completed tasks (manual backup first)
-```
-
-### Error Handling
-
-**Immediate Response**:
-```bash
-# Task fails
-cmat.sh queue list failed | tail -1 | jq .
-
-# Investigate log
-tail -100 enhancements/*/logs/*_task_123_*.log
-
-# If recoverable, retry
-cmat.sh queue add ... # recreate with same params
-```
-
-**Systematic Review**:
-```bash
-# List all failures in last week
-cmat.sh queue list failed | jq '.[] | 
-  select(.completed > "'$(date -d '7 days ago' -u +%Y-%m-%dT%H:%M:%SZ)'") |
-  {title, agent: .assigned_agent, error: .result}'
-
-# Categorize by error type
-# Fix root causes
-# Update agent definitions or workflows
-```
+1. **Check queue status**: Start with `queue status` for overview
+2. **List by state**: Use `queue list <state>` to find issues
+3. **Review metadata**: Check workflow metadata for stuck tasks
+4. **Verify agent status**: Ensure agents aren't stuck in active state
 
 ---
 
 ## Troubleshooting
 
-### Task Won't Start
+### Task Stuck in Active State
 
-**Symptoms**: `cmat.sh queue start` fails
+**Symptoms**: Task shows as active but agent isn't running
 
-**Causes & Solutions**:
+**Causes**:
+- Agent crashed without completing
+- Hook failed to process completion
 
-1. **Task not in pending queue**
-   ```bash
-   cmat.sh queue list pending | grep task_123
-   # If not found, task may be in wrong queue
-   cmat.sh queue list all | jq '.[] | .[] | select(.id == "task_123")'
-   ```
+**Resolution**:
+1. Check agent logs
+2. Manually complete or fail the task
+3. Verify hook configuration
 
-2. **Source file missing**
-   ```bash
-   # Check task source file
-   SOURCE=$(cmat.sh queue list pending | jq -r '.[] | select(.id == "task_123") | .source_file')
-   ls -la "$SOURCE"
-   # If missing, cancel and recreate with correct path
-   ```
+### Tasks Not Auto-Chaining
 
-3. **Agent config missing**
-   ```bash
-   # Check agent exists
-   ls .claude/agents/my-agent.md
-   jq '.agents[].name' .claude/agents/agents.json
-   ```
+**Symptoms**: Workflow stops after task completion
 
-### Task Stuck in Active
+**Causes**:
+- `auto_chain` is false
+- Status not in workflow's `on_status`
+- Transition's `auto_chain` is false
 
-**Symptoms**: Task remains in active_workflows for hours
+**Resolution**:
+1. Check task's `auto_chain` flag
+2. Check workflow template's `on_status`
+3. Verify status code matches exactly
 
-**Solutions**:
+### Missing Cost Data
 
-1. **Check if agent actually running**
-   ```bash
-   # Look for Claude process
-   ps aux | grep claude
-   
-   # Check log for current activity
-   tail -f enhancements/*/logs/*_task_123_*.log
-   ```
+**Symptoms**: Cost metadata is null/empty
 
-2. **Cancel if truly stuck**
-   ```bash
-   cmat.sh queue cancel task_123 "Agent hung"
-   
-   # Check agent is released
-   cmat.sh queue status | grep agent-name
-   # Should show: idle
-   ```
+**Causes**:
+- Hook not configured
+- Transcript not available
+- Model not recognized
 
-3. **Restart task**
-   ```bash
-   # Recreate and start
-   TASK_ID=$(cmat.sh queue add ...)
-   cmat.sh queue start $TASK_ID
-   ```
-
-### Auto-Chain Not Working
-
-**Symptoms**: Task completes but doesn't chain
-
-**Causes & Solutions**:
-
-1. **auto_chain flag not set**
-   ```bash
-   cmat.sh queue list completed | jq '.[-1] | .auto_chain'
-   # Should show: true
-   # If false, that's why it didn't chain
-   ```
-
-2. **Output validation failed**
-   ```bash
-   # Check validation
-   AGENT=$(jq -r '.completed[-1].assigned_agent' .claude/queues/task_queue.json)
-   ENHANCEMENT=$(jq -r '.completed[-1].source_file' .claude/queues/task_queue.json | sed 's|enhancements/\([^/]*\)/.*|\1|')
-   
-   cmat.sh workflow validate "$AGENT" "enhancements/$ENHANCEMENT"
-   # Look for validation errors
-   ```
-
-3. **No next agent for status**
-   ```bash
-   AGENT=$(jq -r '.completed[-1].assigned_agent' .claude/queues/task_queue.json)
-   STATUS=$(jq -r '.completed[-1].result' .claude/queues/task_queue.json)
-   
-   cmat.sh workflow next-agent "$AGENT" "$STATUS"
-   # If UNKNOWN, status doesn't have next agent defined
-   ```
-
-### Queue File Corrupted
-
-**Symptoms**: jq errors when accessing queue
-
-**Recovery**:
-
-1. **Validate JSON**
-   ```bash
-   jq '.' .claude/queues/task_queue.json
-   # Shows syntax errors if corrupted
-   ```
-
-2. **Restore from backup**
-   ```bash
-   # If you have backup
-   cp .claude/queues/task_queue_backup.json .claude/queues/task_queue.json
-   
-   # Or reset to empty
-   cp .claude/queues/task_queue_empty.json .claude/queues/task_queue.json
-   ```
-
-3. **Prevent future corruption**
-   ```bash
-   # Always backup before manual edits
-   cp .claude/queues/task_queue.json .claude/queues/task_queue_backup.json
-   
-   # Use tools instead of manual edit
-   cmat.sh queue metadata ...  # Not: vim task_queue.json
-   ```
-
-### Integration Not Triggering
-
-**Symptoms**: External systems not updated
-
-**Solutions**:
-
-1. **Check AUTO_INTEGRATE setting**
-   ```bash
-   echo $AUTO_INTEGRATE
-   # Should be: always, prompt, or never
-   
-   # If never, that's why
-   export AUTO_INTEGRATE="prompt"
-   ```
-
-2. **Verify status needs integration**
-   ```bash
-   # Check if status triggers integration
-   grep needs_integration .claude/scripts/common-commands.sh
-   # Should match your status
-   ```
-
-3. **Check integration tasks created**
-   ```bash
-   cmat.sh queue list all | jq '.pending[] | select(.assigned_agent | contains("integration"))'
-   # Should show integration tasks
-   ```
+**Resolution**:
+1. Verify hook in settings.json
+2. Check transcript path
+3. Verify model in models.json
 
 ---
 
-## Further Reading
+## See Also
 
-- **[SCRIPTS_REFERENCE.md](../SCRIPTS_REFERENCE.md)** - Complete command reference
-- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns and orchestration
-- **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - External system integration
-- **[agents.json](../agents/agents.json)** - Agent definitions
-- **[workflow_templates.json](../queues/workflow_templates.json)** - Workflow orchestration
-
----
+- [CLI_REFERENCE.md](CLI_REFERENCE.md) - Complete CLI commands
+- [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) - Workflow configuration
+- [PROMPT_SYSTEM_GUIDE.md](PROMPT_SYSTEM_GUIDE.md) - Prompt construction and status reporting
+- [COST_TRACKING.md](COST_TRACKING.md) - Cost management details

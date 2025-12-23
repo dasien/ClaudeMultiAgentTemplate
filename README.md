@@ -1,10 +1,10 @@
 # Claude Multi-Agent Development Template
 
-A workflow-based multi-agent development system using Claude Code. This template provides specialized AI agents orchestrated by customizable workflow templates with automated validation and comprehensive skills.
+A workflow-based multi-agent development system using Claude Code. This template provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
 
-**Version**: 6.0.2
+**Version**: 8.2.0
 
-## 🎯 What Is This?
+## What Is This?
 
 This template provides a multi-agent system that breaks down software development into specialized roles, orchestrated by flexible workflow templates:
 
@@ -13,6 +13,7 @@ This template provides a multi-agent system that breaks down software developmen
 - **Implementer**: Writes production-quality code
 - **Tester**: Creates and runs comprehensive test suites
 - **Documenter**: Maintains project documentation
+- **Code Reviewer**: Reviews code for quality and security
 
 **Integration Agents**:
 - **GitHub Integration Coordinator**: Syncs workflow with GitHub issues and PRs
@@ -23,158 +24,129 @@ This template provides a multi-agent system that breaks down software developmen
 - Automatically injected into agent prompts
 - Organized by category (analysis, architecture, implementation, testing, documentation)
 
-## ✨ Features
+## Features
 
-### Core System (v5.0)
-- 🤖 **7 Specialized Agents** - Clear responsibilities, reusable across workflows
-- 📋 **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
-- ✅ **Output Validation** - Automatic validation of required outputs
-- 🔄 **Automated Workflows** - Template-driven intelligent task chaining
-- 📊 **Task Queue System** - Organize and track work
-- 🧠 **Skills System** - Domain expertise in reusable modules
-- 🎯 **Flexible Orchestration** - Same agent, different workflows, different behavior
+### Core System
+- **7 Specialized Agents** - Clear responsibilities, reusable across workflows
+- **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
+- **Output Validation** - Automatic validation of required outputs
+- **Automated Workflows** - Template-driven intelligent task chaining
+- **Task Queue System** - Organize and track work
+- **Skills System** - Domain expertise in reusable modules
+- **Flexible Orchestration** - Same agent, different workflows, different behavior
 
-### Quality & Tracking
-- 📝 **Metadata Headers** - All outputs are self-documenting and traceable
-- 🧪 **Comprehensive Logging** - Agent execution logged for analysis
-- 💰 **Cost Tracking** - Automatic token usage and cost tracking per task
-- 🔗 **Cross-Platform Sync** - GitHub and Jira/Confluence integration
-- 🗂️ **Modular Architecture** - Clean separation of concerns
+### Intelligence & Tracking
+- **Learnings System** - RAG-based memory that improves over time
+- **YAML Completion Blocks** - Structured status reporting from agents
+- **Cost Tracking** - Automatic token usage and cost tracking per task
+- **Model Management** - Configure and track Claude model pricing
+- **Comprehensive Logging** - Agent execution logged for analysis
+- **Metadata Headers** - All outputs are self-documenting and traceable
 
-## 🆕 What's New in v5.0
-
-### Workflow-Based Orchestration
-
-**Before**: Agents defined their own workflow position and next steps
-**After**: Workflows define everything - agents are reusable components
-
-```json
-// Workflow template defines orchestration
-{
-  "agent": "architect",
-  "input": "{previous_step}/required_output/",
-  "required_output": "design.md",
-  "on_status": {
-    "READY_FOR_IMPLEMENTATION": {
-      "next_step": "implementer",
-      "auto_chain": true
-    }
-  }
-}
-```
-
-### Benefits
-
-✅ **Flexibility** - Same agent in different workflows with different inputs/outputs
-✅ **User Control** - Create/modify workflows via CLI
-✅ **Simplicity** - Workflows are single source of truth
-✅ **Reusability** - Agents are truly pluggable components
-✅ **Custom Status Codes** - Workflows define what status codes mean
-
-### Standardized Output Structure
-
-All agents now use convention-based directories:
-```
-enhancements/{enhancement}/{ agent}/
-├── required_output/
-│   └── {workflow-specified-file}
-└── optional_output/
-    └── [additional files]
-```
-
-### Simplified Agent Definitions
-
-Agents now focus purely on capabilities:
-```json
-{
-  "name": "Architect",
-  "role": "technical_design",
-  "tools": [...],
-  "skills": [...],
-  "validations": {
-    "metadata_required": true
-  }
-}
-```
-
-No more input/output/status specifications in agents!
+### Integration
+- **GitHub Sync** - Issues, PRs, and labels
+- **Jira/Confluence Sync** - Tickets and documentation
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install
+
 ```bash
 # Copy .claude directory to your project
 cp -r ClaudeMultiAgentTemplate/.claude /path/to/your/project/
 
-# Make scripts executable
-chmod +x /path/to/your/project/.claude/scripts/*.sh
-chmod +x /path/to/your/project/.claude/hooks/*.sh
+# Verify installation
+cd /path/to/your/project/.claude
+python -m cmat version
 ```
 
 ### 2. Test
+
 ```bash
 # List available workflows
-cmat workflow list
+python -m cmat queue status
 
-# Create test enhancement
-mkdir -p enhancements/test
-echo "# Test" > enhancements/test/test.md
+# List agents
+python -m cmat agents list
 
-# Start workflow
-cmat workflow start new_feature_development test
-
-# Monitor
-cmat queue status
+# View learnings (if any)
+python -m cmat learnings list
 ```
 
-### 3. Customize
+### 3. Start a Workflow
+
+```bash
+# Create enhancement spec
+mkdir -p enhancements/my-feature
+echo "# My Feature\n\nDescription of what to build..." > enhancements/my-feature/my-feature.md
+
+# Use Claude Code to start a workflow via Task tool with workflow-related agents
+```
+
+### 4. Customize
+
 See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 your-project/
-├── .claude/                      # Multi-agent system (v5.0)
-│   ├── scripts/                  # Command scripts
-│   │   ├── cmat.sh              # Main command launcher
-│   │   ├── queue-commands.sh     # Queue operations
-│   │   ├── workflow-commands.sh  # Workflow management
-│   │   ├── skills-commands.sh    # Skills management
-│   │   ├── integration-commands.sh # External sync
-│   │   └── agent-commands.sh     # Agent operations
+├── .claude/                      # Multi-agent system (v8.2.0)
+│   ├── cmat/                     # Python package
+│   │   ├── __init__.py          # Version and exports
+│   │   ├── __main__.py          # CLI entry point
+│   │   ├── cmat.py              # Main CMAT class
+│   │   ├── models/              # Data models (Task, Agent, Learning, etc.)
+│   │   ├── services/            # Service classes
+│   │   └── utils.py             # Utilities
 │   ├── agents/                   # Agent definitions
 │   │   ├── *.md                 # Agent specifications
 │   │   └── agents.json          # Agent registry
 │   ├── skills/                   # Skills system
 │   │   ├── skills.json          # Skills registry
 │   │   └── */SKILL.md           # 14+ skills
-│   ├── hooks/                    # Workflow automation
-│   │   ├── on-subagent-stop.sh  # Workflow orchestration
-│   │   └── on-session-end-cost.sh # Cost tracking
-│   ├── queues/                   # Task management
-│   │   ├── task_queue.json
-│   │   └── workflow_templates.json
-│   └── docs/                     # Documentation
-├── enhancements/                # Feature requests
+│   ├── data/                     # JSON data files
+│   │   ├── task_queue.json      # Task queue state
+│   │   ├── workflow_templates.json # Workflow definitions
+│   │   ├── learnings.json       # RAG learnings storage
+│   │   ├── models.json          # Claude model definitions
+│   │   └── tools.json           # Tool definitions
+│   ├── hooks/                    # Automation hooks
+│   │   └── on-session-end-cost.sh # Cost tracking hook
+│   ├── docs/                     # Documentation
+│   └── tests/                    # Python tests
+├── enhancements/                 # Feature requests
 │   └── feature-name/
-│       ├── feature-name.md           # Enhancement spec
+│       ├── feature-name.md      # Enhancement spec
 │       ├── requirements-analyst/
 │       │   ├── required_output/
 │       │   └── optional_output/
 │       ├── architect/
-│       │   ├── required_output/
-│       │   └── optional_output/
+│       │   └── ...
 │       └── logs/
 └── [your project files]
 ```
 
 ---
 
-## 🗂️ System Architecture
+## System Architecture
+
+### Python Services
+
+```
+CMAT (entry point)
+├── queue: QueueService       # Task state management
+├── agents: AgentService      # Agent registry and generation
+├── skills: SkillsService     # Skills loading and prompt building
+├── workflow: WorkflowService # Template management and orchestration
+├── tasks: TaskService        # Prompt building and execution
+├── learnings: LearningsService # RAG memory system
+└── models: ModelService      # Model configuration and cost extraction
+```
 
 ### Workflow-Based Design
 
@@ -185,47 +157,80 @@ Workflow Template
   │    ├─ input: "enhancement spec file"
   │    ├─ required_output: "analysis.md"
   │    └─ on_status:
-  │         └─ READY_FOR_DEVELOPMENT → Step 1
+  │         ├─ READY_FOR_DEVELOPMENT → Step 1 (auto_chain)
+  │         └─ BLOCKED → Stop (halt status)
   │
   ├─ Step 1: architect
   │    ├─ input: "step 0 outputs"
   │    ├─ required_output: "design.md"
   │    └─ on_status:
-  │         └─ READY_FOR_IMPLEMENTATION → Step 2
+  │         ├─ READY_FOR_IMPLEMENTATION → Step 2 (auto_chain)
+  │         └─ NEEDS_CLARIFICATION → Stop (halt status)
   │
   └─ ... (continues through workflow)
 ```
 
-**Task Metadata** carries workflow context:
-```json
-{
-  "workflow_name": "new_feature_development",
-  "workflow_step": 0
-}
+### Agent Completion Blocks
+
+Agents report status using YAML completion blocks:
+
+```yaml
+---
+agent: implementer
+task_id: task_1234567890_12345
+status: READY_FOR_TESTING
+---
 ```
 
-**Hook** orchestrates using workflow:
-1. Extract status from agent output
-2. Get workflow context from task metadata
-3. Check if status in current step's `on_status`
-4. If yes → create next task (step + 1)
-5. If no → stop workflow
+### Task Queue States
 
-### Agent Specialization
-
-| Agent | Role | Responsibilities | Skills |
-|-------|------|------------------|--------|
-| requirements-analyst | analysis | What to build | Requirements Elicitation, User Stories, Bug Triage |
-| architect | technical_design | How to build it | API Design, Architecture Patterns, UI Design |
-| implementer | implementation | Build it | Error Handling, Code Refactoring, SQL |
-| tester | testing | Validate it | Test Patterns, Coverage, Bug Triage |
-| documenter | documentation | Document it | Technical Writing, API Docs |
+```
+pending → active → completed
+                 → failed
+                 → cancelled
+```
 
 ---
 
-## 📄 Development Workflow
+## CLI Reference
 
-### Example: Standard Feature Development
+```bash
+python -m cmat <command> [options]
+
+# Learnings (RAG memory system)
+python -m cmat learnings list                    # List all learnings
+python -m cmat learnings add "<content>"         # Add a manual learning
+python -m cmat learnings delete <id>             # Delete a learning
+python -m cmat learnings show <id>               # Show learning details
+python -m cmat learnings search "<query>"        # Search learnings
+
+# Queue management
+python -m cmat queue status                      # Show queue summary
+python -m cmat queue list [pending|active|completed|failed|all]
+
+# Agents
+python -m cmat agents list                       # List all agents
+python -m cmat agents generate                   # Regenerate agents.json
+
+# Models
+python -m cmat models list                       # List Claude models
+python -m cmat models show <id>                  # Show model details
+python -m cmat models set-default <id>           # Set default model
+
+# Cost tracking
+python -m cmat costs extract <task_id> <transcript_path> [session_id]
+python -m cmat costs show <task_id>              # Show task cost
+python -m cmat costs enhancement <name>          # Show enhancement cost
+
+# Version
+python -m cmat version                           # Show CMAT version
+```
+
+---
+
+## Development Workflow Example
+
+### Standard Feature Development
 
 ```
 1. requirements-analyst (Step 0)
@@ -261,168 +266,107 @@ Workflow Template
 
 ---
 
-## 📚 Documentation
-
-### Getting Started
-- **[README.md](README.md)** - This file - Overview and architecture
-- **[INSTALLATION.md](INSTALLATION.md)** - Setup and verification
-- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick start
-- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting to your project
-
-### System Reference
-- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns
-- **[WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
-- **[SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)** - Complete command reference
-- **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system
-- **[agents.json](.claude/agents/agents.json)** - Agent definitions
-- **[workflow_templates.json](.claude/queues/workflow_templates.json)** - Workflow storage
-
-### Advanced Topics
-- **[INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration
-- **[MCP_CONFIGURATION_GUIDE.md](.claude/mcp-servers/MCP_CONFIGURATION_GUIDE.md)** - MCP setup
-- **[MIGRATION_v4_to_v5.md](MIGRATION_v4_to_v5.md)** - Upgrade from v4.x
-
----
-
-## 🛠️ Requirements
-
-- **Claude Code** - Multi-agent orchestration platform
-- **bash** - Shell scripting
-- **jq** - JSON processing
-
-Optional:
-- **Node.js 16+** - For MCP servers (GitHub/Jira integration)
-
----
-
-## 🔧 Command Reference
-
-### Workflow Commands (NEW in v5.0)
-```bash
-cmat workflow create <n> <desc>         # Create template
-cmat workflow list                      # List all workflows
-cmat workflow show <n>                  # Show workflow details
-cmat workflow start <workflow> <enh>    # Start workflow
-cmat workflow add-step <n> <agent> <input> <o>
-cmat workflow add-transition <n> <step> <status> <next>
-cmat workflow validate <n>              # Validate template
-```
-
-### Queue Commands
-```bash
-cmat queue status                       # View status
-cmat queue list <type>                  # List tasks
-cmat queue show-task-cost <id>          # View task cost
-cmat queue show-enhancement-cost <n>    # View enhancement cost
-```
-
-### Skills Commands
-```bash
-cmat skills list                        # List all skills
-cmat skills get <agent>                 # Get agent skills
-cmat skills load <skill>                # View skill content
-```
-
-See [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) for complete documentation.
-
----
-
-## 🎯 Skills System
+## Skills System
 
 ### Built-in Skills (14+)
 
 **Analysis**: Requirements Elicitation, User Story Writing, Bug Triage
-**Architecture**: API Design, Architecture Patterns  
+**Architecture**: API Design, Architecture Patterns, Agent Design
 **Implementation**: Error Handling, Code Refactoring, SQL Development
 **Testing**: Test Design Patterns, Test Coverage
 **Documentation**: Technical Writing, API Documentation
 **UI Design**: Desktop UI, Web UI
 
 ### Managing Skills
+
 ```bash
-cmat skills list                # All skills
-cmat skills get architect       # Agent's skills
-cmat skills load api-design     # Skill content
+# View skills assigned to agents
+python -m cmat agents list
 ```
 
 ### Creating Custom Skills
 
-1. Create skill directory with SKILL.md
-2. Register in skills.json
+1. Create skill directory with `SKILL.md`
+2. Register in `skills.json`
 3. Assign to agents
-4. Regenerate: `cmat agents generate-json`
+4. Regenerate: `python -m cmat agents generate`
 
-See [SKILLS_GUIDE.md](SKILLS_GUIDE.md) for complete guide.
+See [.claude/docs/SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md) for complete guide.
 
 ---
 
-## 📖 How It Works
+## Learnings System
 
-### Workflow Execution Example
+CMAT includes a RAG-based learnings system that captures insights from agent outputs and user feedback. Learnings are automatically retrieved and injected into agent prompts when relevant.
+
+### Adding Learnings
 
 ```bash
-# 1. User starts workflow
-cmat workflow start new_feature_development user-auth
+# Manual learning
+python -m cmat learnings add "Always use pytest fixtures for database tests" --tags testing,python
 
-# 2. System creates first task
-Task created:
-  - agent: requirements-analyst
-  - input: enhancements/user-auth/user-auth.md
-  - metadata: {workflow_name: "new_feature_development", workflow_step: 0}
+# View learnings
+python -m cmat learnings list
 
-# 3. Agent executes and outputs status
-Status: READY_FOR_DEVELOPMENT
-
-# 4. Hook processes completion
-- Validates: required_output/analysis_summary.md exists
-- Checks workflow step 0 on_status["READY_FOR_DEVELOPMENT"]
-- Finds: next_step = "architect", auto_chain = true
-- Creates: New task for architect (step 1)
-- Starts: New task automatically
-
-# 5. Process repeats
-architect → implementer → tester → documenter
-Each step validates and chains to next
+# Search for relevant learnings
+python -m cmat learnings search "database testing patterns"
 ```
 
-### Status Transition Rules
+### Learning Sources
 
-**Simple Rule**: If agent's output status matches an entry in the step's `on_status` map → continue. Otherwise → stop.
-
-**Example**:
-```json
-{
-  "on_status": {
-    "READY_FOR_IMPLEMENTATION": {"next_step": "implementer", "auto_chain": true}
-  }
-}
-```
-
-- Agent outputs `READY_FOR_IMPLEMENTATION` → Creates implementer task
-- Agent outputs `BLOCKED: Missing API spec` → Stops workflow (not in on_status)
-- Agent outputs `NEEDS_RESEARCH` → Stops workflow (not in on_status)
+- **Agent outputs**: Automatically extracted after task completion
+- **User feedback**: Manually added via CLI
+- **Code patterns**: Detected during analysis (future)
 
 ---
 
-## 🧪 Example Project
+## Requirements
 
-This template includes a working Python CLI task manager:
+- **Python 3.10+** - Core runtime
+- **Claude Code** - Multi-agent orchestration platform
+- **pyyaml** - YAML parsing (optional, included in standard lib on most systems)
 
-- **Source**: `src/task_manager.py` - Simple task management CLI
-- **Tests**: `tests/test_task_manager.py` - Comprehensive test suite
-- **Demo Enhancement**: `enhancements/demo-test/` - Minimal workflow test
+Optional:
+- **Node.js 16+** - For MCP servers (GitHub/Jira integration)
 
 ---
 
-## 🎓 Learning Path
+## Documentation
+
+### Getting Started
+- **[README.md](README.md)** - This file - Overview and architecture
+- **[INSTALLATION.md](INSTALLATION.md)** - Setup and verification
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick start
+- **[DEMO.md](DEMO.md)** - Hands-on demo walkthrough
+- **[CUSTOMIZATION.md](CUSTOMIZATION.md)** - Adapting to your project
+
+### System Reference
+- **[CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md)** - Complete command reference
+- **[QUEUE_SYSTEM.md](.claude/docs/QUEUE_SYSTEM_GUIDE.md)** - Queue operations
+- **[WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns
+- **[WORKFLOW_TEMPLATES.md](.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
+- **[SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md)** - Skills system
+- **[AGENT_GUIDE.md](.claude/docs/AGENT_GUIDE.md)** - Agent creation
+
+### Features
+- **[LEARNINGS_GUIDE.md](.claude/docs/LEARNINGS_GUIDE.md)** - RAG memory system
+- **[STATUS_COMPLETION.md](.claude/docs/STATUS_COMPLETION.md)** - YAML completion blocks
+- **[COST_TRACKING.md](.claude/docs/COST_TRACKING.md)** - Token usage and costs
+
+### Integration
+- **[INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration
+
+---
+
+## Learning Path
 
 ### For First-Time Users
 
 1. **Install** - [INSTALLATION.md](INSTALLATION.md)
 2. **Quick Start** - [QUICKSTART.md](QUICKSTART.md) - 5 minute test
-3. **Understand Workflows** - [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)
-4. **Learn Templates** - [WORKFLOW_TEMPLATE_GUIDE.md](WORKFLOW_TEMPLATE_GUIDE.md)
-5. **Explore Skills** - [SKILLS_GUIDE.md](SKILLS_GUIDE.md)
+3. **Understand Workflows** - [.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)
+4. **Learn Templates** - [.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md](.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md)
+5. **Explore Skills** - [.claude/docs/SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md)
 6. **Customize** - [CUSTOMIZATION.md](CUSTOMIZATION.md)
 
 ### Key Concepts
@@ -430,61 +374,48 @@ This template includes a working Python CLI task manager:
 - **Workflow Templates**: Define agent sequences and orchestration
 - **Output Directories**: Standardized `required_output/` and `optional_output/`
 - **Status Transitions**: Workflows define what each status means
+- **YAML Completion Blocks**: Structured status reporting from agents
 - **Task Metadata**: Carries workflow context (workflow_name, workflow_step)
 - **Skills**: Domain expertise automatically provided to agents
+- **Learnings**: RAG memory that improves over time
 - **Validation**: Outputs validated before workflow continues
 
 ---
 
-## 🤝 Contributing
+## Quick Reference
 
-Suggested improvements:
-- Additional workflow patterns
-- Domain-specific skills
-- Custom agents for specialized tasks
-- Integration with additional platforms
-
----
-
-## 📋 Quick Reference
-
-### Start a Workflow
+### View System Status
 ```bash
-# Create enhancement spec
-mkdir -p enhancements/feature
-echo "# Feature" > enhancements/feature/feature.md
-
-# Start workflow
-cmat workflow start new_feature_development feature
+python -m cmat version           # Version info
+python -m cmat queue status      # Queue counts
+python -m cmat agents list       # Available agents
+python -m cmat models list       # Claude models
 ```
 
-### Create Custom Workflow
+### Manage Learnings
 ```bash
-cmat workflow create my-workflow "Description"
-cmat workflow add-step my-workflow <agent> <input> <o>
-cmat workflow add-transition my-workflow <step> <status> <next>
-cmat workflow start my-workflow <enhancement>
+python -m cmat learnings list    # All learnings
+python -m cmat learnings add "Learning content"
+python -m cmat learnings search "query"
 ```
 
-### Monitor
+### Track Costs
 ```bash
-cmat queue status              # Current status
-cmat queue list completed      # Completed tasks
+python -m cmat costs show <task_id>
+python -m cmat costs enhancement <name>
 ```
 
 ---
 
-## 🔗 Links
+## Links
 
 - **Claude Code**: https://claude.ai/code
 - **Complete Documentation**: See `.claude/docs/` directory
 
 ---
 
-**Ready to start?** See [QUICKSTART.md](QUICKSTART.md) for a 5-minute walkthrough.
+**Ready to start?** See [QUICKSTART.md](QUICKSTART.md) for a 5-minute walkthrough, then try [DEMO.md](DEMO.md) for a hands-on example.
 
-**Need help?** See [WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md) for patterns and [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md) for commands.
+**Need help?** See [.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for patterns and [.claude/docs/CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md) for commands.
 
 **Want to customize?** See [CUSTOMIZATION.md](CUSTOMIZATION.md) for adapting to your project.
-
----
