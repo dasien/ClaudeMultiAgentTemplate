@@ -80,13 +80,20 @@ def cmd_workflow(cmat: CMAT, args: list[str]) -> int:
 
     if subcmd == "start":
         if len(args) < 3:
-            print_error("Usage: cmat workflow start <workflow_name> <enhancement_name>")
+            print_error("Usage: cmat workflow start <workflow_name> <enhancement_name> [--model <model_id>]")
             return 1
 
         workflow_name = args[1]
         enhancement_name = args[2]
 
-        task_id = cmat.workflow.start_workflow(workflow_name, enhancement_name)
+        # Parse --model option
+        model = None
+        if "--model" in args:
+            idx = args.index("--model")
+            if idx + 1 < len(args):
+                model = args[idx + 1]
+
+        task_id = cmat.workflow.start_workflow(workflow_name, enhancement_name, model=model)
 
         if task_id:
             task = cmat.queue.get(task_id)
@@ -96,6 +103,8 @@ def cmd_workflow(cmat: CMAT, args: list[str]) -> int:
             if task:
                 print(f"Agent: {task.assigned_agent}")
                 print(f"Status: {task.status.value}")
+                if model:
+                    print(f"Model: {model}")
             return 0
         else:
             print_error(f"Failed to start workflow: {workflow_name}")
@@ -225,13 +234,20 @@ def cmd_queue(cmat: CMAT, args: list[str]) -> int:
 
     elif subcmd == "add":
         if len(args) < 4:
-            print_error("Usage: cmat queue add <agent> <title> <source_file> [--auto-chain]")
+            print_error("Usage: cmat queue add <agent> <title> <source_file> [--auto-chain] [--model <model_id>]")
             return 1
 
         agent = args[1]
         title = args[2]
         source_file = args[3]
         auto_chain = "--auto-chain" in args
+
+        # Parse --model option
+        model = None
+        if "--model" in args:
+            idx = args.index("--model")
+            if idx + 1 < len(args):
+                model = args[idx + 1]
 
         # Determine task type from agent
         task_type = cmat.workflow.get_task_type_for_agent(agent)
@@ -245,12 +261,15 @@ def cmd_queue(cmat: CMAT, args: list[str]) -> int:
             description=title,
             auto_complete=True,
             auto_chain=auto_chain,
+            model=model,
         )
 
         print(f"Task added: {task.id}")
         print(f"  Agent: {agent}")
         print(f"  Title: {title}")
         print(f"  Auto-chain: {auto_chain}")
+        if model:
+            print(f"  Model: {model}")
         return 0
 
     elif subcmd == "start":

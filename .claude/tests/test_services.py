@@ -47,6 +47,36 @@ class TestQueueService:
         assert task.title == "Test Task"
         assert task.status == TaskStatus.PENDING
 
+    def test_add_task_with_model(self, cmat_test_env):
+        """Test adding a task with model parameter."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+
+        task = service.add(
+            title="Test Task with Model",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="A test task",
+            model="claude-sonnet-4-20250514",
+        )
+
+        assert task.id.startswith("task_")
+        assert task.metadata.requested_model == "claude-sonnet-4-20250514"
+
+        # Test that metadata dict takes precedence
+        task2 = service.add(
+            title="Test Task with Both",
+            assigned_agent="test-agent",
+            priority="normal",
+            task_type="analysis",
+            source_file="test.md",
+            description="A test task",
+            metadata={"requested_model": "claude-opus-4-20250514"},
+            model="claude-sonnet-4-20250514",  # Should be ignored
+        )
+        assert task2.metadata.requested_model == "claude-opus-4-20250514"
+
     def test_get_task(self, cmat_test_env):
         """Test retrieving a task by ID."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))

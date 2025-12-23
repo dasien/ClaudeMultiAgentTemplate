@@ -2,7 +2,7 @@
 
 Complete guide to workflow orchestration and template management in CMAT.
 
-**Version**: 8.2.0
+**Version**: 8.5.0
 
 ## Table of Contents
 
@@ -159,6 +159,7 @@ When an agent completes:
 | `input` | File or directory path (supports placeholders) |
 | `required_output` | Filename to create in `required_output/` |
 | `on_status` | Map of status codes to transitions |
+| `model` | (Optional) Claude model to use (e.g., `claude-sonnet-4-20250514`) |
 
 **Transition Level**:
 | Field | Description |
@@ -182,6 +183,53 @@ When an agent completes:
 // Later step - reads previous agent's output
 "input": "{previous_step}/required_output/"
 // Becomes: enhancements/user-profiles/architect/required_output/
+```
+
+### Model Selection
+
+Each workflow step can optionally specify which Claude model to use:
+
+```json
+{
+  "agent": "architect",
+  "input": "{previous_step}/required_output/",
+  "required_output": "implementation_plan.md",
+  "model": "claude-opus-4-20250514",
+  "on_status": { ... }
+}
+```
+
+**Model Precedence**:
+1. CLI `--model` flag (only applies to first step)
+2. Step's `model` field in workflow template
+3. Claude CLI default (if neither specified)
+
+**Use Cases**:
+- Use faster/cheaper models (e.g., `claude-sonnet-4-20250514`) for analysis steps
+- Use more capable models (e.g., `claude-opus-4-20250514`) for complex implementation
+- Override for testing with different models
+
+**Example - Mixed Model Workflow**:
+```json
+{
+  "steps": [
+    {
+      "agent": "requirements-analyst",
+      "model": "claude-sonnet-4-20250514",
+      ...
+    },
+    {
+      "agent": "architect",
+      "model": "claude-opus-4-20250514",
+      ...
+    },
+    {
+      "agent": "implementer",
+      "model": "claude-opus-4-20250514",
+      ...
+    }
+  ]
+}
 ```
 
 ---

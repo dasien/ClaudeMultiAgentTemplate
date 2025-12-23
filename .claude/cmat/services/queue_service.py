@@ -94,12 +94,30 @@ class QueueService:
             metadata: Optional[dict] = None,
             auto_complete: bool = False,
             auto_chain: bool = False,
+            model: Optional[str] = None,
     ) -> Task:
         """
         Add a new task to the queue.
 
+        Args:
+            title: Task title
+            assigned_agent: Agent to execute the task
+            priority: Task priority (low, normal, high, critical)
+            task_type: Type of task (analysis, implementation, etc.)
+            source_file: Input file path
+            description: Task description
+            metadata: Optional metadata dict
+            auto_complete: Whether to auto-complete on success
+            auto_chain: Whether to auto-chain to next workflow step
+            model: Optional Claude model to use (e.g., "claude-sonnet-4-20250514")
+
         Returns the created Task.
         """
+        # Merge model into metadata if provided and not already there
+        task_metadata = metadata.copy() if metadata else {}
+        if model and "requested_model" not in task_metadata:
+            task_metadata["requested_model"] = model
+
         task = Task(
             id=self._generate_task_id(),
             title=title,
@@ -112,7 +130,7 @@ class QueueService:
             status=TaskStatus.PENDING,
             auto_complete=auto_complete,
             auto_chain=auto_chain,
-            metadata=TaskMetadata.from_dict(metadata or {}),
+            metadata=TaskMetadata.from_dict(task_metadata),
         )
 
         queue = self._read_queue()

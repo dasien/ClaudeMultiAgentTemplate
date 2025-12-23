@@ -2,7 +2,7 @@
 
 Complete reference for the CMAT command-line interface.
 
-**Version**: 8.2.0
+**Version**: 8.5.0
 
 ## Overview
 
@@ -99,19 +99,30 @@ Workflow: new-feature-development
 Start a workflow for an enhancement.
 
 ```bash
-python -m cmat workflow start <workflow_name> <enhancement_name>
+python -m cmat workflow start <workflow_name> <enhancement_name> [--model <model_id>]
 ```
+
+**Arguments**:
+- `workflow_name` - Name of the workflow template
+- `enhancement_name` - Name of the enhancement to process
+- `--model <model_id>` - (Optional) Override the model for the first workflow step
 
 **Example**:
 ```bash
 python -m cmat workflow start new-feature-development my-feature
+
+# With model override
+python -m cmat workflow start new-feature-development my-feature --model claude-sonnet-4-20250514
 ```
 
 **Output**:
 ```
 Workflow started: new-feature-development
 Enhancement: my-feature
-First task: task_1702345678_12345
+Task: task_1702345678_12345
+Agent: requirements-analyst
+Status: active
+Model: claude-sonnet-4-20250514
 ```
 
 This creates the first task in the workflow and adds it to the pending queue.
@@ -190,7 +201,7 @@ python -m cmat queue list pending
 Add a new task to the queue.
 
 ```bash
-python -m cmat queue add <agent> <title> <source_file> [--auto-chain]
+python -m cmat queue add <agent> <title> <source_file> [--auto-chain] [--model <model_id>]
 ```
 
 **Arguments**:
@@ -198,10 +209,14 @@ python -m cmat queue add <agent> <title> <source_file> [--auto-chain]
 - `title` - Task title
 - `source_file` - Path to input file
 - `--auto-chain` - Enable auto-chaining to next workflow step
+- `--model <model_id>` - (Optional) Specify the Claude model to use for this task
 
 **Example**:
 ```bash
 python -m cmat queue add implementer "Fix login bug" enhancements/bugfix/bugfix.md --auto-chain
+
+# With model specification
+python -m cmat queue add architect "Design system" spec.md --model claude-opus-4-20250514
 ```
 
 ### queue start

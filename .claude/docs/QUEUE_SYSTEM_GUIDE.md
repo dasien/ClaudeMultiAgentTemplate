@@ -2,7 +2,7 @@
 
 Complete guide to the task queue system in CMAT.
 
-**Version**: 8.2.0
+**Version**: 8.5.0
 
 ## Overview
 
@@ -87,12 +87,13 @@ All queue data is stored in `.claude/data/task_queue.json`.
 | `workflow_name` | string | Name of workflow template |
 | `workflow_step` | string | Current step index |
 | `enhancement_title` | string | Enhancement being worked on |
+| `requested_model` | string | Model requested for this task execution |
 | `cost_input_tokens` | string | Input tokens used |
 | `cost_output_tokens` | string | Output tokens generated |
 | `cost_cache_creation_tokens` | string | Cache creation tokens |
 | `cost_cache_read_tokens` | string | Cache read tokens |
 | `cost_usd` | string | Total cost in USD |
-| `cost_model` | string | Model used |
+| `cost_model` | string | Model actually used (from cost extraction) |
 | `session_id` | string | Claude session ID |
 | `learnings_retrieved` | array | Learning IDs used in prompt |
 | `learnings_created` | array | Learning IDs extracted from output |

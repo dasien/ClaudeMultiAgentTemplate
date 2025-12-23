@@ -31,6 +31,9 @@ class TaskMetadata:
     process_pid: Optional[str] = None
     session_id: Optional[str] = None
 
+    # Model selection
+    requested_model: Optional[str] = None  # Model requested for this task execution
+
     # Cost tracking
     cost_input_tokens: Optional[str] = None
     cost_output_tokens: Optional[str] = None
@@ -57,6 +60,7 @@ class TaskMetadata:
             "workflow_step": self.workflow_step,
             "process_pid": self.process_pid,
             "session_id": self.session_id,
+            "requested_model": self.requested_model,
             "cost_input_tokens": self.cost_input_tokens,
             "cost_output_tokens": self.cost_output_tokens,
             "cost_cache_creation_tokens": self.cost_cache_creation_tokens,
@@ -82,6 +86,7 @@ class TaskMetadata:
             workflow_step=data.get("workflow_step"),
             process_pid=data.get("process_pid"),
             session_id=data.get("session_id"),
+            requested_model=data.get("requested_model"),
             cost_input_tokens=data.get("cost_input_tokens"),
             cost_output_tokens=data.get("cost_output_tokens"),
             cost_cache_creation_tokens=data.get("cost_cache_creation_tokens"),

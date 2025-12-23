@@ -7,6 +7,7 @@ what input it receives, what output is required, and status transitions.
 
 from dataclasses import dataclass, field
 import json
+from typing import Optional
 
 from .step_transition import StepTransition
 
@@ -23,6 +24,7 @@ class WorkflowStep:
     input: str
     required_output: str
     on_status: dict[str, StepTransition] = field(default_factory=dict)
+    model: Optional[str] = None  # Claude model to use (e.g., "claude-sonnet-4-20250514")
 
     def get_transition(self, status_name: str) -> StepTransition | None:
         """Get a transition by status name."""
@@ -30,12 +32,15 @@ class WorkflowStep:
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             "agent": self.agent,
             "input": self.input,
             "required_output": self.required_output,
             "on_status": {name: transition.to_dict() for name, transition in self.on_status.items()},
         }
+        if self.model:
+            result["model"] = self.model
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "WorkflowStep":
@@ -49,6 +54,7 @@ class WorkflowStep:
             input=data["input"],
             required_output=data["required_output"],
             on_status=on_status,
+            model=data.get("model"),
         )
 
     def to_json(self) -> str:

@@ -13,6 +13,76 @@ from cmat.models import (
     Agent,
     Learning,
 )
+from cmat.models.workflow_step import WorkflowStep
+from cmat.models.step_transition import StepTransition
+
+
+class TestWorkflowStep:
+    """Tests for WorkflowStep dataclass."""
+
+    def test_workflow_step_with_model(self):
+        """Test WorkflowStep with model field."""
+        step = WorkflowStep(
+            agent="architect",
+            input="enhancements/{enhancement_name}/spec.md",
+            required_output="design.md",
+            model="claude-opus-4-20250514",
+        )
+        assert step.agent == "architect"
+        assert step.model == "claude-opus-4-20250514"
+
+    def test_workflow_step_without_model(self):
+        """Test WorkflowStep without model field (defaults to None)."""
+        step = WorkflowStep(
+            agent="implementer",
+            input="input.md",
+            required_output="output.md",
+        )
+        assert step.model is None
+
+    def test_workflow_step_to_dict_with_model(self):
+        """Test serialization includes model field."""
+        step = WorkflowStep(
+            agent="architect",
+            input="input.md",
+            required_output="output.md",
+            model="claude-sonnet-4-20250514",
+        )
+        d = step.to_dict()
+        assert d["model"] == "claude-sonnet-4-20250514"
+
+    def test_workflow_step_to_dict_without_model(self):
+        """Test serialization omits model when None."""
+        step = WorkflowStep(
+            agent="architect",
+            input="input.md",
+            required_output="output.md",
+        )
+        d = step.to_dict()
+        assert "model" not in d
+
+    def test_workflow_step_from_dict_with_model(self):
+        """Test deserialization includes model field."""
+        data = {
+            "agent": "architect",
+            "input": "input.md",
+            "required_output": "output.md",
+            "model": "claude-opus-4-20250514",
+            "on_status": {},
+        }
+        step = WorkflowStep.from_dict(data)
+        assert step.model == "claude-opus-4-20250514"
+
+    def test_workflow_step_from_dict_without_model(self):
+        """Test deserialization when model not present."""
+        data = {
+            "agent": "implementer",
+            "input": "input.md",
+            "required_output": "output.md",
+            "on_status": {},
+        }
+        step = WorkflowStep.from_dict(data)
+        assert step.model is None
 
 
 class TestTaskStatus:
@@ -87,6 +157,17 @@ class TestTaskMetadata:
         metadata = TaskMetadata.from_dict(data)
         assert metadata.learnings_retrieved == []
         assert metadata.learnings_created == []
+
+    def test_requested_model(self):
+        """Test requested_model field for model selection."""
+        metadata = TaskMetadata(requested_model="claude-sonnet-4-20250514")
+        assert metadata.requested_model == "claude-sonnet-4-20250514"
+        d = metadata.to_dict()
+        assert d["requested_model"] == "claude-sonnet-4-20250514"
+
+        # Test from_dict
+        metadata2 = TaskMetadata.from_dict({"requested_model": "claude-opus-4-20250514"})
+        assert metadata2.requested_model == "claude-opus-4-20250514"
 
 
 class TestTask:

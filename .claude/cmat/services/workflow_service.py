@@ -526,6 +526,7 @@ class WorkflowService:
         description: str = "",
         auto_chain: bool = True,
         execute: bool = True,
+        model: Optional[str] = None,
     ) -> Optional[str]:
         """
         Start a workflow by creating the first task and executing it.
@@ -536,6 +537,7 @@ class WorkflowService:
             description: Optional task description
             auto_chain: Whether to auto-chain to next steps
             execute: Whether to execute the task (True) or just create it (False)
+            model: Optional model override for first step (e.g., "claude-sonnet-4-20250514")
 
         Returns the task ID or None if workflow not found.
         """
@@ -564,6 +566,9 @@ class WorkflowService:
         # Determine task type from agent role
         task_type = self.get_task_type_for_agent(first_step.agent)
 
+        # Use CLI override if provided, otherwise step's configured model
+        effective_model = model or first_step.model
+
         # Create task (in pending state)
         task = self._queue_service.add(
             title=f"{workflow_name}: {first_step.agent}",
@@ -576,6 +581,7 @@ class WorkflowService:
                 "workflow_name": workflow_name,
                 "workflow_step": 0,
                 "enhancement_title": enhancement_name,
+                "requested_model": effective_model,
             },
             auto_complete=True,
             auto_chain=auto_chain,
@@ -667,6 +673,7 @@ class WorkflowService:
                 "workflow_name": workflow_name,
                 "workflow_step": next_step_index,
                 "enhancement_title": enhancement_name,
+                "requested_model": next_step.model,
             },
             auto_complete=True,
             auto_chain=task.auto_chain,  # Inherit from previous task

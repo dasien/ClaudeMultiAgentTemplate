@@ -324,6 +324,9 @@ class TaskService:
                 duration_seconds=0,
             )
 
+        # Get requested model from task metadata
+        model = task.metadata.requested_model
+
         # Execute Claude
         result = self._execute_claude(
             prompt=prompt,
@@ -331,6 +334,7 @@ class TaskService:
             task_id=task.id,
             agent_name=agent.agent_file,
             enhancement_name=enhancement_name,
+            model=model,
         )
 
         # Extract learnings from successful output
@@ -430,9 +434,18 @@ class TaskService:
         task_id: str,
         agent_name: str,
         enhancement_name: str,
+        model: Optional[str] = None,
     ) -> dict:
         """
         Execute Claude CLI with the given prompt.
+
+        Args:
+            prompt: The prompt to send to Claude
+            log_file: Path to write execution log
+            task_id: Task identifier for tracking
+            agent_name: Name of the agent executing
+            enhancement_name: Name of the enhancement being worked on
+            model: Optional Claude model to use (e.g., "claude-sonnet-4-20250514")
 
         Returns dict with exit_code, status, duration, and optionally pid.
         """
@@ -446,6 +459,8 @@ class TaskService:
             f.write(f"Agent: {agent_name}\n")
             f.write(f"Task ID: {task_id}\n")
             f.write(f"Enhancement: {enhancement_name}\n")
+            if model:
+                f.write(f"Model: {model}\n")
             f.write("\n")
             f.write("=" * 70 + "\n")
             f.write("PROMPT SENT TO AGENT\n")
@@ -463,11 +478,17 @@ class TaskService:
         env["CMAT_AGENT"] = agent_name
         env["CMAT_ENHANCEMENT"] = enhancement_name
 
+        # Build command with optional model
+        cmd = ["claude", "--permission-mode", "bypassPermissions"]
+        if model:
+            cmd.extend(["--model", model])
+        cmd.append(prompt)
+
         # Execute Claude with bypass permissions
         # cwd must be project root so Claude finds the correct .claude directory
         try:
             process = subprocess.Popen(
-                ["claude", "--permission-mode", "bypassPermissions", prompt],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,  # Prevent stdin blocking in daemon threads
