@@ -15,7 +15,7 @@ from cmat.services.workflow_service import WorkflowService
 from cmat.services.task_service import TaskService
 from cmat.services.learnings_service import LearningsService
 from cmat.services.model_service import ModelService
-from cmat.utils import find_project_root, ensure_directories
+from cmat.utils import find_project_root, ensure_directories, set_project_root
 
 
 class CMAT:
@@ -84,6 +84,10 @@ class CMAT:
             base = Path.cwd()
 
         self._base_path = base
+
+        # Set the configured project root so all utility functions use it
+        # This is critical for UI where cwd differs from the connected project
+        set_project_root(base)
 
         # Store paths for later use
         _agents_dir = agents_dir or str(base / ".claude/agents")

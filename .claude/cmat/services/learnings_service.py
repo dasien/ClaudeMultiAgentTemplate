@@ -434,6 +434,8 @@ They represent past decisions that may or may not apply to the current context.
         """
         try:
             # Use Claude CLI with haiku model for efficiency
+            # cwd must be project root so Claude finds the correct .claude directory
+            project_root = find_project_root()
             result = subprocess.run(
                 [
                     "claude",
@@ -444,6 +446,8 @@ They represent past decisions that may or may not apply to the current context.
                 capture_output=True,
                 text=True,
                 timeout=60,
+                cwd=str(project_root) if project_root else None,
+                stdin=subprocess.DEVNULL,  # Explicitly close stdin to prevent any waiting
             )
 
             if result.returncode == 0:

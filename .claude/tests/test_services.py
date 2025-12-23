@@ -319,7 +319,7 @@ class TestSkillsService:
         assert prompt == ""
 
     def test_build_skills_prompt(self, cmat_test_env):
-        """Test building skills prompt."""
+        """Test building skills prompt with on-demand skill invocation."""
         service = SkillsService(str(cmat_test_env / ".claude/skills"))
 
         # Create skill directory with SKILL.md (expected structure)
@@ -342,8 +342,13 @@ class TestSkillsService:
         service.invalidate_cache()
         prompt = service.build_skills_prompt(["test-skill"])
 
+        # Check for header and skill reference (not full content - uses Skill tool)
         assert "SPECIALIZED SKILLS" in prompt
-        assert "Test Skill" in prompt
+        assert "test-skill" in prompt
+        assert "A test skill" in prompt  # Description is included
+        assert "Skill tool" in prompt  # Instructions for on-demand invocation
+        # Full skill content should NOT be in prompt (loaded on-demand via Skill tool)
+        assert "This is a test skill" not in prompt
 
 
 class TestLearningsService:

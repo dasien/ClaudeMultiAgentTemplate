@@ -68,11 +68,24 @@ class TaskService:
         agents_dir: str = ".claude/agents",
         logs_dir: str = ".claude/logs",
         enhancements_dir: str = "enhancements",
+        project_root: Optional[str] = None,
     ):
         self.templates_file = Path(templates_file)
         self.agents_dir = Path(agents_dir)
         self.logs_dir = Path(logs_dir)
         self.enhancements_dir = Path(enhancements_dir)
+
+        # Project root for subprocess cwd - derive from logs_dir if not provided
+        if project_root:
+            self.project_root = Path(project_root)
+        else:
+            # Derive from logs_dir (remove .claude/logs suffix)
+            logs_path = Path(logs_dir).resolve()
+            if ".claude" in logs_path.parts:
+                idx = logs_path.parts.index(".claude")
+                self.project_root = Path(*logs_path.parts[:idx])
+            else:
+                self.project_root = Path.cwd()
 
         self._templates: Optional[dict[str, str]] = None
 
@@ -451,13 +464,16 @@ class TaskService:
         env["CMAT_ENHANCEMENT"] = enhancement_name
 
         # Execute Claude with bypass permissions
+        # cwd must be project root so Claude finds the correct .claude directory
         try:
             process = subprocess.Popen(
                 ["claude", "--permission-mode", "bypassPermissions", prompt],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,  # Prevent stdin blocking in daemon threads
                 env=env,
                 text=True,
+                cwd=str(self.project_root),
             )
 
             pid = process.pid

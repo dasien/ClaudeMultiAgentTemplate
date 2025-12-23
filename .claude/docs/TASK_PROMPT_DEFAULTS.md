@@ -73,12 +73,15 @@ At the end of your response, you **must** output a completion block in this exac
 agent: ${agent}
 task_id: ${task_id}
 status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
 ---
 ```
 
 The `status` field must be one of the following:
 
 ${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -144,12 +147,15 @@ At the end of your response, you **must** output a completion block in this exac
 agent: ${agent}
 task_id: ${task_id}
 status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
 ---
 ```
 
 The `status` field must be one of the following:
 
 ${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -215,12 +221,15 @@ At the end of your response, you **must** output a completion block in this exac
 agent: ${agent}
 task_id: ${task_id}
 status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
 ---
 ```
 
 The `status` field must be one of the following:
 
 ${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -286,12 +295,15 @@ At the end of your response, you **must** output a completion block in this exac
 agent: ${agent}
 task_id: ${task_id}
 status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
 ---
 ```
 
 The `status` field must be one of the following:
 
 ${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -357,12 +369,15 @@ At the end of your response, you **must** output a completion block in this exac
 agent: ${agent}
 task_id: ${task_id}
 status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
 ---
 ```
 
 The `status` field must be one of the following:
 
 ${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 
@@ -418,12 +433,15 @@ At the end of your response, you **must** output a completion block in this exac
 agent: ${agent}
 task_id: ${task_id}
 status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
 ---
 ```
 
 The `status` field must be one of the following:
 
 ${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
 
 ## Your Task
 

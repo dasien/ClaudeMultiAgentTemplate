@@ -157,40 +157,49 @@ class SkillsService:
         """
         Build a formatted skills prompt section for agent invocation.
 
-        Matches the bash formatting from skills-commands.sh.
+        Uses on-demand skill invocation via the Skill tool instead of
+        injecting full skill content. This reduces prompt size significantly
+        while still giving agents access to specialized skills when needed.
+
         Returns empty string if no skills found.
         """
         if not skill_names:
             return ""
 
-        skills_content = []
+        # Build list of available skills with descriptions
+        skills_list = []
         for name in skill_names:
-            content = self.get_skill_content(name)
-            if content:
-                skills_content.append(f"---\n{content}\n---")
+            skill = self.get(name)
+            if skill:
+                skills_list.append(f"- **{name}**: {skill.description}")
 
-        if not skills_content:
+        if not skills_list:
             return ""
 
-        # Build formatted section matching bash output
+        # Build formatted section with Skill tool instructions
         header = """
 ################################################################################
 ## SPECIALIZED SKILLS AVAILABLE
 ################################################################################
 
-You have access to the following specialized skills. Apply them when they are
-relevant to the task at hand.
+You have access to the following specialized skills. To use a skill, invoke it
+with the Skill tool: `skill: "skill-name"`
 
 """
+        skills_section = "\n".join(skills_list)
+
         footer = """
 
-**Using Skills**: Apply the above skills when they are relevant to your task.
-Focus on the skills that directly support what you need to accomplish.
+**Using Skills**: When a skill is relevant to your task, invoke it using the
+Skill tool. The skill content will be loaded and you can apply its guidance.
+Only invoke skills that directly support what you need to accomplish.
+
+Example: To use the requirements-elicitation skill, invoke `skill: "requirements-elicitation"`
 
 ################################################################################
 """
 
-        return header + "\n\n".join(skills_content) + footer
+        return header + skills_section + footer
 
     def validate_skill(self, skill: Skill) -> list[str]:
         """

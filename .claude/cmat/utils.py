@@ -16,6 +16,26 @@ from typing import Optional
 # Configure module logger
 logger = logging.getLogger("cmat")
 
+# Module-level configured project root - set by CMAT.__init__()
+_configured_project_root: Optional[Path] = None
+
+
+def set_project_root(path: Path) -> None:
+    """
+    Set the configured project root.
+
+    Called by CMAT.__init__() after determining the base path.
+    This allows find_project_root() and logging functions to use
+    the correct path even when cwd is different (e.g., when called from UI).
+    """
+    global _configured_project_root
+    _configured_project_root = path
+
+
+def get_configured_project_root() -> Optional[Path]:
+    """Get the configured project root, if set."""
+    return _configured_project_root
+
 
 def get_timestamp() -> str:
     """Generate ISO 8601 UTC timestamp."""
@@ -31,11 +51,17 @@ def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
     """
     Find the project root by locating the .claude directory.
 
-    Walks up the directory tree from start_path (or cwd) looking for .claude/.
+    If a project root has been configured via set_project_root() (called by
+    CMAT.__init__), that is returned. Otherwise, walks up the directory tree
+    from start_path (or cwd) looking for .claude/.
 
     Returns:
         Path to project root, or None if not found.
     """
+    # Return configured root if set (handles UI case where cwd differs from project)
+    if _configured_project_root is not None:
+        return _configured_project_root
+
     current = start_path or Path.cwd()
 
     while current != current.parent:
