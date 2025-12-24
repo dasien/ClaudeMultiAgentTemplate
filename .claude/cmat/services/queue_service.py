@@ -182,6 +182,10 @@ class QueueService:
         """List all failed tasks."""
         return self.list_tasks(TaskStatus.FAILED)
 
+    def list_cancelled(self) -> list[Task]:
+        """List all cancelled tasks."""
+        return self.list_tasks(TaskStatus.CANCELLED)
+
     def list_active(self) -> list[Task]:
         """List all active (in-progress) tasks."""
         return self.list_tasks(TaskStatus.ACTIVE)
@@ -454,21 +458,40 @@ class QueueService:
 
         log_operation("AGENT_STATUS_UPDATE", f"Agent: {agent_name}, Status: {status}, Task: {current_task}")
 
-    def clear_completed(self) -> int:
-        """Clear all completed tasks. Returns count of cleared tasks."""
+    def clear_tasks(self, task_ids: list[str]) -> int:
+        """
+        Remove specific tasks from the queue by ID.
+
+        Args:
+            task_ids: List of task IDs to remove.
+
+        Returns:
+            Count of tasks actually removed.
+        """
+        if not task_ids:
+            return 0
+
+        task_id_set = set(task_ids)
         queue = self._read_queue()
         original_count = len(queue.get("tasks", []))
-        queue["tasks"] = [t for t in queue.get("tasks", []) if t.get("status") != "completed"]
-        self._write_queue(queue)
-        return original_count - len(queue["tasks"])
+        queue["tasks"] = [t for t in queue.get("tasks", []) if t.get("id") not in task_id_set]
+        removed_count = original_count - len(queue["tasks"])
+
+        if removed_count > 0:
+            self._write_queue(queue)
+            log_operation("TASKS_CLEARED", f"Removed {removed_count} tasks: {task_ids[:5]}{'...' if len(task_ids) > 5 else ''}")
+
+        return removed_count
+
+    def clear_completed(self) -> int:
+        """Clear all completed tasks. Returns count of cleared tasks."""
+        completed_ids = [t.id for t in self.list_completed()]
+        return self.clear_tasks(completed_ids)
 
     def clear_failed(self) -> int:
         """Clear all failed tasks. Returns count of cleared tasks."""
-        queue = self._read_queue()
-        original_count = len(queue.get("tasks", []))
-        queue["tasks"] = [t for t in queue.get("tasks", []) if t.get("status") != "failed"]
-        self._write_queue(queue)
-        return original_count - len(queue["tasks"])
+        failed_ids = [t.id for t in self.list_failed()]
+        return self.clear_tasks(failed_ids)
 
     def status(self) -> dict:
         """

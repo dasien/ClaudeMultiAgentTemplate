@@ -2,7 +2,7 @@
 
 Complete guide to the task queue system in CMAT.
 
-**Version**: 8.5.0
+**Version**: 8.6.0
 
 ## Overview
 
@@ -262,12 +262,28 @@ pending = queue_service.list_pending()
 active = queue_service.list_active()
 completed = queue_service.list_completed()
 failed = queue_service.list_failed()
-all_tasks = queue_service.list_all()
+cancelled = queue_service.list_cancelled()
+all_tasks = queue_service.list_tasks()  # All tasks
 
 # Get status summary
 status = queue_service.status()
 # Returns: {"pending": 2, "active": 1, "completed": 15, "failed": 0, "total": 18}
 ```
+
+### Cleanup Methods
+
+```python
+# Remove specific tasks by ID (permanently deletes from queue)
+count = queue_service.clear_tasks([task_id1, task_id2])
+
+# Clear all completed tasks
+count = queue_service.clear_completed()
+
+# Clear all failed tasks
+count = queue_service.clear_failed()
+```
+
+**Note**: `cancel()` marks a task as cancelled but keeps it in the queue. Use `clear_tasks()` to permanently remove tasks from the queue.
 
 ### Metadata Methods
 

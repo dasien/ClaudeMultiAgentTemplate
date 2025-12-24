@@ -146,10 +146,10 @@ class TestQueueService:
         assert cancelled.status == TaskStatus.CANCELLED
 
         pending = queue_service.list_pending()
-        failed = queue_service.list_failed()
+        cancelled_list = queue_service.list_cancelled()
 
         assert len(pending) == 0
-        assert len(failed) == 1
+        assert len(cancelled_list) == 1
 
     def test_cancel_active_task(self, queue_service):
         """Test cancelling an active task."""
@@ -166,10 +166,10 @@ class TestQueueService:
         assert cancelled.status == TaskStatus.CANCELLED
 
         active = queue_service.list_active()
-        failed = queue_service.list_failed()
+        cancelled_list = queue_service.list_cancelled()
 
         assert len(active) == 0
-        assert len(failed) == 1
+        assert len(cancelled_list) == 1
 
     def test_rerun_completed_task(self, queue_service):
         """Test re-running a completed task."""
@@ -231,11 +231,11 @@ class TestQueueService:
 
         pending = queue_service.list_pending()
         active = queue_service.list_active()
-        failed = queue_service.list_failed()
+        cancelled = queue_service.list_cancelled()
 
         assert len(pending) == 0
         assert len(active) == 0
-        assert len(failed) == 2
+        assert len(cancelled) == 2
 
     def test_update_single_metadata(self, queue_service):
         """Test updating a single metadata field."""
@@ -329,3 +329,73 @@ class TestQueueServiceEdgeCases:
 
         result = queue_service.rerun(task.id)
         assert result is None  # Can only rerun completed/failed
+
+    def test_clear_tasks_single(self, queue_service):
+        """Test clearing a single task by ID."""
+        task1 = queue_service.add(
+            title="Test 1", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+        task2 = queue_service.add(
+            title="Test 2", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+
+        count = queue_service.clear_tasks([task1.id])
+
+        assert count == 1
+        assert queue_service.get(task1.id) is None
+        assert queue_service.get(task2.id) is not None
+
+    def test_clear_tasks_multiple(self, queue_service):
+        """Test clearing multiple tasks by ID."""
+        task1 = queue_service.add(
+            title="Test 1", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+        task2 = queue_service.add(
+            title="Test 2", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+        task3 = queue_service.add(
+            title="Test 3", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+
+        count = queue_service.clear_tasks([task1.id, task3.id])
+
+        assert count == 2
+        assert queue_service.get(task1.id) is None
+        assert queue_service.get(task2.id) is not None
+        assert queue_service.get(task3.id) is None
+
+    def test_clear_tasks_empty_list(self, queue_service):
+        """Test clearing with empty list does nothing."""
+        task = queue_service.add(
+            title="Test", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+
+        count = queue_service.clear_tasks([])
+
+        assert count == 0
+        assert queue_service.get(task.id) is not None
+
+    def test_clear_tasks_nonexistent(self, queue_service):
+        """Test clearing nonexistent task IDs."""
+        task = queue_service.add(
+            title="Test", assigned_agent="architect",
+            priority="normal", task_type="analysis",
+            source_file="test.md", description="Test",
+        )
+
+        count = queue_service.clear_tasks(["nonexistent_id"])
+
+        assert count == 0
+        assert queue_service.get(task.id) is not None

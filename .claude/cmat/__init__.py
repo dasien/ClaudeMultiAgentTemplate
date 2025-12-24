@@ -13,7 +13,7 @@ _package_dir = Path(__file__).parent.parent
 if str(_package_dir) not in sys.path:
     sys.path.insert(0, str(_package_dir))
 
-__version__ = "8.5.0"
+__version__ = "8.6.0"
 from .cmat import CMAT
 from .utils import (
     find_project_root,

@@ -2,7 +2,7 @@
 
 Complete reference for the CMAT command-line interface.
 
-**Version**: 8.5.0
+**Version**: 8.6.0
 
 ## Overview
 
@@ -181,7 +181,7 @@ Queue Status:
 List tasks by status.
 
 ```bash
-python -m cmat queue list [pending|active|completed|failed|all]
+python -m cmat queue list [pending|active|completed|failed|cancelled|all]
 ```
 
 **Arguments**:
@@ -189,6 +189,7 @@ python -m cmat queue list [pending|active|completed|failed|all]
 - `active` - Currently running tasks
 - `completed` - Successfully finished tasks
 - `failed` - Tasks that failed
+- `cancelled` - Tasks that were cancelled
 - `all` - All tasks (default)
 
 **Example**:
@@ -264,7 +265,7 @@ python -m cmat queue fail task_1702345678_12345 "Build failed: missing dependenc
 
 ### queue cancel
 
-Cancel a pending or active task.
+Cancel a pending or active task. The task remains in the queue with `cancelled` status.
 
 ```bash
 python -m cmat queue cancel <task_id> [reason]
@@ -274,6 +275,8 @@ python -m cmat queue cancel <task_id> [reason]
 ```bash
 python -m cmat queue cancel task_1702345678_12345 "No longer needed"
 ```
+
+**Note**: To permanently remove tasks from the queue, use the `QueueService.clear_tasks()` API method. See [QUEUE_SYSTEM_GUIDE.md](QUEUE_SYSTEM_GUIDE.md) for details.
 
 ### queue rerun
 
