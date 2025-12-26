@@ -12,6 +12,7 @@ from .workflow_service import WorkflowService
 from .task_service import TaskService
 from .learnings_service import LearningsService, RetrievalContext
 from .model_service import ModelService
+from .tools_service import ToolsService
 
 __all__ = [
     "QueueService",
@@ -22,4 +23,5 @@ __all__ = [
     "LearningsService",
     "RetrievalContext",
     "ModelService",
+    "ToolsService",
 ]

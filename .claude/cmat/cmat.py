@@ -15,6 +15,7 @@ from cmat.services.workflow_service import WorkflowService
 from cmat.services.task_service import TaskService
 from cmat.services.learnings_service import LearningsService
 from cmat.services.model_service import ModelService
+from cmat.services.tools_service import ToolsService
 from cmat.utils import find_project_root, ensure_directories, set_project_root
 
 
@@ -127,6 +128,10 @@ class CMAT:
             data_dir=str(base / ".claude/data"),
         )
 
+        self.tools = ToolsService(
+            data_dir=str(base / ".claude/data"),
+        )
+
         # Wire up service dependencies
         self.tasks.set_services(
             agent=self.agents,
@@ -162,6 +167,7 @@ class CMAT:
         self.skills.invalidate_cache()
         self.workflow.invalidate_cache()
         self.models.invalidate_cache()
+        self.tools.invalidate_cache()
 
     @property
     def version(self) -> str:

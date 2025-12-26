@@ -109,6 +109,29 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
     with open(temp_dir / ".claude/data/learnings.json", "w") as f:
         json.dump({"version": "1.0.0", "learnings": []}, f)
 
+    # Create tools.json with default tools
+    tools_data = {
+        "claude_code_tools": [
+            {
+                "name": "Read",
+                "display_name": "Read Files",
+                "description": "Read file contents from filesystem",
+            },
+            {
+                "name": "Write",
+                "display_name": "Write Files",
+                "description": "Create or overwrite files",
+            },
+            {
+                "name": "Bash",
+                "display_name": "Execute Shell Commands",
+                "description": "Execute shell commands and scripts",
+            },
+        ]
+    }
+    with open(temp_dir / ".claude/data/tools.json", "w") as f:
+        json.dump(tools_data, f)
+
     # Create models.json with default model
     models_data = {
         "models": {

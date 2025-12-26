@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cmat"
-version = "8.7.0"
+version = "8.8.0"
 description = "Claude Multi-Agent Template - A Python framework for orchestrating multi-agent workflows using Claude"
 readme = "README.md"
 requires-python = ">=3.10"

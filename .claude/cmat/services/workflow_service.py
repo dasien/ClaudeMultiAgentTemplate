@@ -742,6 +742,10 @@ class WorkflowService:
             required_output_filename=required_output,
         )
 
+        # Store log file path in task metadata
+        if result.log_file:
+            self._queue_service.update_metadata(task_id, {"log_file_path": result.log_file})
+
         # Complete or fail based on result
         if result.success and result.status:
             self._queue_service.complete(task_id, result.status)

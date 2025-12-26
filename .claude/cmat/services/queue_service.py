@@ -605,3 +605,15 @@ class QueueService:
         """Inject service dependencies."""
         if task_service:
             self._task_service = task_service
+
+    def get_operations_log_path(self) -> Path:
+        """
+        Get the path to the queue operations log file.
+
+        Returns:
+            Path to queue_operations.log
+        """
+        # Log file is in .claude/logs/ relative to queue file's parent
+        # queue_file is at .claude/data/task_queue.json
+        logs_dir = self.queue_file.parent.parent / "logs"
+        return logs_dir / "queue_operations.log"

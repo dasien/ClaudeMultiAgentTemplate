@@ -30,6 +30,7 @@ class TaskMetadata:
     # Execution context
     process_pid: Optional[str] = None
     session_id: Optional[str] = None
+    log_file_path: Optional[str] = None  # Path to execution log file
 
     # Model selection
     requested_model: Optional[str] = None  # Model requested for this task execution
@@ -60,6 +61,7 @@ class TaskMetadata:
             "workflow_step": self.workflow_step,
             "process_pid": self.process_pid,
             "session_id": self.session_id,
+            "log_file_path": self.log_file_path,
             "requested_model": self.requested_model,
             "cost_input_tokens": self.cost_input_tokens,
             "cost_output_tokens": self.cost_output_tokens,
@@ -86,6 +88,7 @@ class TaskMetadata:
             workflow_step=data.get("workflow_step"),
             process_pid=data.get("process_pid"),
             session_id=data.get("session_id"),
+            log_file_path=data.get("log_file_path"),
             requested_model=data.get("requested_model"),
             cost_input_tokens=data.get("cost_input_tokens"),
             cost_output_tokens=data.get("cost_output_tokens"),

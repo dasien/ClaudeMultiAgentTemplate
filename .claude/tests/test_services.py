@@ -16,7 +16,9 @@ from cmat.services import (
     LearningsService,
     RetrievalContext,
     ModelService,
+    ToolsService,
 )
+from cmat.models import Tool
 
 
 class TestQueueService:
@@ -826,6 +828,192 @@ class TestModelService:
             },
         }
         with open(models_file, "w") as f:
+            json.dump(data, f)
+
+        # Without invalidation, cache returns old count
+        assert len(service.list_all()) == initial_count
+
+        # After invalidation, returns new count
+        service.invalidate_cache()
+        assert len(service.list_all()) == initial_count + 1
+
+
+class TestToolsService:
+    """Tests for ToolsService."""
+
+    def test_init_creates_tools_file(self, cmat_test_env):
+        """Test that init creates tools.json if missing."""
+        data_dir = cmat_test_env / ".claude/data"
+        tools_file = data_dir / "tools.json"
+        if tools_file.exists():
+            tools_file.unlink()
+
+        service = ToolsService(str(data_dir))
+        # Trigger file creation by loading
+        service.list_all()
+        assert tools_file.exists()
+
+    def test_list_all(self, cmat_test_env):
+        """Test listing all tools."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+        tools = service.list_all()
+
+        # Should have default tools from the fixture (Read, Write, Bash)
+        assert len(tools) == 3
+        assert all(isinstance(t, Tool) for t in tools)
+        tool_names = [t.name for t in tools]
+        assert "Read" in tool_names
+        assert "Write" in tool_names
+        assert "Bash" in tool_names
+
+    def test_get_tool(self, cmat_test_env):
+        """Test getting a tool by name."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        tool = service.get("Read")
+        assert tool is not None
+        assert tool.name == "Read"
+        assert tool.display_name == "Read Files"
+
+    def test_get_nonexistent_tool(self, cmat_test_env):
+        """Test getting a tool that doesn't exist."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+        assert service.get("NonExistentTool") is None
+
+    def test_add_tool(self, cmat_test_env):
+        """Test adding a new tool."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        new_tool = Tool(
+            name="Edit",
+            display_name="Edit Files",
+            description="Make targeted edits to existing files",
+        )
+
+        tool_name = service.add(new_tool)
+        assert tool_name == "Edit"
+
+        # Verify it was added
+        retrieved = service.get("Edit")
+        assert retrieved is not None
+        assert retrieved.display_name == "Edit Files"
+
+    def test_add_duplicate_tool(self, cmat_test_env):
+        """Test that adding duplicate tool raises error."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        # Try to add tool with existing name
+        duplicate = Tool(
+            name="Read",
+            display_name="Duplicate Read",
+            description="Duplicate tool",
+        )
+
+        with pytest.raises(ValueError, match="already exists"):
+            service.add(duplicate)
+
+    def test_update_tool(self, cmat_test_env):
+        """Test updating an existing tool."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        # Get existing tool
+        tool = service.get("Read")
+        assert tool is not None
+
+        # Modify and update
+        tool.description = "Updated description"
+        result = service.update(tool)
+        assert result is True
+
+        # Verify update
+        service.invalidate_cache()
+        updated = service.get("Read")
+        assert updated.description == "Updated description"
+
+    def test_update_nonexistent_tool(self, cmat_test_env):
+        """Test updating a tool that doesn't exist."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        fake_tool = Tool(
+            name="FakeTool",
+            display_name="Fake Tool",
+            description="Doesn't exist",
+        )
+
+        result = service.update(fake_tool)
+        assert result is False
+
+    def test_delete_tool(self, cmat_test_env):
+        """Test deleting a tool."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        # Add a tool to delete
+        new_tool = Tool(
+            name="ToDelete",
+            display_name="To Delete",
+            description="Will be deleted",
+        )
+        service.add(new_tool)
+
+        # Delete it
+        result = service.delete("ToDelete")
+        assert result is True
+
+        # Verify deletion
+        assert service.get("ToDelete") is None
+
+    def test_delete_nonexistent_tool(self, cmat_test_env):
+        """Test deleting a tool that doesn't exist."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+        result = service.delete("NonExistent")
+        assert result is False
+
+    def test_get_tools_for_agent(self, cmat_test_env):
+        """Test getting tools assigned to an agent."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        # Get tools by names (like an agent's tools list)
+        tools = service.get_tools_for_agent(["Read", "Write"])
+        assert len(tools) == 2
+        tool_names = [t.name for t in tools]
+        assert "Read" in tool_names
+        assert "Write" in tool_names
+
+    def test_get_tools_for_agent_with_invalid(self, cmat_test_env):
+        """Test getting tools with some invalid names."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        # Include one invalid tool name
+        tools = service.get_tools_for_agent(["Read", "InvalidTool", "Write"])
+        assert len(tools) == 2  # Only valid tools returned
+
+    def test_get_all_tool_names(self, cmat_test_env):
+        """Test getting all tool names."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        names = service.get_all_tool_names()
+        assert len(names) == 3
+        assert "Read" in names
+        assert "Write" in names
+        assert "Bash" in names
+
+    def test_cache_invalidation(self, cmat_test_env):
+        """Test that cache invalidation works."""
+        service = ToolsService(str(cmat_test_env / ".claude/data"))
+
+        # Load initial state
+        initial_count = len(service.list_all())
+
+        # Manually add to file
+        tools_file = cmat_test_env / ".claude/data/tools.json"
+        with open(tools_file) as f:
+            data = json.load(f)
+        data["claude_code_tools"].append({
+            "name": "ManualTool",
+            "display_name": "Manual Tool",
+            "description": "Manually added",
+        })
+        with open(tools_file, "w") as f:
             json.dump(data, f)
 
         # Without invalidation, cache returns old count
