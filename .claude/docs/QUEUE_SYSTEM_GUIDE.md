@@ -2,7 +2,7 @@
 
 Complete guide to the task queue system in CMAT.
 
-**Version**: 8.6.1
+**Version**: 8.7.0
 
 ## Overview
 

@@ -2,7 +2,7 @@
 
 Complete reference for the CMAT command-line interface.
 
-**Version**: 8.6.1
+**Version**: 8.7.0
 
 ## Overview
 
@@ -150,6 +150,133 @@ Workflow 'new-feature-development' is valid.
 Validation errors for 'new-feature-development':
   - Step 0: Agent 'unknown-agent' not found
   - Step 2: Missing required_output
+```
+
+### workflow add
+
+Create a new workflow template.
+
+```bash
+python -m cmat workflow add <id> <name> <description>
+```
+
+**Example**:
+```bash
+python -m cmat workflow add api-endpoint "API Endpoint" "Development workflow for REST endpoints"
+```
+
+### workflow remove
+
+Delete a workflow template.
+
+```bash
+python -m cmat workflow remove <id>
+```
+
+**Example**:
+```bash
+python -m cmat workflow remove api-endpoint
+```
+
+### workflow update
+
+Update workflow metadata (name or description).
+
+```bash
+python -m cmat workflow update <id> [--name <name>] [--description <desc>]
+```
+
+**Example**:
+```bash
+python -m cmat workflow update api-endpoint --name "REST API Development" --description "Updated description"
+```
+
+### workflow add-step
+
+Add a step to a workflow.
+
+```bash
+python -m cmat workflow add-step <workflow_id> <agent> <input> <output> [--model <model>] [--index <n>]
+```
+
+**Arguments**:
+- `workflow_id` - ID of the workflow to modify
+- `agent` - Agent to assign (e.g., `implementer`)
+- `input` - Input path pattern (e.g., `enhancements/{enhancement_name}/{enhancement_name}.md`)
+- `output` - Required output filename (e.g., `analysis.md`)
+- `--model <model>` - (Optional) Claude model for this step
+- `--index <n>` - (Optional) Position to insert (appends if not specified)
+
+**Example**:
+```bash
+python -m cmat workflow add-step api-endpoint requirements-analyst "enhancements/{enhancement_name}/{enhancement_name}.md" "requirements.md"
+
+# Add with specific model
+python -m cmat workflow add-step api-endpoint architect "{previous_step}/required_output/" "design.md" --model claude-opus-4-20250514
+```
+
+### workflow remove-step
+
+Remove a step from a workflow.
+
+```bash
+python -m cmat workflow remove-step <workflow_id> <step_index>
+```
+
+**Example**:
+```bash
+python -m cmat workflow remove-step api-endpoint 2
+```
+
+### workflow update-step
+
+Update an existing workflow step.
+
+```bash
+python -m cmat workflow update-step <workflow_id> <step_index> [--agent <a>] [--input <i>] [--output <o>] [--model <m>]
+```
+
+**Example**:
+```bash
+python -m cmat workflow update-step api-endpoint 0 --model claude-sonnet-4-20250514
+```
+
+### workflow add-transition
+
+Add a status transition to a workflow step.
+
+```bash
+python -m cmat workflow add-transition <workflow_id> <step_index> <status> [--next-step <agent>] [--no-auto-chain] [--description <desc>]
+```
+
+**Arguments**:
+- `workflow_id` - ID of the workflow to modify
+- `step_index` - Index of the step to add transition to
+- `status` - Status name (e.g., `READY_FOR_DEVELOPMENT`)
+- `--next-step <agent>` - (Optional) Next agent to chain to (omit for workflow end)
+- `--no-auto-chain` - Halt workflow on this status (for statuses like BLOCKED)
+- `--description <desc>` - (Optional) Description of this transition
+
+**Example**:
+```bash
+# Auto-chain to next agent
+python -m cmat workflow add-transition api-endpoint 0 READY_FOR_DEVELOPMENT --next-step architect
+
+# Halt status (no auto-chain)
+python -m cmat workflow add-transition api-endpoint 0 BLOCKED --no-auto-chain --description "Cannot proceed"
+```
+
+### workflow remove-transition
+
+Remove a status transition from a workflow step.
+
+```bash
+python -m cmat workflow remove-transition <workflow_id> <step_index> <status>
+```
+
+**Example**:
+```bash
+python -m cmat workflow remove-transition api-endpoint 0 BLOCKED
 ```
 
 ---

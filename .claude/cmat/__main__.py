@@ -9,6 +9,14 @@ Commands:
     workflow list                         List all workflows
     workflow show <name>                  Show workflow details
     workflow validate <name>              Validate a workflow template
+    workflow add <id> <name> <desc>       Create a new workflow
+    workflow remove <id>                  Delete a workflow
+    workflow update <id> [--name] [--description]
+    workflow add-step <wf> <agent> <in> <out> [--model] [--index]
+    workflow remove-step <wf> <index>     Remove a step
+    workflow update-step <wf> <index> [--agent] [--input] [--output] [--model]
+    workflow add-transition <wf> <step> <status> [--next-step] [--no-auto-chain]
+    workflow remove-transition <wf> <step> <status>
 
     queue status                          Show queue status
     queue list [pending|active|completed|failed|all]
@@ -50,6 +58,9 @@ from typing import Optional
 
 from cmat import CMAT, __version__
 from cmat.models import Learning
+from cmat.models.workflow_template import WorkflowTemplate
+from cmat.models.workflow_step import WorkflowStep
+from cmat.models.step_transition import StepTransition
 
 
 def print_error(msg: str) -> None:
@@ -73,7 +84,9 @@ def print_learning(learning: Learning, verbose: bool = False) -> None:
 def cmd_workflow(cmat: CMAT, args: list[str]) -> int:
     """Handle workflow subcommands."""
     if not args:
-        print("Usage: cmat workflow <start|list|show|validate> [options]")
+        print("Usage: cmat workflow <command> [options]")
+        print("Commands: start, list, show, validate, add, remove, update,")
+        print("          add-step, remove-step, update-step, add-transition, remove-transition")
         return 1
 
     subcmd = args[0]
@@ -177,6 +190,280 @@ def cmd_workflow(cmat: CMAT, args: list[str]) -> int:
         else:
             print(f"Workflow '{workflow_name}' is valid.")
             return 0
+
+    # === Workflow CRUD ===
+    elif subcmd == "add":
+        if len(args) < 4:
+            print_error("Usage: cmat workflow add <id> <name> <description>")
+            return 1
+
+        workflow_id = args[1]
+        name = args[2]
+        description = args[3]
+
+        # Check if workflow already exists
+        if cmat.workflow.get(workflow_id):
+            print_error(f"Workflow already exists: {workflow_id}")
+            return 1
+
+        template = WorkflowTemplate(
+            id=workflow_id,
+            name=name,
+            description=description,
+            steps=[],
+        )
+
+        result = cmat.workflow.add(template)
+        print(f"Workflow created: {result.id}")
+        print(f"  Name: {result.name}")
+        print(f"  Description: {result.description}")
+        print(f"  Steps: 0 (use 'workflow add-step' to add steps)")
+        return 0
+
+    elif subcmd == "remove":
+        if len(args) < 2:
+            print_error("Usage: cmat workflow remove <id>")
+            return 1
+
+        workflow_id = args[1]
+
+        if cmat.workflow.delete(workflow_id):
+            print(f"Workflow removed: {workflow_id}")
+            return 0
+        else:
+            print_error(f"Workflow not found: {workflow_id}")
+            return 1
+
+    elif subcmd == "update":
+        if len(args) < 2:
+            print_error("Usage: cmat workflow update <id> [--name <name>] [--description <desc>]")
+            return 1
+
+        workflow_id = args[1]
+        wf = cmat.workflow.get(workflow_id)
+
+        if not wf:
+            print_error(f"Workflow not found: {workflow_id}")
+            return 1
+
+        # Parse optional arguments
+        if "--name" in args:
+            idx = args.index("--name")
+            if idx + 1 < len(args):
+                wf.name = args[idx + 1]
+
+        if "--description" in args:
+            idx = args.index("--description")
+            if idx + 1 < len(args):
+                wf.description = args[idx + 1]
+
+        result = cmat.workflow.update(wf)
+        if result:
+            print(f"Workflow updated: {result.id}")
+            print(f"  Name: {result.name}")
+            print(f"  Description: {result.description}")
+            return 0
+        else:
+            print_error(f"Failed to update workflow: {workflow_id}")
+            return 1
+
+    # === Step CRUD ===
+    elif subcmd == "add-step":
+        if len(args) < 5:
+            print_error("Usage: cmat workflow add-step <workflow_id> <agent> <input> <output> [--model <model>] [--index <n>]")
+            return 1
+
+        workflow_id = args[1]
+        agent = args[2]
+        input_path = args[3]
+        required_output = args[4]
+
+        # Parse optional arguments
+        model = None
+        if "--model" in args:
+            idx = args.index("--model")
+            if idx + 1 < len(args):
+                model = args[idx + 1]
+
+        index = None
+        if "--index" in args:
+            idx = args.index("--index")
+            if idx + 1 < len(args):
+                try:
+                    index = int(args[idx + 1])
+                except ValueError:
+                    print_error("Index must be an integer")
+                    return 1
+
+        step = WorkflowStep(
+            agent=agent,
+            input=input_path,
+            required_output=required_output,
+            on_status={},
+            model=model,
+        )
+
+        result = cmat.workflow.add_step(workflow_id, step, index)
+        if result:
+            step_idx = index if index is not None else len(result.steps) - 1
+            print(f"Step added to workflow '{workflow_id}' at index {step_idx}")
+            print(f"  Agent: {agent}")
+            print(f"  Input: {input_path}")
+            print(f"  Output: {required_output}")
+            if model:
+                print(f"  Model: {model}")
+            return 0
+        else:
+            print_error(f"Failed to add step. Workflow not found: {workflow_id}")
+            return 1
+
+    elif subcmd == "remove-step":
+        if len(args) < 3:
+            print_error("Usage: cmat workflow remove-step <workflow_id> <step_index>")
+            return 1
+
+        workflow_id = args[1]
+        try:
+            step_index = int(args[2])
+        except ValueError:
+            print_error("Step index must be an integer")
+            return 1
+
+        result = cmat.workflow.remove_step(workflow_id, step_index)
+        if result:
+            print(f"Step {step_index} removed from workflow '{workflow_id}'")
+            print(f"  Remaining steps: {len(result.steps)}")
+            return 0
+        else:
+            print_error(f"Failed to remove step. Workflow or step not found.")
+            return 1
+
+    elif subcmd == "update-step":
+        if len(args) < 3:
+            print_error("Usage: cmat workflow update-step <workflow_id> <step_index> [--agent <a>] [--input <i>] [--output <o>] [--model <m>]")
+            return 1
+
+        workflow_id = args[1]
+        try:
+            step_index = int(args[2])
+        except ValueError:
+            print_error("Step index must be an integer")
+            return 1
+
+        wf = cmat.workflow.get(workflow_id)
+        if not wf:
+            print_error(f"Workflow not found: {workflow_id}")
+            return 1
+
+        if step_index < 0 or step_index >= len(wf.steps):
+            print_error(f"Step index out of range: {step_index} (workflow has {len(wf.steps)} steps)")
+            return 1
+
+        step = wf.steps[step_index]
+
+        # Parse optional arguments
+        if "--agent" in args:
+            idx = args.index("--agent")
+            if idx + 1 < len(args):
+                step.agent = args[idx + 1]
+
+        if "--input" in args:
+            idx = args.index("--input")
+            if idx + 1 < len(args):
+                step.input = args[idx + 1]
+
+        if "--output" in args:
+            idx = args.index("--output")
+            if idx + 1 < len(args):
+                step.required_output = args[idx + 1]
+
+        if "--model" in args:
+            idx = args.index("--model")
+            if idx + 1 < len(args):
+                step.model = args[idx + 1]
+
+        result = cmat.workflow.update(wf)
+        if result:
+            print(f"Step {step_index} updated in workflow '{workflow_id}'")
+            print(f"  Agent: {step.agent}")
+            print(f"  Input: {step.input}")
+            print(f"  Output: {step.required_output}")
+            if step.model:
+                print(f"  Model: {step.model}")
+            return 0
+        else:
+            print_error(f"Failed to update step")
+            return 1
+
+    # === Transition CRUD ===
+    elif subcmd == "add-transition":
+        if len(args) < 4:
+            print_error("Usage: cmat workflow add-transition <workflow_id> <step_index> <status> [--next-step <agent>] [--no-auto-chain] [--description <desc>]")
+            return 1
+
+        workflow_id = args[1]
+        try:
+            step_index = int(args[2])
+        except ValueError:
+            print_error("Step index must be an integer")
+            return 1
+        status = args[3]
+
+        # Parse optional arguments
+        next_step = None
+        if "--next-step" in args:
+            idx = args.index("--next-step")
+            if idx + 1 < len(args):
+                next_step = args[idx + 1]
+
+        auto_chain = "--no-auto-chain" not in args
+
+        description = None
+        if "--description" in args:
+            idx = args.index("--description")
+            if idx + 1 < len(args):
+                description = args[idx + 1]
+
+        transition = StepTransition(
+            name=status,
+            next_step=next_step,
+            auto_chain=auto_chain,
+            description=description,
+        )
+
+        result = cmat.workflow.add_transition(workflow_id, step_index, status, transition)
+        if result:
+            print(f"Transition added to step {step_index} in workflow '{workflow_id}'")
+            print(f"  Status: {status}")
+            print(f"  Next Step: {next_step or '(end)'}")
+            print(f"  Auto Chain: {auto_chain}")
+            if description:
+                print(f"  Description: {description}")
+            return 0
+        else:
+            print_error(f"Failed to add transition. Workflow or step not found.")
+            return 1
+
+    elif subcmd == "remove-transition":
+        if len(args) < 4:
+            print_error("Usage: cmat workflow remove-transition <workflow_id> <step_index> <status>")
+            return 1
+
+        workflow_id = args[1]
+        try:
+            step_index = int(args[2])
+        except ValueError:
+            print_error("Step index must be an integer")
+            return 1
+        status = args[3]
+
+        result = cmat.workflow.remove_transition(workflow_id, step_index, status)
+        if result:
+            print(f"Transition '{status}' removed from step {step_index} in workflow '{workflow_id}'")
+            return 0
+        else:
+            print_error(f"Failed to remove transition. Workflow, step, or status not found.")
+            return 1
 
     else:
         print_error(f"Unknown workflow command: {subcmd}")

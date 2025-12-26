@@ -2,7 +2,7 @@
 
 This guide walks you through running a demo enhancement using the CMAT multi-agent workflow system.
 
-**Version**: 8.6.1
+**Version**: 8.7.0
 
 ## Overview
 
