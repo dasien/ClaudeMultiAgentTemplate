@@ -2,7 +2,7 @@
 
 Complete reference for the CMAT command-line interface.
 
-**Version**: 8.6.0
+**Version**: 8.6.1
 
 ## Overview
 
@@ -502,7 +502,7 @@ python -m cmat models show <id>
 
 ### models set-default
 
-Set the default model for cost calculations.
+Set the default model for task execution and cost calculations. When tasks run without an explicit model (via `--model` flag or workflow step configuration), CMAT uses this default model.
 
 ```bash
 python -m cmat models set-default <id>

@@ -2,7 +2,7 @@
 
 How to adapt the Claude Multi-Agent Template for your specific project.
 
-**Version**: 8.2.0
+**Version**: 8.6.1
 
 ## Overview
 
@@ -406,8 +406,7 @@ python -m cmat queue status
 
 ## See Also
 
-- **[.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns
-- **[.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md](.claude/docs/WORKFLOW_TEMPLATE_GUIDE.md)** - Template management
-- **[.claude/docs/SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md)** - Skills system
-- **[.claude/docs/LEARNINGS_GUIDE.md](.claude/docs/LEARNINGS_GUIDE.md)** - RAG memory system
-- **[.claude/docs/CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md)** - Command reference
+- **[WORKFLOW_GUIDE.md](WORKFLOW_GUIDE.md)** - Workflow patterns
+- **[SKILLS_GUIDE.md](SKILLS_GUIDE.md)** - Skills system
+- **[LEARNINGS_GUIDE.md](LEARNINGS_GUIDE.md)** - RAG memory system
+- **[CLI_REFERENCE.md](CLI_REFERENCE.md)** - Command reference

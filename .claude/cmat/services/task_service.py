@@ -94,13 +94,16 @@ class TaskService:
         self._skills_service = None
         self._queue_service = None
         self._learnings_service = None
+        self._model_service = None
 
-    def set_services(self, agent=None, skills=None, queue=None, learnings=None) -> None:
+    def set_services(self, agent=None, skills=None, queue=None, learnings=None, models=None) -> None:
         """Inject service dependencies."""
         if agent:
             self._agent_service = agent
         if skills:
             self._skills_service = skills
+        if models:
+            self._model_service = models
         if queue:
             self._queue_service = queue
         if learnings:
@@ -452,6 +455,12 @@ class TaskService:
         start_time = time.time()
         start_timestamp = get_timestamp()
 
+        # Use CMAT default model if none specified
+        if not model and self._model_service:
+            default = self._model_service.get_default()
+            if default:
+                model = default.id
+
         # Write execution header to log
         with open(log_file, "w") as f:
             f.write("=== Starting Agent Execution ===\n")
@@ -478,7 +487,7 @@ class TaskService:
         env["CMAT_AGENT"] = agent_name
         env["CMAT_ENHANCEMENT"] = enhancement_name
 
-        # Build command with optional model
+        # Build command
         cmd = ["claude", "--permission-mode", "bypassPermissions"]
         if model:
             cmd.extend(["--model", model])

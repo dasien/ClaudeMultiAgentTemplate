@@ -133,6 +133,7 @@ class CMAT:
             skills=self.skills,
             queue=self.queue,
             learnings=self.learnings,
+            models=self.models,
         )
 
         self.workflow.set_services(

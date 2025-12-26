@@ -2,6 +2,8 @@
 
 This guide walks you through running a demo enhancement using the CMAT multi-agent workflow system.
 
+**Version**: 8.6.1
+
 ## Overview
 
 The `demo/` directory contains a simple calculator CLI application. The `enhancements/add-power-function/` directory contains an enhancement specification that adds a new `power` command to the calculator.
@@ -20,7 +22,7 @@ This demo shows how CMAT agents work together to implement a feature:
    ```bash
    cd .claude
    python -m cmat version
-   # Should show: CMAT version 8.2.0
+   # Should show: CMAT version 8.6.1
    ```
 
 2. Demo calculator working:
@@ -322,7 +324,7 @@ python -m cmat costs enhancement <name>         # Enhancement cost
 
 ## Next Steps
 
-- Read [QUICKSTART.md](QUICKSTART.md) for more CMAT basics
+- Read [README.md](README.md) for system overview and quick start
 - Read [.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for workflow patterns
 - Read [.claude/docs/CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md) for complete CLI reference
-- Read [CUSTOMIZATION.md](CUSTOMIZATION.md) to adapt CMAT to your project
+- Read [.claude/docs/CUSTOMIZATION_GUIDE.md](.claude/docs/CUSTOMIZATION_GUIDE.md) to adapt CMAT to your project
