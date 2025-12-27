@@ -244,6 +244,140 @@ class TestQueueService:
         status = service.status()
         assert status["total"] == 0
 
+    def test_start_nonexistent_task(self, cmat_test_env):
+        """Test starting a task that doesn't exist."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        result = service.start("nonexistent_task_id")
+        assert result is None
+
+    def test_complete_nonexistent_task(self, cmat_test_env):
+        """Test completing a task that doesn't exist."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        result = service.complete("nonexistent_task_id", "DONE")
+        assert result is None
+
+    def test_rerun_pending_task_fails(self, cmat_test_env):
+        """Test that rerun() doesn't work on pending tasks."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        result = service.rerun(task.id)
+        assert result is None  # Can only rerun completed/failed
+
+    def test_clear_tasks_single(self, cmat_test_env):
+        """Test clearing a single task by ID."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task1 = service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
+        task2 = service.add("Test 2", "architect", "normal", "analysis", "t.md", "Test")
+
+        count = service.clear_tasks([task1.id])
+
+        assert count == 1
+        assert service.get(task1.id) is None
+        assert service.get(task2.id) is not None
+
+    def test_clear_tasks_multiple(self, cmat_test_env):
+        """Test clearing multiple tasks by ID."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task1 = service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
+        task2 = service.add("Test 2", "architect", "normal", "analysis", "t.md", "Test")
+        task3 = service.add("Test 3", "architect", "normal", "analysis", "t.md", "Test")
+
+        count = service.clear_tasks([task1.id, task3.id])
+
+        assert count == 2
+        assert service.get(task1.id) is None
+        assert service.get(task2.id) is not None
+        assert service.get(task3.id) is None
+
+    def test_clear_tasks_empty_list(self, cmat_test_env):
+        """Test clearing with empty list does nothing."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+
+        count = service.clear_tasks([])
+
+        assert count == 0
+        assert service.get(task.id) is not None
+
+    def test_clear_tasks_nonexistent(self, cmat_test_env):
+        """Test clearing nonexistent task IDs."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+
+        count = service.clear_tasks(["nonexistent_id"])
+
+        assert count == 0
+        assert service.get(task.id) is not None
+
+    def test_list_by_agent(self, cmat_test_env):
+        """Test listing tasks by agent."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        service.add("Arch Task", "architect", "normal", "analysis", "t.md", "Test")
+        service.add("Impl Task", "implementer", "normal", "implementation", "t.md", "Test")
+
+        arch_tasks = service.list_by_agent("architect")
+        impl_tasks = service.list_by_agent("implementer")
+
+        assert len(arch_tasks) == 1
+        assert len(impl_tasks) == 1
+        assert arch_tasks[0].title == "Arch Task"
+
+    def test_agent_status_updates(self, cmat_test_env):
+        """Test that agent status is updated during task lifecycle."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+
+        service.start(task.id)
+        status = service.get_agent_status("architect")
+
+        assert status is not None
+        assert status["status"] == "active"
+        assert status["current_task"] == task.id
+
+        service.complete(task.id, "DONE")
+        status = service.get_agent_status("architect")
+
+        assert status["status"] == "idle"
+        assert status["current_task"] is None
+
+    def test_update_single_metadata(self, cmat_test_env):
+        """Test updating a single metadata field."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+
+        updated = service.update_single_metadata(task.id, "process_pid", "12345")
+
+        assert updated is not None
+        retrieved = service.get(task.id)
+        assert retrieved.metadata.process_pid == "12345"
+
+    def test_cancel_all(self, cmat_test_env):
+        """Test cancelling all tasks."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task1 = service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
+        task2 = service.add("Test 2", "implementer", "normal", "implementation", "t.md", "Test")
+        service.start(task2.id)
+
+        count = service.cancel_all("Bulk cancel")
+
+        assert count == 2
+        assert len(service.list_pending()) == 0
+        assert len(service.list_active()) == 0
+        assert len(service.list_cancelled()) == 2
+
+    def test_cancel_active_task(self, cmat_test_env):
+        """Test cancelling an active task."""
+        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
+        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        service.start(task.id)
+
+        cancelled = service.cancel(task.id, "User cancelled")
+
+        assert cancelled is not None
+        assert cancelled.status == TaskStatus.CANCELLED
+        assert len(service.list_active()) == 0
+        assert len(service.list_cancelled()) == 1
+
 
 class TestAgentService:
     """Tests for AgentService."""
@@ -1022,6 +1156,170 @@ class TestToolsService:
         # After invalidation, returns new count
         service.invalidate_cache()
         assert len(service.list_all()) == initial_count + 1
+
+
+class TestTaskServiceTemplates:
+    """Tests for TaskService template loading and prompt building."""
+
+    @pytest.fixture
+    def task_service(self, tmp_path):
+        """Create TaskService with test templates."""
+        templates_file = tmp_path / "templates.md"
+        templates_file.write_text("""# Task Prompt Defaults
+
+# ANALYSIS_TEMPLATE
+
+You are the **${agent}** agent.
+
+## Task: ${task_description}
+
+Enhancement: ${enhancement_name}
+
+${input_instruction}
+
+Output to: ${enhancement_dir}/${agent}/required_output/${required_output_filename}
+
+Task ID: ${task_id}
+
+Expected statuses: ${expected_statuses}
+
+===END_TEMPLATE===
+
+# IMPLEMENTATION_TEMPLATE
+
+You are ${agent} implementing: ${task_description}
+
+===END_TEMPLATE===
+""")
+        from cmat.services.task_service import TaskService
+        return TaskService(
+            templates_file=str(templates_file),
+            agents_dir=str(tmp_path / "agents"),
+            logs_dir=str(tmp_path / "logs"),
+        )
+
+    def test_load_templates(self, task_service):
+        """Test that templates are loaded correctly."""
+        templates = task_service._load_templates()
+        assert "analysis" in templates
+        assert "implementation" in templates
+        assert "${agent}" in templates["analysis"]
+
+    def test_get_template(self, task_service):
+        """Test getting a specific template."""
+        template = task_service.get_template("analysis")
+        assert template is not None
+        assert "${agent}" in template
+
+    def test_get_nonexistent_template(self, task_service):
+        """Test getting a template that doesn't exist."""
+        template = task_service.get_template("nonexistent")
+        assert template is None
+
+    def test_build_prompt_substitutions(self, task_service):
+        """Test that all variables are substituted in prompt."""
+        prompt = task_service.build_prompt(
+            agent_name="architect",
+            task_type="analysis",
+            task_id="task_123",
+            task_description="Analyze the feature",
+            source_file="requirements.md",
+            enhancement_name="new-feature",
+            enhancement_dir="enhancements/new-feature",
+            required_output_filename="analysis.md",
+            expected_statuses="- READY_FOR_DEVELOPMENT",
+        )
+        assert prompt is not None
+        assert "architect" in prompt
+        assert "Analyze the feature" in prompt
+        assert "new-feature" in prompt
+        assert "task_123" in prompt
+        assert "READY_FOR_DEVELOPMENT" in prompt
+        # Verify no unsubstituted variables remain
+        assert "${" not in prompt
+
+    def test_build_prompt_invalid_type(self, task_service):
+        """Test building prompt with invalid task type."""
+        prompt = task_service.build_prompt(
+            agent_name="architect",
+            task_type="invalid_type",
+            task_id="task_123",
+            task_description="Test",
+        )
+        assert prompt is None
+
+
+class TestTaskServiceInputInstruction:
+    """Tests for TaskService input instruction building."""
+
+    @pytest.fixture
+    def task_service(self, tmp_path):
+        """Create TaskService."""
+        templates_file = tmp_path / "templates.md"
+        templates_file.write_text("""# ANALYSIS_TEMPLATE
+${input_instruction}
+===END_TEMPLATE===
+""")
+        from cmat.services.task_service import TaskService
+        return TaskService(templates_file=str(templates_file))
+
+    def test_input_instruction_no_file(self, task_service):
+        """Test input instruction when no source file."""
+        instruction = task_service._build_input_instruction(None)
+        assert "task description" in instruction.lower()
+
+    def test_input_instruction_null_string(self, task_service):
+        """Test input instruction with 'null' string."""
+        instruction = task_service._build_input_instruction("null")
+        assert "task description" in instruction.lower()
+
+    def test_input_instruction_file(self, task_service, tmp_path):
+        """Test input instruction for a file."""
+        test_file = tmp_path / "input.md"
+        test_file.write_text("test content")
+        instruction = task_service._build_input_instruction(str(test_file))
+        assert "Read and process this file" in instruction
+
+    def test_input_instruction_directory(self, task_service, tmp_path):
+        """Test input instruction for a directory."""
+        test_dir = tmp_path / "inputs"
+        test_dir.mkdir()
+        instruction = task_service._build_input_instruction(str(test_dir))
+        assert "directory" in instruction.lower()
+
+
+class TestExecutionResult:
+    """Tests for ExecutionResult dataclass."""
+
+    def test_execution_result_creation(self):
+        """Test creating an ExecutionResult."""
+        from cmat.services.task_service import ExecutionResult
+        result = ExecutionResult(
+            success=True,
+            status="READY_FOR_TESTING",
+            exit_code=0,
+            output_dir="/path/to/output",
+            log_file="/path/to/log",
+            duration_seconds=120,
+            pid=12345,
+        )
+        assert result.success is True
+        assert result.status == "READY_FOR_TESTING"
+        assert result.exit_code == 0
+        assert result.pid == 12345
+
+    def test_execution_result_default_pid(self):
+        """Test ExecutionResult with default pid."""
+        from cmat.services.task_service import ExecutionResult
+        result = ExecutionResult(
+            success=False,
+            status=None,
+            exit_code=1,
+            output_dir="/path",
+            log_file="/log",
+            duration_seconds=0,
+        )
+        assert result.pid is None
 
 
 class TestTaskServiceStatusExtraction:

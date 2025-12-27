@@ -1,1 +1,0 @@
-"""CMAT test suite."""
