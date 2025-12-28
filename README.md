@@ -2,7 +2,7 @@
 
 A workflow-based multi-agent development system using Claude Code. This template provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
 
-**Version**: 8.8.0
+**Version**: 9.0.0
 
 ---
 

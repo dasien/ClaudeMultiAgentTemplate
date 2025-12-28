@@ -161,14 +161,6 @@ class CMAT:
         """Ensure all required CMAT directories exist."""
         ensure_directories(self._base_path)
 
-    def invalidate_caches(self) -> None:
-        """Invalidate all service caches to force reload from disk."""
-        self.agents.invalidate_cache()
-        self.skills.invalidate_cache()
-        self.workflow.invalidate_cache()
-        self.models.invalidate_cache()
-        self.tools.invalidate_cache()
-
     @property
     def version(self) -> str:
         """Get the CMAT version."""

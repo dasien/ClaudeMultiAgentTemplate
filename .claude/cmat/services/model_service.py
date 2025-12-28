@@ -43,7 +43,6 @@ class ModelService:
             self._data_dir = Path(data_dir)
 
         self._models_file = self._data_dir / "models.json"
-        self._cache: Optional[dict] = None
 
     def _ensure_file_exists(self) -> None:
         """Ensure models.json exists with default content."""
@@ -74,29 +73,19 @@ class ModelService:
             }
             with open(self._models_file, "w") as f:
                 json.dump(default_data, f, indent=2)
-            self._cache = default_data
 
     def _load(self) -> dict:
-        """Load models.json and cache it."""
-        if self._cache is not None:
-            return self._cache
-
+        """Load models.json."""
         self._ensure_file_exists()
 
         with open(self._models_file) as f:
-            self._cache = json.load(f)
-        return self._cache
+            return json.load(f)
 
     def _save(self, data: dict) -> None:
-        """Save data to models.json and update cache."""
+        """Save data to models.json."""
         self._data_dir.mkdir(parents=True, exist_ok=True)
         with open(self._models_file, "w") as f:
             json.dump(data, f, indent=2)
-        self._cache = data
-
-    def invalidate_cache(self) -> None:
-        """Clear the cache to force reload from disk."""
-        self._cache = None
 
     # =========================================================================
     # CRUD Operations

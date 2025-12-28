@@ -32,13 +32,9 @@ class SkillsService:
             self.skills_dir = Path(skills_dir)
 
         self.skills_file = self.skills_dir / "skills.json"
-        self._skills_cache: Optional[dict[str, Skill]] = None
 
     def _load_skills(self) -> dict[str, Skill]:
         """Load all skills from skills.json."""
-        if self._skills_cache is not None:
-            return self._skills_cache
-
         if not self.skills_file.exists():
             return {}
 
@@ -50,7 +46,6 @@ class SkillsService:
             skill = Skill.from_dict(skill_data)
             skills[skill.skill_directory] = skill
 
-        self._skills_cache = skills
         return skills
 
     def _save_skills(self, skills: dict[str, Skill]) -> None:
@@ -63,12 +58,6 @@ class SkillsService:
         self.skills_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.skills_file, 'w') as f:
             json.dump(data, f, indent=2)
-
-        self._skills_cache = skills
-
-    def invalidate_cache(self) -> None:
-        """Invalidate the skills cache to force reload."""
-        self._skills_cache = None
 
     def list_all(self) -> list[Skill]:
         """List all available skills."""

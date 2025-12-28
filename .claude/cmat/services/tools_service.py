@@ -39,7 +39,6 @@ class ToolsService:
             self._data_dir = Path(data_dir)
 
         self._tools_file = self._data_dir / "tools.json"
-        self._cache: Optional[dict] = None
 
     def _ensure_file_exists(self) -> None:
         """Ensure tools.json exists with default content."""
@@ -91,29 +90,19 @@ class ToolsService:
             }
             with open(self._tools_file, "w") as f:
                 json.dump(default_data, f, indent=2)
-            self._cache = default_data
 
     def _load(self) -> dict:
-        """Load tools.json and cache it."""
-        if self._cache is not None:
-            return self._cache
-
+        """Load tools.json."""
         self._ensure_file_exists()
 
         with open(self._tools_file) as f:
-            self._cache = json.load(f)
-        return self._cache
+            return json.load(f)
 
     def _save(self, data: dict) -> None:
-        """Save data to tools.json and update cache."""
+        """Save data to tools.json."""
         self._data_dir.mkdir(parents=True, exist_ok=True)
         with open(self._tools_file, "w") as f:
             json.dump(data, f, indent=2)
-        self._cache = data
-
-    def invalidate_cache(self) -> None:
-        """Clear the cache to force reload from disk."""
-        self._cache = None
 
     # =========================================================================
     # CRUD Operations

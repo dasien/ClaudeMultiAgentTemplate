@@ -36,7 +36,6 @@ class WorkflowService:
     ):
         self.templates_file = Path(templates_file)
         self.enhancements_dir = Path(enhancements_dir)
-        self._templates_cache: Optional[dict[str, WorkflowTemplate]] = None
 
         # Services injected via set_services()
         self._queue_service: Optional["QueueService"] = None
@@ -45,9 +44,6 @@ class WorkflowService:
 
     def _load_templates(self) -> dict[str, WorkflowTemplate]:
         """Load all workflow templates."""
-        if self._templates_cache is not None:
-            return self._templates_cache
-
         if not self.templates_file.exists():
             return {}
 
@@ -59,7 +55,6 @@ class WorkflowService:
             template = WorkflowTemplate.from_dict(workflow_id, workflow_data)
             templates[workflow_id] = template
 
-        self._templates_cache = templates
         return templates
 
     def _save_templates(self, templates: dict[str, WorkflowTemplate]) -> None:
@@ -73,12 +68,6 @@ class WorkflowService:
         self.templates_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.templates_file, 'w') as f:
             json.dump(data, f, indent=2)
-
-        self._templates_cache = templates
-
-    def invalidate_cache(self) -> None:
-        """Invalidate the templates cache to force reload."""
-        self._templates_cache = None
 
     def list_all(self) -> list[WorkflowTemplate]:
         """List all available workflow templates."""

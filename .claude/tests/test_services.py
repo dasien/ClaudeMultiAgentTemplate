@@ -505,7 +505,6 @@ class TestSkillsService:
         with open(cmat_test_env / ".claude/skills/skills.json", "w") as f:
             json.dump(skills_data, f)
 
-        service.invalidate_cache()
         prompt = service.build_skills_prompt(["test-skill"])
 
         # Check for header and skill reference (not full content - uses Skill tool)
@@ -641,39 +640,6 @@ class TestLearningsService:
         assert "80%" in prompt
         assert "90%" in prompt
 
-    def test_cache_invalidation(self, cmat_test_env):
-        """Test that cache invalidation works."""
-        service = LearningsService(str(cmat_test_env / ".claude/data"))
-
-        learning = Learning.from_user_input("Test")
-        service.store(learning)
-
-        # Manually modify the file
-        learnings_file = cmat_test_env / ".claude/data/learnings.json"
-        with open(learnings_file) as f:
-            data = json.load(f)
-        data["learnings"].append({
-            "id": "manual_add",
-            "summary": "Manually added",
-            "content": "Content",
-            "tags": [],
-            "applies_to": [],
-            "source_type": "user_feedback",
-            "source_task_id": None,
-            "confidence": 0.5,
-            "created": "2025-01-01T00:00:00Z",
-        })
-        with open(learnings_file, "w") as f:
-            json.dump(data, f)
-
-        # Without invalidation, cache returns old count
-        assert service.count() == 1
-
-        # After invalidation, returns new count
-        service.invalidate_cache()
-        assert service.count() == 2
-
-
 class TestModelService:
     """Tests for ModelService."""
 
@@ -786,7 +752,6 @@ class TestModelService:
         assert result is True
 
         # Verify update
-        service.invalidate_cache()
         updated = service.get("claude-sonnet-4.5")
         assert updated.description == "Updated description"
 
@@ -854,7 +819,6 @@ class TestModelService:
         assert result is True
 
         # Verify
-        service.invalidate_cache()
         default = service.get_default()
         assert default.id == "new-default"
 
@@ -934,42 +898,6 @@ class TestModelService:
         #   300K cache_read * $0.30/M = $0.09
         #   Total = $1.89
         assert cost == pytest.approx(1.89, rel=0.01)
-
-    def test_cache_invalidation(self, cmat_test_env):
-        """Test that cache invalidation works."""
-        service = ModelService(str(cmat_test_env / ".claude/data"))
-
-        # Load initial state
-        initial_models = service.list_all()
-        initial_count = len(initial_models)
-
-        # Manually add to file
-        models_file = cmat_test_env / ".claude/data/models.json"
-        with open(models_file) as f:
-            data = json.load(f)
-        data["models"]["manual-model"] = {
-            "pattern": "*manual*",
-            "name": "Manual Model",
-            "description": "Manually added",
-            "max_tokens": 100000,
-            "pricing": {
-                "input": 1.0,
-                "output": 2.0,
-                "cache_write": 1.5,
-                "cache_read": 0.1,
-                "currency": "USD",
-                "per_tokens": 1000000,
-            },
-        }
-        with open(models_file, "w") as f:
-            json.dump(data, f)
-
-        # Without invalidation, cache returns old count
-        assert len(service.list_all()) == initial_count
-
-        # After invalidation, returns new count
-        service.invalidate_cache()
-        assert len(service.list_all()) == initial_count + 1
 
 
 class TestToolsService:
@@ -1060,7 +988,6 @@ class TestToolsService:
         assert result is True
 
         # Verify update
-        service.invalidate_cache()
         updated = service.get("Read")
         assert updated.description == "Updated description"
 
@@ -1130,32 +1057,6 @@ class TestToolsService:
         assert "Read" in names
         assert "Write" in names
         assert "Bash" in names
-
-    def test_cache_invalidation(self, cmat_test_env):
-        """Test that cache invalidation works."""
-        service = ToolsService(str(cmat_test_env / ".claude/data"))
-
-        # Load initial state
-        initial_count = len(service.list_all())
-
-        # Manually add to file
-        tools_file = cmat_test_env / ".claude/data/tools.json"
-        with open(tools_file) as f:
-            data = json.load(f)
-        data["claude_code_tools"].append({
-            "name": "ManualTool",
-            "display_name": "Manual Tool",
-            "description": "Manually added",
-        })
-        with open(tools_file, "w") as f:
-            json.dump(data, f)
-
-        # Without invalidation, cache returns old count
-        assert len(service.list_all()) == initial_count
-
-        # After invalidation, returns new count
-        service.invalidate_cache()
-        assert len(service.list_all()) == initial_count + 1
 
 
 class TestTaskServiceTemplates:

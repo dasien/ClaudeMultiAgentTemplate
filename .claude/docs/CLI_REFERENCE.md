@@ -2,7 +2,7 @@
 
 Complete reference for the CMAT command-line interface.
 
-**Version**: 8.8.0
+**Version**: 9.0.0
 
 ## Overview
 

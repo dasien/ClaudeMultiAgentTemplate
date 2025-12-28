@@ -35,13 +35,9 @@ class AgentService:
             self.agents_dir = Path(agents_dir)
 
         self.agents_file = self.agents_dir / "agents.json"
-        self._agents_cache: Optional[dict[str, Agent]] = None
 
     def _load_agents(self) -> dict[str, Agent]:
         """Load all agents from agents.json."""
-        if self._agents_cache is not None:
-            return self._agents_cache
-
         if not self.agents_file.exists():
             return {}
 
@@ -53,7 +49,6 @@ class AgentService:
             agent = Agent.from_dict(agent_data)
             agents[agent.agent_file] = agent
 
-        self._agents_cache = agents
         return agents
 
     def _save_agents(self, agents: dict[str, Agent]) -> None:
@@ -65,12 +60,6 @@ class AgentService:
         self.agents_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.agents_file, 'w') as f:
             json.dump(data, f, indent=2)
-
-        self._agents_cache = agents
-
-    def invalidate_cache(self) -> None:
-        """Invalidate the agents cache to force reload."""
-        self._agents_cache = None
 
     def list_all(self) -> list[Agent]:
         """List all available agents."""

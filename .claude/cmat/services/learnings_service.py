@@ -124,7 +124,6 @@ JSON response:"""
         else:
             self.learnings_file = Path(data_dir) / "learnings.json"
 
-        self._cache: Optional[dict[str, Learning]] = None
         self._ensure_storage_exists()
 
     def _ensure_storage_exists(self) -> None:
@@ -136,9 +135,6 @@ JSON response:"""
 
     def _read_learnings(self) -> dict[str, Learning]:
         """Read all learnings from storage."""
-        if self._cache is not None:
-            return self._cache
-
         if not self.learnings_file.exists():
             return {}
 
@@ -150,7 +146,6 @@ JSON response:"""
             learning = Learning.from_dict(learning_data)
             learnings[learning.id] = learning
 
-        self._cache = learnings
         return learnings
 
     def _write_learnings(self, learnings: dict[str, Learning]) -> None:
@@ -164,12 +159,6 @@ JSON response:"""
 
         with open(self.learnings_file, 'w') as f:
             json.dump(data, f, indent=2)
-
-        self._cache = learnings
-
-    def invalidate_cache(self) -> None:
-        """Invalidate the cache to force reload from disk."""
-        self._cache = None
 
     # =========================================================================
     # Storage Operations
