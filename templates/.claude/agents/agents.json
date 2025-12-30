@@ -1,0 +1,115 @@
+{"agents":[
+  {
+    "name": "Agent Architect",
+    "agent-file": "agent-architect",
+    "role": "AI Agent Design & Creation",
+    "tools": ["Read", "Write", "Glob", "Grep"],
+    "skills": ["agent-design", "system-architecture-patterns", "technical-writing"],
+    "description": "Designs and creates CMAT agent definitions with appropriate tools, skills, and personas",
+    "validations": {"metadata_required": true}
+  }
+,
+  {
+    "name": "Architect",
+    "agent-file": "architect",
+    "role": "technical_design",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"],
+    "skills": ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"],
+    "description": "Designs system architecture, creates technical specifications, and makes high-level design decisions",
+    "validations": {
+  "metadata_required": true
+}
+  }
+,
+  {
+    "name": "atlassian-integration-coordinator",
+    "agent-file": "atlassian-integration-coordinator",
+    "role": "integration",
+    "tools": [],
+    "skills": [],
+    "description": "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms",
+    "validations": {
+  "metadata_required": false
+}
+  }
+,
+  {
+    "name": "Code Reviewer",
+    "agent-file": "code-reviewer",
+    "role": "analysis",
+    "tools": ["Read", "Glob", "Grep", "WebSearch", "Edit"],
+    "skills": ["architecture-patterns", "code-refactoring"],
+    "description": "Reviews code changes for errors, inelegant solutions, security and performance issues, and good coding practices",
+    "validations": {"metadata_required": true}
+  }
+,
+  {
+    "name": "Documenter",
+    "agent-file": "documenter",
+    "role": "documentation",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"],
+    "skills": ["technical-writing", "api-documentation"],
+    "description": "Creates and maintains comprehensive project documentation, user guides, and API references",
+    "validations": {
+  "metadata_required": true
+}
+  }
+,
+  {
+    "name": "github-integration-coordinator",
+    "agent-file": "github-integration-coordinator",
+    "role": "integration",
+    "tools": [],
+    "skills": [],
+    "description": "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub",
+    "validations": {
+  "metadata_required": false
+}
+  }
+,
+  {
+    "name": "Implementer",
+    "agent-file": "implementer",
+    "role": "implementation",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
+    "skills": ["error-handling", "code-refactoring", "sql-development"],
+    "description": "Implements features based on architectural specifications, writes production-quality code",
+    "validations": {
+  "metadata_required": true
+}
+  }
+,
+  {
+    "name": "Product Analyst",
+    "agent-file": "product-analyst",
+    "role": "Enhancement Specification & Template Selection",
+    "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
+    "skills": ["requirements-elicitation"],
+    "description": "Synthesizes sources and creates structured enhancement specifications using project-standard templates",
+    "validations": {"metadata_required": true}
+  }
+,
+  {
+    "name": "Requirements Analyst",
+    "agent-file": "requirements-analyst",
+    "role": "analysis",
+    "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
+    "skills": ["requirements-elicitation", "user-story-writing", "bug-triage"],
+    "description": "Analyzes project requirements, creates implementation plans, and manages project scope",
+    "validations": {
+  "metadata_required": true
+}
+  }
+,
+  {
+    "name": "Tester",
+    "agent-file": "tester",
+    "role": "testing",
+    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
+    "skills": ["test-design-patterns", "test-coverage", "bug-triage"],
+    "description": "Designs and implements comprehensive test suites, validates functionality and quality",
+    "validations": {
+  "metadata_required": true
+}
+  }
+]}

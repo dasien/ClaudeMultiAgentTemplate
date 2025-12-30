@@ -2,14 +2,17 @@
 
 This guide walks you through running a demo enhancement using the CMAT multi-agent workflow system.
 
-**Version**: 9.0.0
+**Version**: 10.0.0
 
 ## Overview
 
-The `demo/` directory contains a simple calculator CLI application. The `enhancements/add-power-function/` directory contains an enhancement specification that adds a new `power` command to the calculator.
+The `demo/` directory contains a simple calculator CLI application. This demo shows how to:
 
-This demo shows how CMAT agents work together to implement a feature:
+1. Initialize CMAT in a project
+2. Create an enhancement
+3. Run a multi-agent workflow to implement a new feature
 
+The workflow uses these agents in sequence:
 1. **Requirements Analyst** - Analyzes the enhancement spec
 2. **Architect** - Designs the implementation approach
 3. **Implementer** - Writes the code
@@ -18,11 +21,9 @@ This demo shows how CMAT agents work together to implement a feature:
 
 ## Prerequisites
 
-1. CMAT installed and working:
+1. CMAT installed:
    ```bash
-   cd .claude
-   python -m cmat version
-   # Should show: CMAT version 8.6.1
+   pip install -e .
    ```
 
 2. Demo calculator working:
@@ -32,8 +33,6 @@ This demo shows how CMAT agents work together to implement a feature:
    ```
 
 ## The Demo Enhancement
-
-The enhancement spec is at `enhancements/add-power-function/add-power-function.md`.
 
 **Goal**: Add a `power` command to the calculator that computes exponentiation.
 
@@ -51,104 +50,93 @@ python demo/calculator.py power 2 3
 
 ## Running the Demo
 
-### Step 1: View Available Workflows
+### Step 1: Launch CMAT UI
 
 ```bash
-cd .claude
-python -m cmat workflow list
+cmat
 ```
 
-You should see `new-feature-development` among the available workflows.
+This opens the graphical UI for managing CMAT projects.
 
-### Step 2: View Workflow Details
+### Step 2: Initialize the Demo Project
 
-```bash
-python -m cmat workflow show new-feature-development
-```
+In the UI:
+1. Click **File > Initialize Project** (or use the keyboard shortcut)
+2. Navigate to and select the `demo/` directory
+3. Click **Open/Select**
 
-This shows the workflow steps: requirements-analyst → architect → implementer → tester → documenter.
+CMAT will copy the templates to `demo/.claude/` and create `demo/enhancements/`.
 
-### Step 3: Start the Workflow
+### Step 3: Connect to the Demo Project
 
-```bash
-python -m cmat workflow start new-feature-development add-power-function
-```
+In the UI:
+1. Click **File > Connect to Project**
+2. Select the `demo/` directory
+3. The UI should show "Connected" status
 
-This creates the first task (requirements-analyst) and marks it as **active**.
+### Step 4: Create the Enhancement
 
-**Output:**
-```
-Workflow started: new-feature-development
-Enhancement: add-power-function
-Task: task_1234567890_12345
-Agent: requirements-analyst
-Status: active
-```
+In the UI:
+1. Click **File > New Enhancement**
+2. Fill in the details:
+   - **Name**: `add-power-function`
+   - **Title**: Add Power Function to Calculator
+   - **Description**: Add a `power` command that computes exponentiation. `python demo/calculator.py power 2 3` should return `8.0`.
+3. Click **Create**
 
-### Step 4: Check Queue Status
+This creates `demo/enhancements/add-power-function/add-power-function.md`.
 
-```bash
-python -m cmat queue status
-```
+### Step 5: Start the Workflow
 
-You should see 1 active task.
+In the UI:
+1. Click **Workflows > Launch Workflow**
+2. Select **new-feature-development** workflow
+3. Select **add-power-function** enhancement
+4. Click **Start**
 
-```bash
-python -m cmat queue list active
-```
+The first task (requirements-analyst) is created and marked as active.
 
-Shows details of the active task, including the task ID and assigned agent.
+### Step 6: Monitor Progress
 
-### Step 5: Work on the Task
+The UI shows:
+- **Active Tasks**: Currently running agent
+- **Completed Tasks**: Finished steps
+- **Queue Status**: Overall progress
 
-With the task active, invoke the agent in Claude Code to do the work. The agent will:
-- Read the enhancement spec
+Each agent will:
+- Read input from the previous step
 - Perform its analysis/implementation
 - Create output in `required_output/` directory
-- Report completion status via YAML block
+- Report completion status
 
-### Step 6: Complete the Task
+### Step 7: Workflow Progression
 
-After the agent finishes, complete the task with the status from the agent's output:
+The workflow progresses automatically through:
+1. `READY_FOR_DEVELOPMENT` → starts architect task
+2. `READY_FOR_IMPLEMENTATION` → starts implementer task
+3. `READY_FOR_TESTING` → starts tester task
+4. `TESTING_COMPLETE` → starts documenter task
+5. `DOCUMENTATION_COMPLETE` → workflow complete
 
-```bash
-python -m cmat queue complete <task_id> READY_FOR_DEVELOPMENT
-```
+### Step 8: Verify Results
 
-If auto-chain is enabled (default), this automatically creates and starts the next task (architect).
-
-### Step 7: Continue Through Workflow
-
-Check what's active and continue:
-
-```bash
-# Check active task
-python -m cmat queue list active
-
-# [Agent does work...]
-
-# Complete with the appropriate status
-python -m cmat queue complete <task_id> <STATUS>
-```
-
-The workflow progresses through:
-- `READY_FOR_DEVELOPMENT` → starts architect task
-- `READY_FOR_IMPLEMENTATION` → starts implementer task
-- `READY_FOR_TESTING` → starts tester task
-- `TESTING_COMPLETE` → starts documenter task
-- `DOCUMENTATION_COMPLETE` → workflow complete
-
-### Step 8: Monitor Progress
+After the workflow completes, verify the implementation:
 
 ```bash
-# Check queue status
-python -m cmat queue status
+# Test the new power command
+python demo/calculator.py power 2 3
+# Should show: 8.0
 
-# List completed tasks
-python -m cmat queue list completed
+python demo/calculator.py power 10 0
+# Should show: 1.0
 
-# List all tasks
-python -m cmat queue list all
+python demo/calculator.py power 2 -1
+# Should show: 0.5
+
+# Run the tests
+cd demo
+python -m pytest test_calculator.py -v
+# Should show all tests passing, including new power tests
 ```
 
 ## Understanding the Workflow
@@ -188,7 +176,7 @@ documenter
 Each agent creates output in:
 
 ```
-enhancements/add-power-function/
+demo/enhancements/add-power-function/
 ├── add-power-function.md              # Original spec
 ├── requirements-analyst/
 │   └── required_output/
@@ -207,124 +195,54 @@ enhancements/add-power-function/
         └── documentation_summary.md   # Doc updates
 ```
 
-## Verifying Results
-
-After the workflow completes, verify the implementation:
-
-```bash
-# Test the new power command
-python demo/calculator.py power 2 3
-# Should show: 8.0
-
-python demo/calculator.py power 10 0
-# Should show: 1.0
-
-python demo/calculator.py power 2 -1
-# Should show: 0.5
-
-# Run the tests
-cd demo
-python -m pytest test_calculator.py -v
-# Should show all tests passing, including new power tests
-```
-
-## Queue Management
+## Task Management in the UI
 
 ### View Task Details
+- Click on any task to see its details
+- View assigned agent, status, timestamps
+- Access task logs and outputs
 
-```bash
-python -m cmat queue list all
-```
+### Manual Task Control
+- **Complete**: Mark task with a result status
+- **Fail**: Mark task as failed with reason
+- **Cancel**: Cancel a pending/active task
+- **Rerun**: Re-queue a completed/failed task
 
-### Manually Complete a Task
-
-If you need to manually mark a task as complete:
-
-```bash
-python -m cmat queue complete <task_id> READY_FOR_TESTING
-```
-
-### Re-run a Failed Task
-
-```bash
-python -m cmat queue rerun <task_id>
-```
-
-### Cancel a Task
-
-```bash
-python -m cmat queue cancel <task_id> "No longer needed"
-```
-
-## Tracking Costs
-
-After running agents, check the costs:
-
-```bash
-cd .claude
-python -m cmat costs enhancement add-power-function
-```
+### Queue Management
+- **Clear Completed**: Remove finished tasks
+- **Cancel All**: Cancel all pending/active tasks
+- **Reset Queue**: Start fresh
 
 ## Try Your Own Enhancement
 
 Create your own enhancement to extend the calculator:
 
-1. Create enhancement directory:
-   ```bash
-   mkdir -p enhancements/add-modulo
-   ```
-
-2. Create spec file `enhancements/add-modulo/add-modulo.md`:
-   ```markdown
-   # Add Modulo Function to Calculator
-
-   ## Overview
-   Add a `modulo` command that returns the remainder of division.
-
-   ## Acceptance Criteria
-   - `python demo/calculator.py modulo 10 3` returns `1.0`
-   - Tests added for the new function
-   ```
-
-3. Start the workflow:
-   ```bash
-   cd .claude
-   python -m cmat workflow start new-feature-development add-modulo
-   ```
-
-### Other Enhancement Ideas
+### Enhancement Ideas
 
 - **Square root**: `sqrt 16` → `4.0`
 - **Absolute value**: `abs -5` → `5.0`
 - **Factorial**: `factorial 5` → `120`
 - **Percentage**: `percent 50 200` → `100.0` (50% of 200)
+- **Modulo**: `modulo 10 3` → `1.0`
 
-## CLI Quick Reference
+### Steps
 
-```bash
-# Workflow commands
-python -m cmat workflow list                    # List workflows
-python -m cmat workflow show <name>             # Show workflow details
-python -m cmat workflow start <name> <enh>      # Start a workflow (creates first task)
-python -m cmat workflow validate <name>         # Validate workflow
+1. In the UI: **File > New Enhancement**
+2. Name it (e.g., `add-square-root`)
+3. Write a clear description with examples
+4. Start the **new-feature-development** workflow
+5. Monitor progress and verify results
 
-# Queue commands
-python -m cmat queue status                     # Queue summary
-python -m cmat queue list [type]                # List tasks
-python -m cmat queue start <task_id>            # Mark task as active
-python -m cmat queue complete <id> <result>     # Complete task
-python -m cmat queue fail <id> <reason>         # Fail task
-python -m cmat queue cancel <id> [reason]       # Cancel task
-python -m cmat queue rerun <id>                 # Re-queue task
+## Tracking Costs
 
-# Cost tracking
-python -m cmat costs show <task_id>             # Task cost
-python -m cmat costs enhancement <name>         # Enhancement cost
-```
+After running agents, view costs in the UI:
+1. Select a completed task
+2. View the **Cost** section in task details
+3. Or use **View > Enhancement Costs** to see totals
 
 ## Next Steps
 
-- Read [README.md](README.md) for system overview and quick start
-- Read [.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) for workflow patterns
-- Read [.claude/docs/CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md) for complete CLI reference
-- Read [.claude/docs/CUSTOMIZATION_GUIDE.md](.claude/docs/CUSTOMIZATION_GUIDE.md) to adapt CMAT to your project
+- Read [README.md](README.md) for system overview
+- Read [docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md) for workflow patterns
+- Read [docs/SKILLS_GUIDE.md](docs/SKILLS_GUIDE.md) for domain expertise
+- Read [docs/CUSTOMIZATION_GUIDE.md](docs/CUSTOMIZATION_GUIDE.md) to adapt CMAT to your project

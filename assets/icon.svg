@@ -1,0 +1,30 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <!-- Rounded square background with gradient -->
+    <defs>
+        <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <rect width="200" height="200" rx="40" fill="url(#iconGrad)"/>
+    
+    <!-- Agent symbols - workflow visualization -->
+    <g transform="translate(100, 100)">
+        <!-- Five circles arranged like workflow -->
+        <circle cx="-60" cy="0" r="12" fill="white" opacity="0.9"/>
+        <circle cx="-30" cy="-25" r="12" fill="white" opacity="0.9"/>
+        <circle cx="0" cy="0" r="15" fill="white"/>
+        <circle cx="30" cy="-25" r="12" fill="white" opacity="0.9"/>
+        <circle cx="60" cy="0" r="12" fill="white" opacity="0.9"/>
+        
+        <!-- Connection lines between agents -->
+        <line x1="-48" y1="0" x2="-35" y2="-18" stroke="white" stroke-width="3" opacity="0.6"/>
+        <line x1="-20" y1="-18" x2="-8" y2="-5" stroke="white" stroke-width="3" opacity="0.6"/>
+        <line x1="8" y1="-5" x2="20" y2="-18" stroke="white" stroke-width="3" opacity="0.6"/>
+        <line x1="35" y1="-18" x2="48" y2="0" stroke="white" stroke-width="3" opacity="0.6"/>
+        
+        <!-- Center text -->
+        <text y="50" font-size="24" text-anchor="middle" fill="white" font-weight="bold" font-family="Segoe UI, sans-serif">CMAT</text>
+    </g>
+</svg>

@@ -1,14 +1,14 @@
-# Claude Multi-Agent Development Template
+# Claude Multi-Agent Template (CMAT)
 
-A workflow-based multi-agent development system using Claude Code. This template provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
+A workflow-based multi-agent development system with a graphical UI. CMAT provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
 
-**Version**: 9.0.0
+**Version**: 10.0.0
 
 ---
 
 ## What Is This?
 
-This template provides a multi-agent system that breaks down software development into specialized roles, orchestrated by flexible workflow templates:
+CMAT is a multi-agent system that breaks down software development into specialized roles, orchestrated by flexible workflow templates:
 
 **Core Agents**:
 - **Requirements Analyst**: Analyzes user needs and creates implementation plans
@@ -30,6 +30,7 @@ This template provides a multi-agent system that breaks down software developmen
 
 ### Core System
 - **7 Specialized Agents** - Clear responsibilities, reusable across workflows
+- **Graphical UI** - Full-featured tkinter interface for managing projects
 - **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
 - **Output Validation** - Automatic validation of required outputs
 - **Automated Workflows** - Template-driven intelligent task chaining
@@ -52,136 +53,67 @@ This template provides a multi-agent system that breaks down software developmen
 
 - **Python 3.10+** - Core runtime
 - **Claude Code** - Multi-agent orchestration platform
+- **tkinter** - GUI framework (included with Python)
 
 Optional:
-- **Node.js 16+** - For MCP servers (GitHub/Jira integration)
 - **pyyaml** - YAML parsing (pip install pyyaml)
+- **Node.js 16+** - For MCP servers (GitHub/Jira integration)
 
 ---
 
 ## Installation
 
-### Step 1: Copy Template Files
+### Option 1: Install from Source (Development)
 
 ```bash
-# Navigate to your project root
-cd /path/to/your/project
+# Clone the repository
+git clone https://github.com/anthropics/claude-multi-agent-template.git
+cd claude-multi-agent-template
 
-# Copy the .claude directory
-cp -r /path/to/ClaudeMultiAgentTemplate/.claude ./
+# Install in development mode
+pip install -e .
 
-# Create enhancements directory
-mkdir -p enhancements
+# Install dev dependencies
+pip install -e ".[dev]"
 ```
 
-### Step 2: Verify Installation
+### Option 2: Install Package
 
 ```bash
-cd .claude
-
-# Check version
-python -m cmat version
-# Should show: CMAT version 8.6.1
-
-# Check queue status
-python -m cmat queue status
-
-# List available agents
-python -m cmat agents list
+pip install cmat
 ```
-
-### Step 3: Configure Cost Tracking Hook (Optional)
-
-Create or update `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/on-session-end-cost.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| "No module named 'cmat'" | Run from `.claude` directory: `cd .claude && python -m cmat version` |
-| "Task queue file not found" | Check `.claude/data/` directory exists |
-| "Agent not found" | Regenerate: `python -m cmat agents generate` |
-| Permission denied on hook | `chmod +x .claude/hooks/on-session-end-cost.sh` |
 
 ---
 
 ## Quick Start
 
-### 1. Add Project Learnings
-
-Prime the RAG system with knowledge about your project:
+### 1. Launch the UI
 
 ```bash
-cd .claude
-
-# Add project-specific learnings
-python -m cmat learnings add "This project uses Python 3.10+ with pytest for testing"
-python -m cmat learnings add "API responses should use snake_case for JSON keys"
-
-# View stored learnings
-python -m cmat learnings list
+cmat
 ```
 
-### 2. Create an Enhancement
+### 2. Initialize a Project
 
-```bash
-# From project root
-mkdir -p enhancements/my-feature
+In the UI:
+1. **File > Initialize Project**
+2. Select your project directory
+3. CMAT copies templates to `your-project/.claude/`
 
-cat > enhancements/my-feature/my-feature.md << 'EOF'
-# My Feature
+### 3. Create an Enhancement
 
-## Description
-Add new functionality to the system.
+In the UI:
+1. **File > New Enhancement**
+2. Fill in the enhancement details
+3. Enhancement is created in `your-project/enhancements/`
 
-## Acceptance Criteria
-- Feature implemented
-- Tests passing
-- Documented
-EOF
-```
+### 4. Start a Workflow
 
-### 3. Start a Workflow
-
-```bash
-cd .claude
-
-# List available workflows
-python -m cmat workflow list
-
-# Start a workflow
-python -m cmat workflow start new-feature-development my-feature
-```
-
-### 4. Monitor Progress
-
-```bash
-# Check queue status
-python -m cmat queue status
-
-# List active tasks
-python -m cmat queue list active
-
-# View costs
-python -m cmat costs enhancement my-feature
-```
+In the UI:
+1. Select a workflow template
+2. Select the enhancement
+3. Click **Start Workflow**
+4. Agents execute automatically
 
 For a hands-on tutorial, see **[DEMO.md](DEMO.md)**.
 
@@ -189,40 +121,58 @@ For a hands-on tutorial, see **[DEMO.md](DEMO.md)**.
 
 ## Project Structure
 
+### CMAT Repository
+
 ```
-your-project/
-├── .claude/                      # Multi-agent system
-│   ├── cmat/                     # Python package
-│   │   ├── __init__.py          # Version and exports
-│   │   ├── __main__.py          # CLI entry point
-│   │   ├── cmat.py              # Main CMAT class
+claude-multi-agent-template/
+├── src/
+│   ├── core/                     # Core CMAT services
+│   │   ├── __init__.py
+│   │   ├── cmat.py              # Main orchestration class
 │   │   ├── models/              # Data models
 │   │   ├── services/            # Service classes
-│   │   └── utils.py             # Utilities
-│   ├── agents/                   # Agent definitions
-│   │   ├── *.md                 # Agent specifications
-│   │   └── agents.json          # Agent registry
-│   ├── skills/                   # Skills system
-│   │   ├── skills.json          # Skills registry
-│   │   └── */SKILL.md           # 14+ skills
-│   ├── data/                     # JSON data files
-│   │   ├── task_queue.json      # Task queue state
-│   │   ├── workflow_templates.json
-│   │   ├── learnings.json       # RAG storage
-│   │   └── models.json          # Claude models
-│   ├── hooks/                    # Automation hooks
-│   ├── docs/                     # Reference documentation
-│   └── tests/                    # Python tests
-├── enhancements/                 # Feature requests
+│   │   └── utils.py
+│   │
+│   └── ui/                       # Graphical UI
+│       ├── __init__.py
+│       ├── main.py              # Entry point
+│       ├── dialogs/             # UI dialogs
+│       ├── models/              # UI models
+│       └── utils/               # UI utilities
+│
+├── templates/                    # Copied to target projects
+│   ├── .claude/
+│   │   ├── agents/              # Agent definitions
+│   │   ├── skills/              # Skills system
+│   │   ├── data/                # JSON data files
+│   │   └── hooks/               # Automation hooks
+│   └── enhancement-templates/   # Enhancement templates
+│
+├── tests/                        # Test suite
+├── docs/                         # Documentation
+├── demo/                         # Demo calculator project
+│
+└── pyproject.toml               # Package configuration
+```
+
+### Target Project (after initialization)
+
+```
+your-project/
+├── .claude/
+│   ├── agents/                  # Agent definitions
+│   ├── skills/                  # Skills
+│   ├── data/                    # Queue, workflows, learnings
+│   ├── hooks/                   # Automation hooks
+│   └── logs/                    # Execution logs
+├── enhancements/                # Feature requests
 │   └── feature-name/
-│       ├── feature-name.md      # Enhancement spec
+│       ├── feature-name.md     # Enhancement spec
 │       ├── requirements-analyst/
-│       │   └── required_output/
 │       ├── architect/
 │       ├── implementer/
 │       ├── tester/
-│       ├── documenter/
-│       └── logs/
+│       └── documenter/
 └── [your project files]
 ```
 
@@ -230,17 +180,18 @@ your-project/
 
 ## System Architecture
 
-### Python Services
+### Service Layer
 
 ```
-CMAT (entry point)
+CMAT / CMATInterface
 ├── queue: QueueService       # Task state management
 ├── agents: AgentService      # Agent registry
 ├── skills: SkillsService     # Skills loading
 ├── workflow: WorkflowService # Orchestration
 ├── tasks: TaskService        # Execution
 ├── learnings: LearningsService # RAG memory
-└── models: ModelService      # Model config & costs
+├── models: ModelService      # Model config & costs
+└── tools: ToolsService       # Tool definitions
 ```
 
 ### Workflow-Based Design
@@ -289,49 +240,6 @@ status: READY_FOR_TESTING
 
 ---
 
-## CLI Reference
-
-```bash
-# Run from .claude directory
-cd /path/to/your/project/.claude
-python -m cmat <command> [options]
-
-# System info
-python -m cmat version              # Version
-python -m cmat queue status         # Queue summary
-python -m cmat agents list          # List agents
-python -m cmat models list          # List models
-
-# Workflow management
-python -m cmat workflow list        # Available workflows
-python -m cmat workflow show <name> # Workflow details
-python -m cmat workflow start <workflow> <enhancement>
-
-# Queue management
-python -m cmat queue list [pending|active|completed|failed|all]
-python -m cmat queue complete <task_id> <status>
-python -m cmat queue fail <task_id> <reason>
-python -m cmat queue cancel <task_id> [reason]
-python -m cmat queue rerun <task_id>
-
-# Learnings (RAG memory)
-python -m cmat learnings list
-python -m cmat learnings add "<content>" [--tags tag1,tag2]
-python -m cmat learnings search "<query>"
-python -m cmat learnings delete <id>
-
-# Cost tracking
-python -m cmat costs show <task_id>
-python -m cmat costs enhancement <name>
-
-# Model management
-python -m cmat models set-default <id>
-```
-
-For complete CLI documentation, see **[.claude/docs/CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md)**.
-
----
-
 ## Documentation
 
 ### Getting Started
@@ -339,29 +247,56 @@ For complete CLI documentation, see **[.claude/docs/CLI_REFERENCE.md](.claude/do
 - **[DEMO.md](DEMO.md)** - Hands-on demo walkthrough
 
 ### Reference Guides
-- **[CLI_REFERENCE.md](.claude/docs/CLI_REFERENCE.md)** - Complete command reference
-- **[CUSTOMIZATION_GUIDE.md](.claude/docs/CUSTOMIZATION_GUIDE.md)** - Adapting to your project
-- **[WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md)** - Workflow patterns
-- **[SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md)** - Skills system
-- **[QUEUE_SYSTEM_GUIDE.md](.claude/docs/QUEUE_SYSTEM_GUIDE.md)** - Task queue operations
+- **[WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md)** - Workflow patterns
+- **[SKILLS_GUIDE.md](docs/SKILLS_GUIDE.md)** - Skills system
+- **[QUEUE_SYSTEM_GUIDE.md](docs/QUEUE_SYSTEM_GUIDE.md)** - Task queue operations
+- **[CUSTOMIZATION_GUIDE.md](docs/CUSTOMIZATION_GUIDE.md)** - Adapting to your project
 
 ### Features
-- **[LEARNINGS_GUIDE.md](.claude/docs/LEARNINGS_GUIDE.md)** - RAG memory system
-- **[COST_TRACKING.md](.claude/docs/COST_TRACKING.md)** - Token usage and costs
-- **[INTEGRATION_GUIDE.md](.claude/docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration
+- **[LEARNINGS_GUIDE.md](docs/LEARNINGS_GUIDE.md)** - RAG memory system
+- **[COST_TRACKING.md](docs/COST_TRACKING.md)** - Token usage and costs
+- **[INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md)** - GitHub/Jira integration
+
+---
+
+## Development
+
+### Running Tests
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=core --cov=ui
+```
+
+### Project Setup
+
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+
+# Install in development mode
+pip install -e ".[dev]"
+```
 
 ---
 
 ## Next Steps
 
 1. **Try the Demo** - [DEMO.md](DEMO.md) - Hands-on walkthrough with the calculator project
-2. **Customize** - [.claude/docs/CUSTOMIZATION_GUIDE.md](.claude/docs/CUSTOMIZATION_GUIDE.md) - Adapt for your project
-3. **Learn Workflows** - [.claude/docs/WORKFLOW_GUIDE.md](.claude/docs/WORKFLOW_GUIDE.md) - Workflow patterns
-4. **Explore Skills** - [.claude/docs/SKILLS_GUIDE.md](.claude/docs/SKILLS_GUIDE.md) - Domain expertise
+2. **Customize** - [docs/CUSTOMIZATION_GUIDE.md](docs/CUSTOMIZATION_GUIDE.md) - Adapt for your project
+3. **Learn Workflows** - [docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md) - Workflow patterns
+4. **Explore Skills** - [docs/SKILLS_GUIDE.md](docs/SKILLS_GUIDE.md) - Domain expertise
 
 ---
 
 ## Links
 
 - **Claude Code**: https://claude.ai/code
-- **Complete Documentation**: See `.claude/docs/` directory
+- **Complete Documentation**: See `docs/` directory
