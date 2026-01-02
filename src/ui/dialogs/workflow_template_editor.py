@@ -21,7 +21,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         self.steps = []
 
         title = "Create Workflow Template" if mode == 'create' else f"Edit Template: {template_slug}"
-        super().__init__(parent, title, 930, 750)
+        super().__init__(parent, title, 980, 750)
 
         self.build_ui()
 
@@ -93,13 +93,6 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             text="Workflow Steps:",
             font=('Arial', 10, 'bold')
         ).pack(side="left")
-
-        ttk.Label(
-            steps_label_frame,
-            text="(Double-click step to edit input/output/transitions)",
-            font=('Arial', 9),
-            foreground='blue'
-        ).pack(side="left", padx=(10, 0))
 
         # Steps list
         steps_frame = ttk.Frame(main_frame)
@@ -236,6 +229,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
                     'agent': step.agent,
                     'input': step.input,
                     'required_output': step.required_output,
+                    'model': step.model,
                     'on_status': step.on_status
                 })
 
@@ -366,9 +360,8 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             # Show full input pattern (no truncation)
             input_display = input_pattern
 
-            # Format transitions count
-            trans_count = len(transitions)
-            trans_display = f"{trans_count} status{'es' if trans_count != 1 else ''}"
+            # Format transitions - just show count
+            trans_display = str(len(transitions)) if transitions else "0"
 
             # Determine tag based on configuration completeness
             has_input = bool(step.get('input'))
@@ -436,6 +429,8 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         if issues:
             result = "Validation Issues Found:\n\n" + "\n".join(f"• {issue}" for issue in issues)
             messagebox.showwarning("Validation Issues", result)
+        else:
+            messagebox.showinfo("Validation Passed", "Workflow template is valid.")
 
     def validate(self) -> bool:
         """Validate template before saving."""

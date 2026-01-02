@@ -227,7 +227,7 @@ Pricing (per {model.pricing.per_tokens:,} tokens):
         # Confirm deletion
         result = messagebox.askyesno(
             "Confirm Delete",
-            f"Delete model:\n\n{self.selected_model.name}\n\nThis cannot be undone."
+            f"Delete model:\n\n{self.selected_model.name}"
         )
 
         if result:

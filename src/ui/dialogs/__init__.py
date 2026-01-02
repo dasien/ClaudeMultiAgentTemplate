@@ -8,7 +8,8 @@ from .connect import ConnectDialog
 from .log_viewer import LogViewerDialog
 from .about import AboutDialog
 from .agent_list import AgentListDialog
-from .skills_list import SkillsViewerDialog
+from .skills_list import SkillsManagerDialog, SkillsViewerDialog  # SkillsViewerDialog is alias for backwards compat
+from .skill_details import SkillDetailsDialog
 from .task_details import TaskDetailsDialog
 from .task_create import CreateTaskDialog
 from .agent_details import AgentDetailsDialog
@@ -26,7 +27,9 @@ __all__ = [
     'LogViewerDialog',
     'AboutDialog',
     'AgentListDialog',
-    'SkillsViewerDialog',
+    'SkillsManagerDialog',
+    'SkillsViewerDialog',  # Backwards compatibility alias
+    'SkillDetailsDialog',
     'TaskDetailsDialog',
     'CreateTaskDialog',
     'AgentDetailsDialog',

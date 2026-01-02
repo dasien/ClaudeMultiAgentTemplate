@@ -1,5 +1,5 @@
 """
-Skills Viewer Dialog - Browse and preview all available skills.
+Skills Manager Dialog - Browse, create, edit, and delete skills.
 """
 
 import tkinter as tk
@@ -9,11 +9,11 @@ from typing import List, Dict
 from .base_dialog import BaseDialog
 
 
-class SkillsViewerDialog(BaseDialog):
-    """Dialog for browsing and previewing skills."""
+class SkillsManagerDialog(BaseDialog):
+    """Dialog for managing skills (create, edit, delete)."""
 
     def __init__(self, parent, queue_interface):
-        super().__init__(parent, "Skills Viewer", 1000, 700)
+        super().__init__(parent, "Skills Manager", 1100, 750)
         self.queue = queue_interface
         self.skills_data = None
         self.current_skill = None
@@ -23,7 +23,7 @@ class SkillsViewerDialog(BaseDialog):
         # Don't call show() - this dialog doesn't return a result
 
     def build_ui(self):
-        """Build the skills viewer UI."""
+        """Build the skills manager UI."""
         # Filter controls at top
         filter_frame = ttk.Frame(self.dialog, padding=10)
         filter_frame.pack(fill="x")
@@ -72,8 +72,12 @@ class SkillsViewerDialog(BaseDialog):
         self.skills_tree.pack(side="left", fill="both", expand=True)
         skills_scroll.pack(side="right", fill="y")
 
-        # Bind selection
+        # Bind selection and double-click
         self.skills_tree.bind('<<TreeviewSelect>>', self.on_skill_selected)
+        self.skills_tree.bind('<Double-Button-1>', lambda e: self.edit_skill())
+
+        # Make columns sortable
+        self.make_treeview_sortable(self.skills_tree)
 
         # Right pane - Skill preview
         right_frame = ttk.LabelFrame(content_frame, text="Skill Details", padding=10)
@@ -136,11 +140,14 @@ class SkillsViewerDialog(BaseDialog):
         )
         self.agents_label.pack(anchor="w")
 
-        # Bottom button
-        button_frame = ttk.Frame(self.dialog, padding=10)
-        button_frame.pack(fill="x")
-
-        ttk.Button(button_frame, text="Close", command=self.dialog.destroy).pack()
+        # Bottom buttons - CRUD operations
+        self.create_button_frame(self.dialog, [
+            ("Create New Skill", self.create_skill),
+            ("Edit Selected", self.edit_skill),
+            ("Delete Selected", self.delete_skill),
+            ("Refresh", self.load_skills),
+            ("Close", self.dialog.destroy)
+        ])
 
     def load_skills(self):
         """Load skills from skills.json."""
@@ -177,7 +184,7 @@ class SkillsViewerDialog(BaseDialog):
         for skill in skills_list:
             name = skill.get('name', '')
             category = skill.get('category', 'uncategorized')
-            skill_dir = skill.get('skill-directory', '')
+            skill_dir = skill.get('directory', '') or skill.get('skill-directory', '')
 
             # Apply category filter
             if category_filter != 'All':
@@ -221,7 +228,7 @@ class SkillsViewerDialog(BaseDialog):
 
         # Get description from skills data
         skills_list = self.skills_data.get('skills', [])
-        skill_data = next((s for s in skills_list if s.get('skill-directory') == skill_dir), None)
+        skill_data = next((s for s in skills_list if (s.get('directory') or s.get('skill-directory')) == skill_dir), None)
 
         if skill_data:
             description = skill_data.get('description', '')
@@ -262,15 +269,7 @@ class SkillsViewerDialog(BaseDialog):
             widget.destroy()
 
         try:
-            # Get all agents
-            agents_map = self.queue.get_agent_list()
-            agents_using_skill = []
-
-            # Check each agent
-            for agent_file, agent_name in agents_map.items():
-                agent_skills = self.queue.get_agent_skills(agent_file)
-                if skill_directory in agent_skills:
-                    agents_using_skill.append(agent_name)
+            agents_using_skill = self._get_agents_using_skill(skill_directory)
 
             if agents_using_skill:
                 for agent_name in sorted(agents_using_skill):
@@ -294,3 +293,106 @@ class SkillsViewerDialog(BaseDialog):
                 font=('Arial', 9),
                 foreground='red'
             ).pack(anchor="w")
+
+    def _get_agents_using_skill(self, skill_directory: str) -> List[str]:
+        """Get list of agent names that use this skill."""
+        agents_using_skill = []
+        agents_map = self.queue.get_agent_list()
+
+        for agent_file, agent_name in agents_map.items():
+            agent_skills = self.queue.get_agent_skills(agent_file)
+            if skill_directory in agent_skills:
+                agents_using_skill.append(agent_name)
+
+        return agents_using_skill
+
+    def create_skill(self):
+        """Open dialog to create a new skill."""
+        from .skill_details import SkillDetailsDialog
+        dialog = SkillDetailsDialog(
+            self.dialog,
+            self.queue,
+            mode='create'
+        )
+        if dialog.result:
+            self.load_skills()
+
+    def edit_skill(self):
+        """Open dialog to edit the selected skill."""
+        selection = self.skills_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a skill to edit.")
+            return
+
+        item = selection[0]
+        values = self.skills_tree.item(item, 'values')
+        skill_dir = values[2]
+
+        from .skill_details import SkillDetailsDialog
+        dialog = SkillDetailsDialog(
+            self.dialog,
+            self.queue,
+            mode='edit',
+            skill_directory=skill_dir
+        )
+        if dialog.result:
+            self.load_skills()
+
+    def delete_skill(self):
+        """Delete the selected skill."""
+        selection = self.skills_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a skill to delete.")
+            return
+
+        item = selection[0]
+        values = self.skills_tree.item(item, 'values')
+        skill_name = values[0]
+        skill_dir = values[2]
+
+        # Check if any agents use this skill
+        agents_using_skill = self._get_agents_using_skill(skill_dir)
+
+        if agents_using_skill:
+            agents_list = "\n".join(f"  • {name}" for name in sorted(agents_using_skill))
+            result = messagebox.askyesno(
+                "Confirm Delete",
+                f"Delete skill '{skill_name}'?\n\n"
+                f"This skill is used by the following agents:\n{agents_list}\n\n"
+                f"It will be removed from these agents."
+            )
+        else:
+            result = messagebox.askyesno(
+                "Confirm Delete",
+                f"Delete skill '{skill_name}'?\n\n"
+                f"This will remove the skill and its files."
+            )
+
+        if not result:
+            return
+
+        try:
+            # Remove skill from agents first
+            if agents_using_skill:
+                self.queue.remove_skill_from_agents(skill_dir)
+
+            # Delete the skill
+            self.queue.delete_skill(skill_dir)
+
+            # Clear selection state
+            self.current_skill = None
+            self.skill_name_label.config(text="Select a skill to view details")
+            self.skill_desc_label.config(text="")
+            self.preview_text.config(state=tk.NORMAL)
+            self.preview_text.delete('1.0', tk.END)
+            self.preview_text.config(state=tk.DISABLED)
+
+            # Refresh list
+            self.load_skills()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete skill: {e}")
+
+
+# Keep old name as alias for backwards compatibility
+SkillsViewerDialog = SkillsManagerDialog

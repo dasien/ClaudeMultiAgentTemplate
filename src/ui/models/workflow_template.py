@@ -15,6 +15,7 @@ class WorkflowStep:
     required_output: str  # Required output filename
     on_status: Dict[str, Dict[str, any]]  # Status → transition mapping
     description: str
+    model: Optional[str] = None  # Claude model override (e.g., "claude-sonnet-4-20250514")
 
     @staticmethod
     def from_dict(data: dict) -> 'WorkflowStep':
@@ -24,18 +25,22 @@ class WorkflowStep:
             input=data.get('input', ''),
             required_output=data.get('required_output', ''),
             on_status=data.get('on_status', {}),
-            description=data.get('description', '')
+            description=data.get('description', ''),
+            model=data.get('model')
         )
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization (v5.0 format)."""
-        return {
+        result = {
             'agent': self.agent,
             'input': self.input,
             'required_output': self.required_output,
             'on_status': self.on_status,
             'description': self.description
         }
+        if self.model:
+            result['model'] = self.model
+        return result
 
     def get_next_step_for_status(self, status: str) -> Optional[str]:
         """

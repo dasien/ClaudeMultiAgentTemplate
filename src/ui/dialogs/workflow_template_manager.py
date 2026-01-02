@@ -48,10 +48,10 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         self.template_tree.heading('description', text='Description')
         self.template_tree.heading('steps', text='Steps')
 
-        self.template_tree.column('name', width=200)
+        self.template_tree.column('name', width=150)
         self.template_tree.column('slug', width=150)
         self.template_tree.column('description', width=400)
-        self.template_tree.column('steps', width=200)
+        self.template_tree.column('steps', width=50)
 
         scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.template_tree.yview)
         self.template_tree.configure(yscrollcommand=scrollbar.set)
@@ -61,6 +61,9 @@ class WorkflowTemplateManagerDialog(BaseDialog):
 
         # Bind double-click to edit
         self.template_tree.bind('<Double-Button-1>', lambda e: self.edit_template())
+
+        # Make columns sortable
+        self.make_treeview_sortable(self.template_tree)
 
         # Buttons
         self.create_button_frame(main_frame, [
@@ -85,7 +88,7 @@ class WorkflowTemplateManagerDialog(BaseDialog):
                 self.template_tree.insert(
                     '',
                     tk.END,
-                    values=(template.name, template.slug, template.description, step_count)
+                    values=(template.name, template.slug, template.description, len(template.steps))
                 )
 
         except Exception as e:
@@ -179,27 +182,16 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         item = selection[0]
         values = self.template_tree.item(item, 'values')
         template_name = values[0]
+        template_slug = values[1]
 
         if not messagebox.askyesno(
                 "Confirm Delete",
-                f"Delete workflow template '{template_name}'?\n\n"
-                f"This cannot be undone."
+                f"Delete workflow template '{template_name}'?"
         ):
             return
 
         try:
-            import subprocess
-            result = subprocess.run(
-                [str(self.queue.script_path), "workflow", "delete", template_name],
-                cwd=str(self.queue.project_root),
-                capture_output=True,
-                text=True
-            )
-
-            if result.returncode == 0:
-                self.load_templates()
-            else:
-                messagebox.showerror("Error", f"Failed to delete: {result.stderr}")
-
+            self.queue.delete_workflow_template(template_slug)
+            self.load_templates()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to delete: {e}")

@@ -109,9 +109,6 @@ class AgentDetailsDialog(BaseDialog):
         elif self.mode == 'create':
             self.file_entry.config(state='readonly')
 
-        ttk.Label(parent, text="(lowercase, hyphens only)", font=('Arial', 8), foreground='gray').pack(anchor="w",
-                                                                                                       pady=(0, 15))
-
         # Description
         ttk.Label(parent, text="Description: *", font=('Arial', 10, 'bold')).pack(anchor="w", pady=(0, 5))
         self.description_var = tk.StringVar()
@@ -174,7 +171,7 @@ class AgentDetailsDialog(BaseDialog):
         """Build tools selection tab."""
         ttk.Label(parent, text="Available Tools: *", font=('Arial', 10, 'bold')).pack(anchor="w", pady=(0, 10))
 
-        # Agent persona quick selection
+        # Agent persona quick selection (if personas data exists)
         if self.tools_data and 'agent_personas' in self.tools_data:
             persona_frame = ttk.LabelFrame(parent, text="Quick Select from Persona", padding=10)
             persona_frame.pack(fill="x", pady=(0, 15))
@@ -192,9 +189,15 @@ class AgentDetailsDialog(BaseDialog):
         tools_frame = ttk.Frame(parent)
         tools_frame.pack(fill="both", expand=True)
 
-        if self.tools_data and 'claude_code_tools' in self.tools_data:
-            tools_list = self.tools_data['claude_code_tools']
+        # Support both old format (claude_code_tools) and new format (tools)
+        tools_list = []
+        if self.tools_data:
+            if 'claude_code_tools' in self.tools_data:
+                tools_list = self.tools_data['claude_code_tools']
+            elif 'tools' in self.tools_data:
+                tools_list = self.tools_data['tools']
 
+        if tools_list:
             for idx, tool in enumerate(tools_list):
                 row = idx // 3
                 col = idx % 3
@@ -208,6 +211,12 @@ class AgentDetailsDialog(BaseDialog):
                     variable=var
                 )
                 cb.grid(row=row, column=col, sticky=tk.W, padx=15, pady=3)
+        else:
+            ttk.Label(
+                tools_frame,
+                text="No tools available. Check tools configuration.",
+                foreground='red'
+            ).pack(anchor="w")
 
     def build_skills_tab(self, parent):
         """Build skills selection tab."""
@@ -308,7 +317,7 @@ class AgentDetailsDialog(BaseDialog):
                 if category.replace('-', ' ').title() != category_filter:
                     continue
 
-            skill_dir = skill.get('skill-directory', '')
+            skill_dir = skill.get('directory', '') or skill.get('skill-directory', '')
             name = skill.get('name', skill_dir)
             description = skill.get('description', '')
             cat_display = category.replace('-', ' ').title()
@@ -375,12 +384,16 @@ class AgentDetailsDialog(BaseDialog):
             preview_content.append("")
             preview_content.append("**Using Skills**: Apply the above skills as appropriate.")
 
-            # Show preview window
+            # Show preview window (matches task_details.py pattern for nested modals)
             preview = tk.Toplevel(self.dialog)
             preview.title("Skills Prompt Preview")
             preview.geometry("800x600")
             preview.transient(self.dialog)
+            preview.grab_set()  # Required for nested modal dialogs
+            preview.bind('<Escape>', lambda e: preview.destroy())
+            preview.focus_set()
 
+            # Text widget with scrollbar
             text_frame = ttk.Frame(preview, padding=10)
             text_frame.pack(fill="both", expand=True)
 
@@ -392,9 +405,19 @@ class AgentDetailsDialog(BaseDialog):
             scroll.pack(side="right", fill="y")
 
             text_widget.insert('1.0', '\n'.join(preview_content))
-            text_widget.config(state=tk.DISABLED)
+            # Keep text widget editable so user can select and copy
 
-            ttk.Button(preview, text="Close", command=preview.destroy).pack(pady=10)
+            # Button frame
+            button_frame = ttk.Frame(preview)
+            button_frame.pack(pady=10)
+
+            def copy_to_clipboard():
+                preview.clipboard_clear()
+                preview.clipboard_append('\n'.join(preview_content))
+                messagebox.showinfo("Copied", "Skills prompt copied to clipboard!")
+
+            ttk.Button(button_frame, text="Copy to Clipboard", command=copy_to_clipboard).pack(side="left", padx=5)
+            ttk.Button(button_frame, text="Close", command=preview.destroy).pack(side="left", padx=5)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to build preview: {e}")

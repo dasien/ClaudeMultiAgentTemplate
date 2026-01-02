@@ -216,3 +216,36 @@ When you apply a skill, note it in your `skills_used` completion field.
                 errors.append(f"Skill file not found: {skill_file}")
 
         return errors
+
+    def write_skill_content(self, skill_directory: str, content: str) -> None:
+        """
+        Create skill directory and write SKILL.md file.
+
+        Args:
+            skill_directory: Directory name for the skill
+            content: Full content to write to SKILL.md (including frontmatter)
+        """
+        skill_path = self.skills_dir / skill_directory
+        skill_path.mkdir(parents=True, exist_ok=True)
+
+        skill_file = skill_path / "SKILL.md"
+        skill_file.write_text(content)
+
+    def delete_skill_files(self, skill_directory: str) -> bool:
+        """
+        Delete the skill directory and all its contents.
+
+        Args:
+            skill_directory: Directory name of the skill to delete
+
+        Returns:
+            True if deleted, False if directory didn't exist
+        """
+        import shutil
+
+        skill_path = self.skills_dir / skill_directory
+        if not skill_path.exists():
+            return False
+
+        shutil.rmtree(skill_path)
+        return True

@@ -354,6 +354,7 @@ class CMATInterface:
                             'agent': step.agent,
                             'input': step.input,
                             'required_output': step.required_output,
+                            'model': step.model,
                             'on_status': {
                                 status: {
                                     'next_step': trans.next_step,
@@ -388,6 +389,7 @@ class CMATInterface:
                         'agent': step.agent,
                         'input': step.input,
                         'required_output': step.required_output,
+                        'model': step.model,
                         'on_status': {
                             status: {
                                 'next_step': trans.next_step,
@@ -607,12 +609,84 @@ class CMATInterface:
     # =========================================================================
 
     def create_agent(self, agent_data: dict) -> None:
-        """Create a new agent."""
-        self.agents.add(agent_data)
+        """Create a new agent and its markdown file."""
+        from core.models import Agent
+
+        # Extract instructions before creating Agent (not part of Agent model)
+        instructions = agent_data.pop('instructions', None)
+
+        # Create Agent object
+        agent = Agent(
+            name=agent_data['name'],
+            agent_file=agent_data['agent-file'],
+            role=agent_data['role'],
+            description=agent_data.get('description', ''),
+            tools=agent_data.get('tools', []),
+            skills=agent_data.get('skills', []),
+            validations=agent_data.get('validations', {}),
+        )
+
+        # Add to agents.json
+        self.agents.add(agent)
+
+        # Write markdown file with frontmatter and instructions
+        if instructions:
+            self._write_agent_markdown(agent, instructions)
 
     def update_agent(self, agent_file: str, agent_data: dict) -> None:
-        """Update an existing agent."""
-        self.agents.update(agent_file, agent_data)
+        """Update an existing agent and its markdown file."""
+        from core.models import Agent
+
+        # Extract instructions before creating Agent (not part of Agent model)
+        instructions = agent_data.pop('instructions', None)
+
+        # Create Agent object
+        agent = Agent(
+            name=agent_data['name'],
+            agent_file=agent_data['agent-file'],
+            role=agent_data['role'],
+            description=agent_data.get('description', ''),
+            tools=agent_data.get('tools', []),
+            skills=agent_data.get('skills', []),
+            validations=agent_data.get('validations', {}),
+        )
+
+        # Update agents.json
+        self.agents.update(agent)
+
+        # Write markdown file with frontmatter and instructions
+        if instructions:
+            self._write_agent_markdown(agent, instructions)
+
+    def _write_agent_markdown(self, agent, instructions: str) -> None:
+        """Write agent markdown file with frontmatter and instructions."""
+        # Build frontmatter
+        frontmatter_lines = [
+            '---',
+            f'name: {agent.name}',
+            f'role: {agent.role}',
+            f'description: {agent.description}',
+        ]
+
+        if agent.tools:
+            frontmatter_lines.append('tools:')
+            for tool in agent.tools:
+                frontmatter_lines.append(f'  - {tool}')
+
+        if agent.skills:
+            frontmatter_lines.append('skills:')
+            for skill in agent.skills:
+                frontmatter_lines.append(f'  - {skill}')
+
+        frontmatter_lines.append('---')
+        frontmatter_lines.append('')
+
+        # Combine frontmatter with instructions
+        content = '\n'.join(frontmatter_lines) + instructions
+
+        # Write to file
+        md_path = self.project_root / ".claude" / "agents" / f"{agent.agent_file}.md"
+        md_path.write_text(content)
 
     def delete_agent(self, agent_file: str) -> None:
         """Delete an agent."""
@@ -621,11 +695,21 @@ class CMATInterface:
     def get_agent(self, agent_file: str) -> Optional[Dict]:
         """Get a specific agent by file name.
 
-        Returns dict with agent data including 'instructions' if available.
+        Returns dict with agent data including 'instructions' from markdown file.
+        Instructions are the content after the YAML frontmatter.
         """
         agent = self.agents.get(agent_file)
         if not agent:
             return None
+
+        # Load full markdown content
+        full_content = self.agents.get_agent_prompt(agent_file)
+
+        # Strip frontmatter to get just the instructions
+        instructions = None
+        if full_content:
+            instructions = self._strip_frontmatter(full_content)
+
         return {
             'name': agent.name,
             'agent-file': agent.agent_file,
@@ -633,8 +717,17 @@ class CMATInterface:
             'description': agent.description or '',
             'tools': agent.tools,
             'skills': agent.skills,
-            'instructions': getattr(agent, 'instructions', None)
+            'instructions': instructions
         }
+
+    def _strip_frontmatter(self, content: str) -> str:
+        """Strip YAML frontmatter from markdown content."""
+        import re
+        # Match and remove frontmatter block
+        match = re.match(r'^---\s*\n.*?\n---\s*\n?', content, re.DOTALL)
+        if match:
+            return content[match.end():].lstrip()
+        return content
 
     # =========================================================================
     # SKILLS COMMANDS
@@ -682,6 +775,103 @@ class CMATInterface:
         if not agent_skills:
             return None
         return self.skills.build_skills_prompt(agent_skills)
+
+    def get_skill_categories(self) -> List[str]:
+        """Get all unique skill categories."""
+        return self.skills.list_categories()
+
+    def get_skill(self, skill_directory: str) -> Optional[Dict]:
+        """Get a specific skill by directory name."""
+        skill = self.skills.get(skill_directory)
+        if not skill:
+            return None
+
+        # Load content from SKILL.md
+        content = self.skills.get_skill_content(skill_directory)
+
+        return {
+            'name': skill.name,
+            'directory': skill.skill_directory,
+            'category': skill.category,
+            'description': skill.description or '',
+            'required_tools': skill.required_tools,
+            'content': content
+        }
+
+    def create_skill(self, skill_data: dict) -> None:
+        """Create a new skill with its SKILL.md file."""
+        from core.models import Skill
+
+        # Extract content before creating Skill object
+        content = skill_data.pop('content', '')
+
+        # Create Skill object
+        skill = Skill(
+            name=skill_data['name'],
+            skill_directory=skill_data['directory'],
+            category=skill_data['category'],
+            description=skill_data.get('description', ''),
+            required_tools=skill_data.get('required_tools', []),
+        )
+
+        # Add to skills.json
+        self.skills.add(skill)
+
+        # Write SKILL.md file
+        if content:
+            self.skills.write_skill_content(skill.skill_directory, content)
+
+    def update_skill(self, skill_directory: str, skill_data: dict) -> None:
+        """Update an existing skill and its SKILL.md file."""
+        from core.models import Skill
+
+        # Extract content before creating Skill object
+        content = skill_data.pop('content', '')
+
+        # Create updated Skill object
+        skill = Skill(
+            name=skill_data['name'],
+            skill_directory=skill_data['directory'],
+            category=skill_data['category'],
+            description=skill_data.get('description', ''),
+            required_tools=skill_data.get('required_tools', []),
+        )
+
+        # Update skills.json
+        self.skills.update(skill)
+
+        # Write SKILL.md file
+        if content:
+            self.skills.write_skill_content(skill.skill_directory, content)
+
+    def delete_skill(self, skill_directory: str) -> None:
+        """Delete a skill from skills.json and remove its directory."""
+        # Remove from skills.json
+        self.skills.delete(skill_directory)
+
+        # Delete the skill directory and files
+        self.skills.delete_skill_files(skill_directory)
+
+    def remove_skill_from_agents(self, skill_directory: str) -> List[str]:
+        """
+        Remove a skill from all agents that have it.
+
+        Returns list of agent names that were updated.
+        """
+        affected_agents = []
+
+        # Get all agents
+        agents = self.agents.list_all()
+
+        for agent in agents:
+            if skill_directory in agent.skills:
+                # Remove skill from agent's list
+                agent.skills.remove(skill_directory)
+                # Update the agent
+                self.agents.update(agent)
+                affected_agents.append(agent.name)
+
+        return affected_agents
 
     # =========================================================================
     # INTEGRATION COMMANDS (Placeholder - not in CMAT v8 yet)

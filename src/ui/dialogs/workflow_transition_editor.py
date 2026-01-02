@@ -259,3 +259,11 @@ class WorkflowTransitionEditorDialog(BaseDialog):
             del self.transitions[status]
             self.refresh_transitions()
             self.clear_form()
+
+    def clear_form(self):
+        """Clear the add/edit transition form."""
+        self.editing_status = None
+        self.status_var.set('')
+        self.status_entry.config(state='normal')
+        self.next_step_var.set('(end workflow)')
+        self.auto_chain_var.set(True)

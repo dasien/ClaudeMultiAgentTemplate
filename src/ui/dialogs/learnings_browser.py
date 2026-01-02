@@ -98,6 +98,9 @@ class LearningsBrowserDialog(BaseDialog):
         # Bind selection event
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
 
+        # Make columns sortable
+        self.make_treeview_sortable(self.tree)
+
         # Bottom pane: Details view
         bottom_frame = ttk.LabelFrame(main_paned, text="Learning Details")
         main_paned.add(bottom_frame, weight=2)
@@ -231,7 +234,7 @@ ID: {learning.id}
         # Confirm deletion
         result = messagebox.askyesno(
             "Confirm Delete",
-            f"Delete learning:\n\n{self.selected_learning.summary}\n\nThis cannot be undone."
+            f"Delete learning:\n\n{self.selected_learning.summary}"
         )
 
         if result:

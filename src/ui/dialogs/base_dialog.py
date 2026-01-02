@@ -268,3 +268,35 @@ class BaseDialog(ABC):
         entry.pack(fill="x", pady=(0, 10))
 
         return label, entry, var
+
+    def make_treeview_sortable(self, tree: ttk.Treeview):
+        """
+        Make a Treeview's columns sortable by clicking headers.
+
+        Args:
+            tree: Treeview widget to make sortable
+
+        Example:
+            self.tree = ttk.Treeview(parent, columns=('name', 'date'))
+            self.make_treeview_sortable(self.tree)
+        """
+        def sort_column(col, reverse):
+            # Get all items with their values
+            items = [(tree.set(k, col), k) for k in tree.get_children('')]
+
+            # Try numeric sort first, fall back to string sort
+            try:
+                items.sort(key=lambda t: float(t[0].rstrip('%')), reverse=reverse)
+            except (ValueError, TypeError):
+                items.sort(key=lambda t: t[0].lower(), reverse=reverse)
+
+            # Reorder items
+            for index, (_, k) in enumerate(items):
+                tree.move(k, '', index)
+
+            # Update heading to sort in reverse next time
+            tree.heading(col, command=lambda: sort_column(col, not reverse))
+
+        # Bind each column heading
+        for col in tree['columns']:
+            tree.heading(col, command=lambda c=col: sort_column(c, False))

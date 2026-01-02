@@ -59,6 +59,9 @@ class AgentListDialog(BaseDialog):
         # Bind double-click
         self.agent_tree.bind('<Double-Button-1>', lambda e: self.edit_agent())
 
+        # Make columns sortable
+        self.make_treeview_sortable(self.agent_tree)
+
         # Buttons - Using BaseDialog helper
         self.create_button_frame(main_frame, [
             ("Create New Agent", self.create_agent),
@@ -139,11 +142,22 @@ class AgentListDialog(BaseDialog):
         agent_name = values[0]
         agent_file = values[1]
 
+        # Check if agent is used in any workflow templates
+        workflows_using_agent = self._get_workflows_using_agent(agent_file)
+        if workflows_using_agent:
+            workflow_list = "\n".join(f"  • {w}" for w in workflows_using_agent)
+            messagebox.showerror(
+                "Cannot Delete",
+                f"Agent '{agent_name}' is used in the following workflow templates:\n\n"
+                f"{workflow_list}\n\n"
+                f"Remove the agent from these workflows before deleting."
+            )
+            return
+
         if not messagebox.askyesno(
                 "Confirm Delete",
                 f"Delete agent '{agent_name}'?\n\n"
-                f"This will remove the agent and its configuration.\n\n"
-                f"Cannot be undone."
+                f"This will remove the agent and its configuration."
         ):
             return
 
@@ -153,3 +167,17 @@ class AgentListDialog(BaseDialog):
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to delete: {e}")
+
+    def _get_workflows_using_agent(self, agent_file: str) -> list:
+        """Get list of workflow template names that use this agent."""
+        workflows = []
+        try:
+            templates = self.queue.get_workflow_templates()
+            for template in templates:
+                for step in template.steps:
+                    if step.agent == agent_file:
+                        workflows.append(template.name)
+                        break  # Only add template once even if agent used in multiple steps
+        except Exception:
+            pass  # If we can't check, allow deletion
+        return workflows

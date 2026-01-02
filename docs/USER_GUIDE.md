@@ -1097,26 +1097,88 @@ Next: Tester
 - Are injected into agent prompts
 - Can be assigned to multiple agents
 
-### Browsing Skills
+### Managing Skills
 
-**Menu**: Skills > Browse Skills...  
+**Menu**: Skills > Manage...
 **Shortcut**: `Ctrl+K`
 
-The Skills Viewer shows:
+The Skills Manager provides full CRUD capabilities for skills.
 
 **Left Panel - Skills List**
 - All available skills in table
 - Columns: Name, Category, Directory
 - Click skill to view details
+- Double-click to edit
 
 **Right Panel - Skill Details**
 - Skill name and description
-- **Content preview** - Full skill prompt
+- **Content preview** - Full skill prompt (SKILL.md content)
 - **Agents Using This Skill** - Which agents have it assigned
 
 **Filter by Category**
 - Dropdown at top
-- Categories: Testing, Security, Documentation, Performance, Code Quality, etc.
+- Categories: Analysis, Architecture, Implementation, Testing, Documentation, etc.
+
+**Action Buttons**
+- **Create New Skill** - Add a custom skill
+- **Edit Selected** - Modify skill content and metadata
+- **Delete Selected** - Remove skill (with dependency check)
+- **Refresh** - Reload skills from files
+
+### Creating a New Skill
+
+Click **Create New Skill** in Skills Manager.
+
+**Skill Information**:
+- **Name** (required) - Display name (e.g., "API Design Patterns")
+- **Directory** (auto-generated) - Lowercase with hyphens, creates `.claude/skills/<directory>/SKILL.md`
+- **Category** (required) - Select from existing categories (analysis, architecture, implementation, etc.)
+- **Description** (required) - Brief explanation of what the skill provides
+
+**Skill Content**:
+- Large text area for the actual skill content
+- Write in markdown format
+- This is what gets injected into agent prompts
+- Template provided for new skills with suggested structure:
+  - Purpose
+  - When to Use
+  - Approach
+  - Best Practices
+  - Examples
+
+Click **Save** to create the skill directory and SKILL.md file.
+
+### Editing a Skill
+
+1. Select skill in Skills Manager
+2. Click **Edit Selected** or double-click
+3. Modify metadata or content
+4. Click **Save**
+
+**What gets updated**:
+- `skills.json` - Skill metadata
+- `SKILL.md` - Skill content file
+
+### Deleting a Skill
+
+1. Select skill in Skills Manager
+2. Click **Delete Selected**
+3. If agents use this skill, you'll see a warning:
+   ```
+   Delete skill 'API Design Patterns'?
+
+   This skill is used by the following agents:
+     • Architect
+     • Implementer
+
+   It will be removed from these agents.
+   ```
+4. Confirm to delete
+
+**What happens on delete**:
+- Skill removed from `skills.json`
+- Skill directory and SKILL.md file deleted
+- Skill automatically removed from all agents that had it assigned
 
 ### Viewing Agent Skills Summary
 
@@ -1132,7 +1194,7 @@ Requirements Analyst:
 Architect:
   • System Design (architecture)
   • Performance Analysis (performance)
-  
+
 ...
 ```
 
@@ -1408,19 +1470,28 @@ After modifying agent files, regenerate the agent registry via the UI or restart
 
 Skills provide specialized capabilities agents can apply.
 
-**Creating a new skill**:
+**Creating a new skill via UI** (Recommended):
+
+1. **Skills > Manage...** (`Ctrl+K`)
+2. Click **Create New Skill**
+3. Fill in the skill information:
+   - Name: "My Custom Skill"
+   - Category: Select from dropdown
+   - Description: Brief explanation
+4. Write skill content in markdown
+5. Click **Save**
+
+The UI automatically:
+- Creates the skill directory
+- Writes the SKILL.md file
+- Registers in skills.json
+
+**Creating a new skill manually**:
 
 1. Create skill directory: `.claude/skills/my-skill/`
-2. Create `SKILL.md` with frontmatter:
+2. Create `SKILL.md` with content:
 
 ```markdown
----
-name: "My Skill"
-description: "Description of what this skill does"
-category: "implementation"
-required_tools: ["Read", "Write"]
----
-
 # My Skill
 
 ## Purpose
@@ -1430,13 +1501,16 @@ What this skill helps accomplish...
 - Situation 1
 - Situation 2
 
-## Key Capabilities
-1. **Capability 1** - Description
-2. **Capability 2** - Description
+## Approach
+Step-by-step methodology...
+
+## Best Practices
+- Do this
+- Avoid that
 ```
 
 3. Register in `.claude/skills/skills.json`
-4. Assign to agents in their frontmatter: `skills: ["my-skill"]`
+4. Assign to agents via Agents > Manage... > Edit > Skills tab
 
 ### Adding Project Learnings
 

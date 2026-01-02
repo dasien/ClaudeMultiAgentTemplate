@@ -154,7 +154,7 @@ class MainView:
         # Skills menu (requires connection)
         skills_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Skills", menu=skills_menu, state="disabled")
-        skills_menu.add_command(label="View...", command=self.show_skills_viewer, accelerator="Ctrl+K")
+        skills_menu.add_command(label="Manage...", command=self.show_skills_manager, accelerator="Ctrl+K")
         skills_menu.add_separator()
         skills_menu.add_command(label="View Agent Skills...", command=self.show_agent_skills)
         self.menus['skills'] = menubar.index("Skills")
@@ -165,14 +165,14 @@ class MainView:
         learnings_menu.add_command(label="Browse...", command=self.show_learnings_browser, accelerator="Ctrl+R")
         self.menus['learnings'] = menubar.index("Learnings")
 
-        # Integration menu (requires connection)
-        integration_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Integration", menu=integration_menu, state="disabled")
-        integration_menu.add_command(label="Integration Dashboard...", command=self.show_integration_dashboard,
-                                     accelerator="Ctrl+I")
-        integration_menu.add_separator()
-        integration_menu.add_command(label="Sync All Unsynced Tasks", command=self.sync_all_tasks)
-        self.menus['integration'] = menubar.index("Integration")
+        # Integration menu - hidden for now (not fully implemented)
+        # integration_menu = tk.Menu(menubar, tearoff=0)
+        # menubar.add_cascade(label="Integration", menu=integration_menu, state="disabled")
+        # integration_menu.add_command(label="Integration Dashboard...", command=self.show_integration_dashboard,
+        #                              accelerator="Ctrl+I")
+        # integration_menu.add_separator()
+        # integration_menu.add_command(label="Sync All Unsynced Tasks", command=self.sync_all_tasks)
+        # self.menus['integration'] = menubar.index("Integration")
 
         # Logs menu (requires connection)
         logs_menu = tk.Menu(menubar, tearoff=0)
@@ -868,9 +868,7 @@ class MainView:
 
         response = messagebox.askyesno(
             "Clear Finished Tasks",
-            "This will clear all Completed and Failed tasks from the queue.\n\n"
-            "Pending and Active tasks will remain.\n\n"
-            "Are you sure you want to proceed?"
+            "Clear all Completed and Failed tasks?"
         )
 
         if response:
@@ -888,8 +886,7 @@ class MainView:
 
         response = messagebox.askyesno(
             "Clear Cancelled Tasks",
-            "This will permanently delete all Cancelled tasks from the queue.\n\n"
-            "Are you sure you want to proceed?"
+            "Clear all Cancelled tasks from the queue?"
         )
 
         if response:
@@ -955,14 +952,14 @@ class MainView:
             self.root.clipboard_clear()
             self.root.clipboard_append(task.id)
 
-    def show_skills_viewer(self):
-        """Show skills viewer dialog."""
+    def show_skills_manager(self):
+        """Show skills manager dialog."""
         if self.state.connection_state != ConnectionState.CONNECTED:
             messagebox.showwarning("Not Connected", "Please connect first.")
             return
 
-        from .dialogs import SkillsViewerDialog
-        SkillsViewerDialog(self.root, self.queue)
+        from .dialogs import SkillsManagerDialog
+        SkillsManagerDialog(self.root, self.queue)
 
     def show_agent_skills(self):
         """Show agent skills summary."""
