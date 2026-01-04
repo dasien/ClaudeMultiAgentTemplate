@@ -1,20 +1,26 @@
 # System Reference
 
-Technical reference for CMAT internals: task queue, prompt construction, cost tracking, skills, and learnings.
+Technical reference for CMAT internals: task queue, agents, workflows, prompt construction, cost tracking, skills, and learnings.
 
 ---
 
 ## Table of Contents
 
-- [Task Queues](#task-queue-system)
-- [Prompts](#prompt-system)
+- [Task Queue](#task-queue)
+- [Agents](#agents)
+- [Workflow Templates](#workflow-templates)
+- [Enhancements](#enhancements)
+- [Prompts](#prompts)
 - [Cost Tracking](#cost-tracking)
-- [Skills](#skills-system)
-- [Learnings](#learnings-system)
+- [Models](#models)
+- [Skills](#skills)
+- [Learnings](#learnings)
+- [Service APIs](#service-apis)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## Task Queue System
+## Task Queue
 
 The queue system manages the lifecycle of all agent tasks.
 
@@ -83,7 +89,264 @@ When a task completes:
 
 ---
 
-## Prompt System
+## Agents
+
+Agents are specialized capability definitions that execute tasks within workflows.
+
+### Agent Structure
+
+Each agent is defined by a markdown file with YAML frontmatter:
+
+**Location**: `.claude/agents/{agent-slug}.md`
+
+```markdown
+---
+name: "Implementer"
+role: "implementation"
+description: "Implements features based on architectural specifications"
+tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Task"]
+skills: ["error-handling", "code-refactoring", "sql-development"]
+validations:
+  metadata_required: true
+---
+
+# Implementer Agent
+
+## Role and Purpose
+[Agent instructions and guidelines...]
+```
+
+### Agent Frontmatter Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | string | Yes | Display name (e.g., "Requirements Analyst") |
+| `role` | string | Yes | Role category (see below) |
+| `description` | string | Yes | Brief description of agent's purpose |
+| `tools` | array | Yes | Claude Code tools agent can use |
+| `skills` | array | No | Skill slugs assigned to this agent |
+| `validations` | object | No | Validation settings |
+
+### Agent Roles
+
+| Role | Description | Typical Task Types |
+|------|-------------|-------------------|
+| `analysis` | Requirements and scope analysis | analysis |
+| `technical_design` | Architecture and system design | technical_analysis |
+| `implementation` | Code writing and development | implementation |
+| `testing` | Test creation and execution | testing |
+| `documentation` | Documentation writing | documentation |
+| `integration` | External system integration | integration |
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `Read` | Read files from filesystem |
+| `Write` | Create new files |
+| `Edit` | Modify existing files |
+| `MultiEdit` | Batch file modifications |
+| `Bash` | Execute shell commands |
+| `Glob` | Find files by pattern |
+| `Grep` | Search file contents |
+| `Task` | Spawn sub-agents |
+| `WebSearch` | Search the web |
+| `WebFetch` | Fetch web content |
+
+### Agent Output Structure
+
+Agents create outputs in a standard directory structure:
+
+```
+enhancements/{enhancement_name}/{agent-slug}/
+├── required_output/
+│   └── {workflow-specified-filename}.md
+└── optional_output/
+    └── [additional files]
+```
+
+### Completion Block
+
+Every agent must output a completion block:
+
+```yaml
+---
+agent: implementer
+task_id: task_1702345678_12345
+status: READY_FOR_TESTING
+skills_used: [error-handling, code-refactoring]
+---
+```
+
+---
+
+## Workflow Templates
+
+Workflow templates define how agents collaborate to process enhancements.
+
+### Template Structure
+
+**Location**: `.claude/data/workflow_templates.json`
+
+```json
+{
+  "version": "2.0.0",
+  "workflows": {
+    "new-feature-development": {
+      "name": "New Feature Development",
+      "description": "Complete workflow for implementing a new feature",
+      "steps": [
+        {
+          "agent": "requirements-analyst",
+          "input": "enhancements/{enhancement_name}/{enhancement_name}.md",
+          "required_output": "analysis_summary.md",
+          "on_status": {
+            "READY_FOR_DEVELOPMENT": {
+              "next_step": "architect",
+              "auto_chain": true
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### Workflow Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | Display name |
+| `description` | string | When to use this workflow |
+| `steps` | array | Ordered list of workflow steps |
+
+### Step Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `agent` | string | Agent slug to execute this step |
+| `input` | string | Input pattern (supports placeholders) |
+| `required_output` | string | Filename agent must create |
+| `on_status` | object | Status-to-transition mappings |
+
+### Input Placeholders
+
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `{enhancement_name}` | Enhancement directory name | `user-auth` |
+| `{previous_step}` | Previous agent's output directory | `requirements-analyst` |
+
+### Status Transitions
+
+Each transition defines what happens when an agent outputs a specific status:
+
+```json
+{
+  "READY_FOR_DEVELOPMENT": {
+    "next_step": "architect",
+    "auto_chain": true
+  },
+  "BLOCKED": {
+    "next_step": null,
+    "auto_chain": false,
+    "description": "Requires user intervention"
+  }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `next_step` | string/null | Next agent slug, or null to end |
+| `auto_chain` | boolean | Automatically start next step |
+| `description` | string | (Optional) Explanation of this transition |
+
+### Common Status Codes
+
+**Completion Statuses** (workflow continues):
+- `READY_FOR_DEVELOPMENT` - Requirements complete
+- `READY_FOR_IMPLEMENTATION` - Architecture complete
+- `READY_FOR_TESTING` - Implementation complete
+- `TESTING_COMPLETE` - All tests passed
+- `DOCUMENTATION_COMPLETE` - Documentation updated
+
+**Halt Statuses** (requires intervention):
+- `BLOCKED: <reason>` - Cannot proceed
+- `NEEDS_CLARIFICATION: <question>` - Requirements unclear
+- `TESTS_FAILED: <details>` - Tests did not pass
+- `BUILD_FAILED: <error>` - Code doesn't compile
+- `NEEDS_RESEARCH: <topic>` - Technical unknowns
+
+---
+
+## Enhancements
+
+Enhancements are structured specification documents that serve as workflow inputs.
+
+### Enhancement Structure
+
+**Location**: `enhancements/{enhancement-slug}/{enhancement-slug}.md`
+
+```
+enhancements/
+└── user-authentication/
+    ├── user-authentication.md          # Enhancement spec (input)
+    ├── requirements-analyst/           # Step 1 outputs
+    │   ├── required_output/
+    │   │   └── analysis_summary.md
+    │   └── optional_output/
+    │       └── user_stories_detailed.md
+    ├── architect/                      # Step 2 outputs
+    │   └── required_output/
+    │       └── implementation_plan.md
+    ├── implementer/                    # Step 3 outputs
+    │   └── required_output/
+    │       └── implementation_summary.md
+    ├── tester/                         # Step 4 outputs
+    │   └── required_output/
+    │       └── test_summary.md
+    └── logs/                           # Task execution logs
+        └── task_1702345678_12345.log
+```
+
+### Enhancement Spec Format
+
+Enhancement specifications typically include:
+
+- **Overview**: What is being built and why
+- **Requirements**: Functional and non-functional requirements
+- **Acceptance Criteria**: How success is measured
+- **Technical Constraints**: Limitations and considerations
+- **Dependencies**: Related systems or features
+
+### Agent Output Files
+
+Each agent creates a `required_output/` directory containing the file specified by the workflow template. Optional additional files go in `optional_output/`.
+
+**Required output format** (includes metadata header):
+
+```markdown
+---
+enhancement: user-authentication
+agent: requirements-analyst
+task_id: task_1702345678_12345
+timestamp: 2024-12-12T10:30:00Z
+status: READY_FOR_DEVELOPMENT
+---
+
+# Analysis Summary
+
+[Agent's analysis content...]
+```
+
+---
+
+## Prompts
 
 When you start a task, CMAT constructs a prompt that includes:
 
@@ -118,33 +381,6 @@ When you start a task, CMAT constructs a prompt that includes:
 | `${required_output_filename}` | Required output filename |
 | `${expected_statuses}` | List of expected status codes |
 
-### Completion Block Format
-
-Every agent outputs a YAML completion block:
-
-```yaml
----
-agent: implementer
-task_id: task_1702345678_12345
-status: READY_FOR_TESTING
-skills_used: [error-handling, code-refactoring]
----
-```
-
-### Status Types
-
-**Completion Statuses** (workflow continues):
-- `READY_FOR_DEVELOPMENT` - Requirements complete
-- `READY_FOR_IMPLEMENTATION` - Architecture complete
-- `READY_FOR_TESTING` - Implementation complete
-- `TESTING_COMPLETE` - All tests passed
-- `DOCUMENTATION_COMPLETE` - Documentation updated
-
-**Halt Statuses** (requires intervention):
-- `BLOCKED: <reason>` - Cannot proceed
-- `NEEDS_CLARIFICATION: <question>` - Requirements unclear
-- `TESTS_FAILED: <details>` - Tests did not pass
-
 ---
 
 ## Cost Tracking
@@ -174,17 +410,6 @@ CMAT tracks token usage and costs for each task via Claude Code hooks.
 }
 ```
 
-### Model Pricing
-
-Costs are calculated based on model pricing defined in `models.json`:
-
-| Model | Input (per 1M) | Output (per 1M) |
-|-------|----------------|-----------------|
-| claude-sonnet-4.5 | $3.00 | $15.00 |
-| claude-sonnet-4 | $3.00 | $15.00 |
-| claude-haiku-4.5 | $0.80 | $4.00 |
-| claude-opus-4.5 | $15.00 | $75.00 |
-
 ### Viewing Costs
 
 Costs are visible in the UI:
@@ -193,7 +418,72 @@ Costs are visible in the UI:
 
 ---
 
-## Skills System
+## Models
+
+CMAT maintains model configurations for pricing calculations and selection.
+
+### Model Configuration
+
+**Location**: `.claude/data/models.json`
+
+```json
+{
+  "models": {
+    "claude-sonnet-4.5": {
+      "pattern": "*sonnet-4-5*",
+      "name": "Claude Sonnet 4.5",
+      "api_id": "claude-sonnet-4-5-20250929",
+      "description": "Balanced model for most tasks",
+      "max_tokens": 200000,
+      "pricing": {
+        "input": 3.0,
+        "output": 15.0,
+        "cache_write": 3.75,
+        "cache_read": 0.3,
+        "currency": "USD",
+        "per_tokens": 1000000
+      }
+    }
+  },
+  "default_model": "claude-sonnet-4.5"
+}
+```
+
+### Model Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `pattern` | string | Glob pattern to match model strings |
+| `name` | string | Display name |
+| `api_id` | string | Anthropic API model identifier |
+| `description` | string | Model capabilities summary |
+| `max_tokens` | integer | Maximum context tokens |
+| `pricing` | object | Cost per million tokens |
+
+### Pricing Structure
+
+| Field | Description |
+|-------|-------------|
+| `input` | Cost per 1M input tokens |
+| `output` | Cost per 1M output tokens |
+| `cache_write` | Cost per 1M cache creation tokens |
+| `cache_read` | Cost per 1M cache read tokens |
+| `currency` | Currency code (USD) |
+| `per_tokens` | Token unit (1000000) |
+
+### Current Model Pricing
+
+| Model | Input (per 1M) | Output (per 1M) |
+|-------|----------------|-----------------|
+| claude-sonnet-4.5 | $3.00 | $15.00 |
+| claude-sonnet-4 | $3.00 | $15.00 |
+| claude-haiku-4.5 | $0.25 | $1.25 |
+| claude-haiku-4 | $0.25 | $1.25 |
+| claude-opus-4.5 | $5.00 | $25.00 |
+
+---
+
+## Skills
 
 Skills provide specialized capabilities that agents can apply to their work.
 
@@ -225,12 +515,24 @@ Guide implementation of robust error handling...
 2. **Recovery Strategies** - Implement graceful degradation
 ```
 
+### Skill Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | Display name |
+| `description` | string | Brief purpose description |
+| `category` | string | Skill category (see below) |
+| `required_tools` | array | Tools needed to apply this skill |
+
 ### Skill Categories
 
 - **analysis** - Requirements analysis skills
+- **architecture** - System design skills
 - **implementation** - Coding and development skills
 - **testing** - Test design and execution skills
 - **documentation** - Documentation writing skills
+- **security** - Security analysis skills
+- **performance** - Optimization skills
 
 ### Skills Assignment
 
@@ -252,7 +554,7 @@ skills: ["error-handling", "code-refactoring", "test-design-patterns"]
 
 ---
 
-## Learnings System
+## Learnings
 
 The learnings system provides persistent memory via RAG (Retrieval-Augmented Generation).
 
@@ -273,14 +575,15 @@ The learnings system provides persistent memory via RAG (Retrieval-Augmented Gen
 
 ### Learning Properties
 
-| Property | Description |
-|----------|-------------|
-| `summary` | 1-2 sentence description |
-| `content` | Full learning content |
-| `tags` | Categories for retrieval |
-| `applies_to` | Task types where relevant |
-| `source_type` | `user_input`, `agent_output`, `code_pattern` |
-| `confidence` | 0.0-1.0, how universal vs project-specific |
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique identifier |
+| `summary` | string | 1-2 sentence description |
+| `content` | string | Full learning content |
+| `tags` | array | Categories for retrieval |
+| `applies_to` | array | Task types where relevant |
+| `source_type` | string | `user_input`, `agent_output`, `code_pattern` |
+| `confidence` | float | 0.0-1.0, how universal vs project-specific |
 
 ### Learning Flow
 
@@ -348,6 +651,18 @@ queue.list_failed() -> list[Task]
 queue.status() -> dict  # counts by status
 ```
 
+### AgentsService
+
+```python
+# Agent operations
+agents.list_all() -> list[Agent]
+agents.get(agent_slug) -> Agent
+agents.get_by_role(role) -> list[Agent]
+agents.create(agent_data) -> Agent
+agents.update(agent_slug, agent_data) -> Agent
+agents.delete(agent_slug) -> bool
+```
+
 ### WorkflowService
 
 ```python
@@ -370,6 +685,9 @@ skills.list_all() -> list[Skill]
 skills.get(skill_directory) -> Skill
 skills.get_by_category(category) -> list[Skill]
 skills.get_skills_for_agent(skill_names) -> list[Skill]
+skills.create(skill_data) -> Skill
+skills.update(skill_directory, skill_data) -> Skill
+skills.delete(skill_directory) -> bool
 ```
 
 ### LearningsService
@@ -380,6 +698,15 @@ learnings.get(learning_id) -> Learning
 learnings.store(learning) -> str
 learnings.delete(learning_id) -> bool
 learnings.count() -> int
+```
+
+### ModelsService
+
+```python
+models.list_all() -> list[Model]
+models.get(model_id) -> Model
+models.get_default() -> Model
+models.calculate_cost(model_id, tokens) -> float
 ```
 
 ---
@@ -417,3 +744,22 @@ learnings.count() -> int
 **Resolution**:
 - Check learning tags match task context
 - Verify `applies_to` includes relevant task types
+
+### Agent Not Found
+
+**Cause**: Agent file missing or malformed frontmatter
+
+**Resolution**:
+- Check `.claude/agents/{agent-slug}.md` exists
+- Verify YAML frontmatter is valid
+- Ensure required fields (name, role, description, tools) are present
+
+### Workflow Validation Errors
+
+**Cause**: Invalid workflow template configuration
+
+**Resolution**:
+- Check all referenced agents exist
+- Verify input patterns use valid placeholders
+- Ensure all transition targets exist in workflow
+- Validate required_output filenames end with `.md`
