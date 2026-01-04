@@ -21,6 +21,7 @@ from .workflow_template_manager import WorkflowTemplateManagerDialog
 from .workflow_template_editor import WorkflowTemplateEditorDialog
 from .workflow_launcher import WorkflowLauncherDialog
 from .documentation_viewer import DocumentationViewerDialog
+from .claude_md_manager import ClaudeMdManagerDialog
 
 __all__ = [
     'ConnectDialog',
@@ -41,4 +42,5 @@ __all__ = [
     'WorkflowTemplateEditorDialog',
     'WorkflowLauncherDialog',
     'DocumentationViewerDialog',
+    'ClaudeMdManagerDialog',
 ]

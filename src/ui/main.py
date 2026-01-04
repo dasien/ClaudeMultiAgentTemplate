@@ -180,11 +180,12 @@ class MainView:
         logs_menu.add_command(label="View Operations Log", command=self.show_operations_log, accelerator="Ctrl+L")
         self.menus['logs'] = menubar.index("Logs")
 
-        # Claude menu (always enabled for API key, models requires connection)
+        # Claude menu (always enabled for API key, other items require connection)
         self.claude_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Claude", menu=self.claude_menu)
         self.claude_menu.add_command(label="Set API Key...", command=self.configure_api_key)
         self.claude_menu.add_separator()
+        self.claude_menu.add_command(label="Manage CLAUDE.md...", command=self.show_claude_md_manager, state="disabled")
         self.claude_menu.add_command(label="Manage Models...", command=self.show_models_manager, state="disabled")
 
         # About menu (always enabled)
@@ -205,8 +206,10 @@ class MainView:
             if menu_name in self.menus:
                 self.menubar.entryconfig(self.menus[menu_name], state=state)
 
-        # Enable/disable "Manage Models..." in Claude menu (index 2)
+        # Enable/disable Claude menu items that require connection
+        # Index 2 = "Manage CLAUDE.md...", Index 3 = "Manage Models..."
         self.claude_menu.entryconfig(2, state=state)
+        self.claude_menu.entryconfig(3, state=state)
 
         # Keyboard shortcuts
         self.root.bind('<Control-o>', lambda e: self.show_connect_dialog())
@@ -1081,6 +1084,15 @@ class MainView:
 
         from .dialogs.models_manager import ModelsManagerDialog
         ModelsManagerDialog(self.root, self.queue).show()
+
+    def show_claude_md_manager(self):
+        """Show CLAUDE.md management dialog."""
+        if self.state.connection_state != ConnectionState.CONNECTED:
+            messagebox.showwarning("Not Connected", "Please connect to a project first.")
+            return
+
+        from .dialogs import ClaudeMdManagerDialog
+        ClaudeMdManagerDialog(self.root, self.queue, self.settings)
 
     def configure_api_key(self):
         """Configure Claude API settings."""

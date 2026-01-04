@@ -18,6 +18,8 @@ Complete guide to using the CMAT graphical interface for managing multi-agent wo
 10. [Workflow Visualization](#workflow-visualization)
 11. [Integration Dashboard](#integration-dashboard)
 12. [Settings and Configuration](#settings-and-configuration)
+    - [CLAUDE.md Management](#claudemd-management)
+    - [Claude API Settings](#claude-api-settings)
 13. [Keyboard Shortcuts](#keyboard-shortcuts)
 14. [Common Workflows](#common-workflows)
 15. [Customization](#customization)
@@ -1245,9 +1247,85 @@ Columns:
 
 ## Settings and Configuration
 
+### CLAUDE.md Management
+
+**Menu**: Claude > Manage CLAUDE.md...
+
+CLAUDE.md is a project-level instruction file that Claude Code reads to understand your project's conventions, structure, and requirements. The CLAUDE.md Manager helps you create, edit, and manage this file.
+
+#### CLAUDE.md Manager Dialog
+
+The manager dialog shows:
+
+**Status Section**
+- Current status: "Present" or "Not configured"
+- File path: Location where CLAUDE.md will be saved
+
+**Content Area**
+- Large editable text area showing the CLAUDE.md content
+- Always editable - no separate edit mode
+- Supports undo/redo
+
+**Buttons**
+
+| Button | Description |
+|--------|-------------|
+| **Create** | Generate CLAUDE.md using AI agent |
+| **Load** | Load content from an existing .md file |
+| **Render** | Preview content with markdown formatting |
+| **Save** | Write content to project's CLAUDE.md |
+| **Close** | Close dialog (prompts if unsaved changes) |
+
+#### Creating CLAUDE.md with AI
+
+1. Click **Create**
+2. If CLAUDE.md exists, confirm overwrite
+3. Confirm generation (takes a few minutes)
+4. Agent analyzes your project and generates content
+5. Content appears in text area
+6. Review and edit as needed
+7. Click **Save** to keep (file is auto-saved by agent)
+
+**Note**: The Create button runs an agent that writes directly to your project. The file is saved automatically upon successful generation.
+
+#### Loading from Existing File
+
+1. Click **Load**
+2. Select a .md file from the file picker
+3. Content loads into text area
+4. Edit as needed
+5. Click **Save** to copy to project's CLAUDE.md
+
+#### Previewing with Markdown Rendering
+
+1. Click **Render**
+2. Preview dialog shows formatted content:
+   - Headings (h1-h4) with proper sizing
+   - **Bold** and *italic* text
+   - `inline code` and code blocks
+   - Bullet and numbered lists
+   - Blockquotes
+3. Click **Close** to return to editor
+
+#### Saving Changes
+
+- Click **Save** to write content to `{project-root}/CLAUDE.md`
+- Status updates to "Present"
+- Main window header updates
+
+#### Best Practices for CLAUDE.md
+
+- Keep it concise (under 50KB)
+- Focus on project-specific conventions
+- Include: coding style, file structure, naming conventions
+- Avoid: generic instructions Claude already knows
+- Update when project conventions change
+
+---
+
 ### Claude API Settings
 
-**Menu**: Settings > Claude Settings
+**Menu**: Claude > Set API Key...
 
 Configure Claude API for AI-powered features.
 
@@ -1285,17 +1363,12 @@ Configure Claude API for AI-powered features.
 - Increase for complex enhancements (120-180s)
 - Minimum: 10 seconds
 
-### Auto-Refresh Setting
+### Auto-Refresh
 
-**Menu**: Settings > Auto Refresh Task List
-
-**When enabled**:
-- Task queue refreshes every 3 seconds
-- Shows: `Auto-refresh: ✓ ON (3s)`
-
-**When disabled**:
-- Manual refresh only (F5)
-- Shows: `Auto-refresh: OFF`
+Auto-refresh is always enabled when connected to a project:
+- Task queue refreshes every 3 seconds automatically
+- Status bar shows: `Auto-refresh: 3s`
+- Manual refresh available with F5
 
 ---
 
@@ -1685,14 +1758,14 @@ Create workflows tailored to your development process:
 #### "No API Key" error
 
 **Solutions**:
-1. Settings > Claude Settings
+1. Claude > Set API Key...
 2. Enter API key from console.anthropic.com
 3. Save settings
 
 #### "Request timeout"
 
 **Solutions**:
-1. Settings > Claude Settings
+1. Claude > Set API Key...
 2. Increase timeout to 120-180 seconds
 3. For very complex enhancements, try 300 seconds
 

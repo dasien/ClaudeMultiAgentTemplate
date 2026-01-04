@@ -6,11 +6,11 @@ Technical reference for CMAT internals: task queue, prompt construction, cost tr
 
 ## Table of Contents
 
-- [Task Queue System](#task-queue-system)
-- [Prompt System](#prompt-system)
+- [Task Queues](#task-queue-system)
+- [Prompts](#prompt-system)
 - [Cost Tracking](#cost-tracking)
-- [Skills System](#skills-system)
-- [Learnings System](#learnings-system)
+- [Skills](#skills-system)
+- [Learnings](#learnings-system)
 
 ---
 

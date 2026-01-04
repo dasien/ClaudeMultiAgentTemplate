@@ -905,7 +905,7 @@ class CMATInterface:
     ) -> Path:
         """Run an agent directly (synchronous)."""
         result = self.tasks.execute_direct(
-            agent=agent_name,
+            agent_name=agent_name,
             input_file=str(input_file),
             output_dir=str(output_dir),
             task_description=task_description,
@@ -931,7 +931,7 @@ class CMATInterface:
         def run_in_thread():
             try:
                 result = self.tasks.execute_direct(
-                    agent=agent_name,
+                    agent_name=agent_name,
                     input_file=str(input_file),
                     output_dir=str(output_dir),
                     task_description=task_description,
@@ -1114,3 +1114,125 @@ class CMATInterface:
         import re
         match = re.match(r'^enhancements/([^/]+)/', source_file)
         return match.group(1) if match else None
+
+    # =========================================================================
+    # CLAUDE.md MANAGEMENT
+    # =========================================================================
+
+    def check_claude_md_status(self) -> Dict:
+        """
+        Check if CLAUDE.md exists in project.
+
+        Returns:
+            {
+                "exists": bool,
+                "path": str | None,
+                "size": int,
+                "modified": datetime | None
+            }
+        """
+        claude_md = self.project_root / "CLAUDE.md"
+
+        if claude_md.exists():
+            stat = claude_md.stat()
+            return {
+                "exists": True,
+                "path": str(claude_md),
+                "size": stat.st_size,
+                "modified": datetime.fromtimestamp(stat.st_mtime)
+            }
+        else:
+            return {
+                "exists": False,
+                "path": None,
+                "size": 0,
+                "modified": None
+            }
+
+    def open_claude_md_in_editor(self) -> Tuple[bool, str]:
+        """
+        Open CLAUDE.md in system default editor.
+
+        Returns:
+            (success: bool, message: str)
+
+        Platform-specific implementation:
+        - macOS: open command
+        - Windows: os.startfile()
+        - Linux: xdg-open
+        """
+        import subprocess
+        import platform
+        import os
+
+        claude_md = self.project_root / "CLAUDE.md"
+
+        if not claude_md.exists():
+            return (False, "CLAUDE.md not found in project")
+
+        try:
+            system = platform.system()
+
+            if system == "Darwin":  # macOS
+                subprocess.Popen(["open", str(claude_md)])
+            elif system == "Windows":
+                os.startfile(str(claude_md))
+            else:  # Linux/Unix
+                subprocess.Popen(["xdg-open", str(claude_md)])
+
+            return (True, "Opened in system editor")
+
+        except FileNotFoundError:
+            return (False, f"Editor command not found for {system}")
+        except Exception as e:
+            return (False, f"Failed to open editor: {e}")
+
+    def copy_file_to_claude_md(
+        self,
+        source_path: str,
+        overwrite_existing: bool = False
+    ) -> Tuple[bool, str]:
+        """
+        Copy a markdown file to project root as CLAUDE.md.
+
+        Args:
+            source_path: Path to source .md file
+            overwrite_existing: If True, overwrite without confirmation
+
+        Returns:
+            (success: bool, message: str)
+
+        Validations:
+        - Source file exists and is readable
+        - Source file is .md extension
+        - Target directory is writable
+        - Warns if source > 50KB
+        """
+        import shutil
+
+        source = Path(source_path)
+        target = self.project_root / "CLAUDE.md"
+
+        # Validation
+        if not source.exists():
+            return (False, f"Source file not found: {source}")
+
+        if source.suffix.lower() != ".md":
+            return (False, "Source file must be a .md file")
+
+        # Check if overwrite needed
+        if target.exists() and not overwrite_existing:
+            return (False, "CLAUDE.md already exists. User confirmation needed.")
+
+        # Size warning (return warning, let caller handle dialog)
+        if source.stat().st_size > 50 * 1024:
+            return (False, f"File is large ({source.stat().st_size // 1024}KB). CLAUDE.md should be concise (< 50KB).")
+
+        # Copy operation
+        try:
+            shutil.copy2(source, target)
+            return (True, f"Copied to {target}")
+        except PermissionError as e:
+            return (False, f"Permission denied: {e}")
+        except Exception as e:
+            return (False, f"Copy failed: {e}")
