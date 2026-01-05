@@ -14,10 +14,11 @@ from ..utils import to_slug, validate_slug
 class WorkflowTemplateEditorDialog(BaseDialog):
     """Dialog for creating/editing workflow templates (v5.0)."""
 
-    def __init__(self, parent, queue_interface, mode='create', template_slug=None):
+    def __init__(self, parent, queue_interface, mode='create', template_slug=None, initial_data=None):
         self.queue = queue_interface
         self.mode = mode
         self.template_slug = template_slug
+        self.initial_data = initial_data  # For pre-filling create mode (e.g., duplicate)
         self.steps = []
 
         title = "Create Workflow Template" if mode == 'create' else f"Edit Template: {template_slug}"
@@ -27,6 +28,8 @@ class WorkflowTemplateEditorDialog(BaseDialog):
 
         if mode == 'edit' and template_slug:
             self.load_template_data()
+        elif mode == 'create' and initial_data:
+            self.load_initial_data()
 
         self.show()
 
@@ -45,29 +48,13 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         self.name_entry = ttk.Entry(name_frame, textvariable=self.name_var, width=50)
         self.name_entry.pack(fill="x", pady=(0, 5))
 
-        # Slug (auto-generated)
-        slug_header = ttk.Frame(name_frame)
-        slug_header.pack(fill="x")
-
-        ttk.Label(slug_header, text="Slug (auto-generated): *", font=('Arial', 10, 'bold')).pack(side="left")
-
-        if self.mode == 'create':
-            self.auto_slug_var = tk.BooleanVar(value=True)
-            ttk.Checkbutton(
-                slug_header,
-                text="Auto",
-                variable=self.auto_slug_var,
-                command=self.toggle_slug_auto
-            ).pack(side="right")
+        # Slug (auto-generated in create mode, readonly in edit mode)
+        ttk.Label(name_frame, text="Slug: *", font=('Arial', 10, 'bold')).pack(anchor="w")
 
         self.slug_var = tk.StringVar()
         self.slug_entry = ttk.Entry(name_frame, textvariable=self.slug_var, width=50)
         self.slug_entry.pack(fill="x")
-
-        if self.mode == 'create':
-            self.slug_entry.config(state='readonly')
-        else:
-            self.slug_entry.config(state='readonly')
+        self.slug_entry.config(state='readonly')
 
         ttk.Label(
             name_frame,
@@ -193,19 +180,11 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         ttk.Label(main_frame, text="* Required fields", font=('Arial', 9), foreground='gray').pack()
 
     def on_name_changed(self, *args):
-        """Auto-generate slug from name if enabled."""
-        if self.mode == 'create' and self.auto_slug_var.get():
+        """Auto-generate slug from name in create mode."""
+        if self.mode == 'create':
             name = self.name_var.get().strip()
             slug = to_slug(name)
             self.slug_var.set(slug)
-
-    def toggle_slug_auto(self):
-        """Toggle auto-generation of slug."""
-        if self.auto_slug_var.get():
-            self.slug_entry.config(state='readonly')
-            self.on_name_changed()
-        else:
-            self.slug_entry.config(state='normal')
 
     def load_template_data(self):
         """Load existing template data."""
@@ -232,6 +211,19 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load template: {e}")
             self.cancel()
+
+    def load_initial_data(self):
+        """Load initial data for pre-filling create mode (e.g., duplicate)."""
+        data = self.initial_data
+
+        # Load basic fields
+        self.name_var.set(data.get('name', ''))
+        # Don't set slug - let it auto-generate from name
+        self.description_var.set(data.get('description', ''))
+
+        # Load steps
+        self.steps = data.get('steps', [])
+        self.refresh_steps_list()
 
     def add_step(self):
         """Add a new step using StepEditorDialog."""

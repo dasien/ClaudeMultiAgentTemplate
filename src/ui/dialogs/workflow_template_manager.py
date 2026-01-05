@@ -69,7 +69,8 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         self.create_button_frame(main_frame, [
             ("Create New Template", self.create_template),
             ("Edit Selected", self.edit_template),
-                ("Delete Selected", self.delete_template),
+            ("Duplicate", self.duplicate_template),
+            ("Delete Selected", self.delete_template),
             ("Refresh", self.load_templates),
             ("Close", self.dialog.destroy)
         ])
@@ -125,6 +126,45 @@ class WorkflowTemplateManagerDialog(BaseDialog):
 
         if dialog.result:
             self.load_templates()
+
+    def duplicate_template(self):
+        """Duplicate the selected template by opening editor with pre-filled data."""
+        selection = self.template_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a template to duplicate.")
+            return
+
+        item = selection[0]
+        values = self.template_tree.item(item, 'values')
+        source_slug = values[1]
+
+        try:
+            # Get the source template
+            source = self.queue.get_workflow_template(source_slug)
+            if not source:
+                messagebox.showerror("Error", "Template not found.")
+                return
+
+            # Build initial data from source (name will trigger auto-slug)
+            initial_data = {
+                'name': f"Copy of {source.name}",
+                'description': source.description,
+                'steps': [step.to_dict() for step in source.steps]
+            }
+
+            # Open editor in create mode with pre-filled data
+            dialog = WorkflowTemplateEditorDialog(
+                self.dialog,
+                self.queue,
+                mode='create',
+                initial_data=initial_data
+            )
+
+            if dialog.result:
+                self.load_templates()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to duplicate template: {e}")
 
     def view_steps(self):
         """View steps for selected template."""
