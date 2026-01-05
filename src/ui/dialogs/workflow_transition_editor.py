@@ -27,7 +27,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         self.agents_map = self.queue.get_agent_list()
         self.editing_status = None  # Track which status we're editing
 
-        super().__init__(parent, "Manage Status Transitions", 720, 680)
+        super().__init__(parent, "Manage Status Transitions", 720, 710)
 
         self.build_ui()
         self.show()
@@ -55,7 +55,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         list_frame = ttk.LabelFrame(main_frame, text="Current Transitions", padding=10)
         list_frame.pack(fill="both", expand=True, pady=(0, 10))
 
-        columns = ('status', 'next_step', 'auto_chain')
+        columns = ('status', 'next_step', 'auto_chain', 'auto_start')
         self.trans_tree = ttk.Treeview(
             list_frame,
             columns=columns,
@@ -66,10 +66,12 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         self.trans_tree.heading('status', text='Status Code')
         self.trans_tree.heading('next_step', text='Next Step')
         self.trans_tree.heading('auto_chain', text='Auto-Chain')
+        self.trans_tree.heading('auto_start', text='Auto-Start')
 
-        self.trans_tree.column('status', width=220)
-        self.trans_tree.column('next_step', width=220)
-        self.trans_tree.column('auto_chain', width=100)
+        self.trans_tree.column('status', width=180)
+        self.trans_tree.column('next_step', width=180)
+        self.trans_tree.column('auto_chain', width=85)
+        self.trans_tree.column('auto_start', width=85)
 
         trans_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.trans_tree.yview)
         self.trans_tree.configure(yscrollcommand=trans_scroll.set)
@@ -127,9 +129,21 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         self.auto_chain_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(
             form_frame,
-            text="Auto-chain to next step (start automatically without user confirmation)",
+            text="Auto-chain (automatically create next task when this status is output)",
             variable=self.auto_chain_var
-        ).pack(anchor="w", pady=(0, 10))
+        ).pack(anchor="w", pady=(0, 5))
+
+        # Auto-start
+        self.auto_start_var = tk.BooleanVar(value=True)
+        self.auto_start_cb = ttk.Checkbutton(
+            form_frame,
+            text="Auto-start (immediately start next task; uncheck to leave pending for review)",
+            variable=self.auto_start_var
+        )
+        self.auto_start_cb.pack(anchor="w", pady=(0, 10))
+
+        # Bind auto_chain to enable/disable auto_start
+        self.auto_chain_var.trace_add('write', self._on_auto_chain_changed)
 
         # Form buttons
         form_button_frame = ttk.Frame(form_frame)
@@ -137,7 +151,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
 
         ttk.Button(
             form_button_frame,
-            text="Save",
+            text="Apply",
             command=self.add_or_update_transition,
             width=15
         ).pack(side="left", padx=2)
@@ -161,7 +175,8 @@ class WorkflowTransitionEditorDialog(BaseDialog):
 
         for status, config in self.transitions.items():
             next_step = config.get('next_step')
-            auto_chain = '✓' if config.get('auto_chain', False) else '✗'
+            auto_chain = 'Yes' if config.get('auto_chain', False) else 'No'
+            auto_start = 'Yes' if config.get('auto_start', True) else 'No'
 
             # Format next step display
             if next_step and next_step != 'null':
@@ -169,7 +184,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
             else:
                 next_display = '(end workflow)'
 
-            self.trans_tree.insert('', tk.END, values=(status, next_display, auto_chain))
+            self.trans_tree.insert('', tk.END, values=(status, next_display, auto_chain, auto_start))
 
     def on_transition_double_click(self, event):
         """Handle double-click to edit transition."""
@@ -196,8 +211,9 @@ class WorkflowTransitionEditorDialog(BaseDialog):
             else:
                 self.next_step_var.set('(end workflow)')
 
-            # Set auto-chain
+            # Set auto-chain and auto-start
             self.auto_chain_var.set(existing.get('auto_chain', False))
+            self.auto_start_var.set(existing.get('auto_start', True))
 
     def add_or_update_transition(self):
         """Add new transition or update existing one."""
@@ -231,7 +247,8 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         # Add or update transition
         self.transitions[status] = {
             'next_step': next_step_key,
-            'auto_chain': auto_chain
+            'auto_chain': auto_chain,
+            'auto_start': self.auto_start_var.get()
         }
 
         # Refresh display
@@ -243,6 +260,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         self.status_entry.config(state='normal')
         self.next_step_var.set('(end workflow)')
         self.auto_chain_var.set(True)
+        self.auto_start_var.set(True)
 
     def remove_transition(self):
         """Remove selected transition."""
@@ -267,3 +285,12 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         self.status_entry.config(state='normal')
         self.next_step_var.set('(end workflow)')
         self.auto_chain_var.set(True)
+        self.auto_start_var.set(True)
+
+    def _on_auto_chain_changed(self, *args):
+        """Enable/disable auto_start based on auto_chain state."""
+        if self.auto_chain_var.get():
+            self.auto_start_cb.config(state='normal')
+        else:
+            self.auto_start_cb.config(state='disabled')
+            self.auto_start_var.set(True)  # Reset to default when disabled

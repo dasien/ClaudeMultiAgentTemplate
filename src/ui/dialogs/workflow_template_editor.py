@@ -222,16 +222,10 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             self.slug_var.set(template.slug)
             self.description_var.set(template.description)
 
-            # Load steps (v5.0 format)
+            # Load steps - use WorkflowStep.to_dict() for consistent serialization
             self.steps = []
             for step in template.steps:
-                self.steps.append({
-                    'agent': step.agent,
-                    'input': step.input,
-                    'required_output': step.required_output,
-                    'model': step.model,
-                    'on_status': step.on_status
-                })
+                self.steps.append(step.to_dict())
 
             self.refresh_steps_list()
 

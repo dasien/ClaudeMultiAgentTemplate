@@ -250,7 +250,14 @@ Each transition defines what happens when an agent outputs a specific status:
 {
   "READY_FOR_DEVELOPMENT": {
     "next_step": "architect",
-    "auto_chain": true
+    "auto_chain": true,
+    "auto_start": true
+  },
+  "READY_FOR_REVIEW": {
+    "next_step": "implementer",
+    "auto_chain": true,
+    "auto_start": false,
+    "description": "Pauses for human review before implementation"
   },
   "BLOCKED": {
     "next_step": null,
@@ -260,11 +267,12 @@ Each transition defines what happens when an agent outputs a specific status:
 }
 ```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `next_step` | string/null | Next agent slug, or null to end |
-| `auto_chain` | boolean | Automatically start next step |
-| `description` | string | (Optional) Explanation of this transition |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `next_step` | string/null | - | Next agent slug, or null to end workflow |
+| `auto_chain` | boolean | true | Automatically create next task when this status is output |
+| `auto_start` | boolean | true | Immediately start the created task (false = leave pending for review) |
+| `description` | string | - | (Optional) Explanation of this transition |
 
 ### Common Status Codes
 

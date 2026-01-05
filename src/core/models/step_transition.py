@@ -22,10 +22,15 @@ class StepTransition:
     Transitions can be:
     - Completion transitions: auto_chain=True, next_step set - workflow continues
     - Halt transitions: auto_chain=False or next_step=None - workflow stops for intervention
+
+    The auto_start flag controls whether the next task starts immediately:
+    - auto_start=True (default): Next task starts automatically after creation
+    - auto_start=False: Next task is created but left pending for manual review
     """
     name: str
     next_step: Optional[str]
     auto_chain: bool = True
+    auto_start: bool = True  # Whether to auto-start the created task
     description: Optional[str] = None  # Optional description shown to agent
 
     @property
@@ -38,6 +43,7 @@ class StepTransition:
         result = {
             "next_step": self.next_step,
             "auto_chain": self.auto_chain,
+            "auto_start": self.auto_start,
         }
         if self.description:
             result["description"] = self.description
@@ -50,6 +56,7 @@ class StepTransition:
             name=name,
             next_step=data.get("next_step"),
             auto_chain=data.get("auto_chain", True),
+            auto_start=data.get("auto_start", True),  # Default True for backward compatibility
             description=data.get("description"),
         )
 

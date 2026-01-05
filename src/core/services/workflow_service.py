@@ -673,8 +673,17 @@ class WorkflowService:
             f"Chained from {task_id} to {next_task.id} ({next_step.agent})"
         )
 
-        # Execute the chained task (run_task handles start + execute)
-        self.run_task(next_task.id)
+        # Check if transition has auto_start enabled
+        transition = current_step.get_transition(status)
+        if transition and transition.auto_start:
+            # Execute the chained task (run_task handles start + execute)
+            self.run_task(next_task.id)
+        else:
+            # Leave task pending for manual review
+            log_operation(
+                "AUTO_START_SKIP",
+                f"Task {next_task.id} created but not started (auto_start=false)"
+            )
 
         return next_task.id
 

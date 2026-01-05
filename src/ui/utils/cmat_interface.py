@@ -356,10 +356,7 @@ class CMATInterface:
                             'required_output': step.required_output,
                             'model': step.model,
                             'on_status': {
-                                status: {
-                                    'next_step': trans.next_step,
-                                    'auto_chain': trans.auto_chain
-                                }
+                                status: trans.to_dict()
                                 for status, trans in (step.on_status or {}).items()
                             }
                         }
@@ -391,10 +388,7 @@ class CMATInterface:
                         'required_output': step.required_output,
                         'model': step.model,
                         'on_status': {
-                            status: {
-                                'next_step': trans.next_step,
-                                'auto_chain': trans.auto_chain
-                            }
+                            status: trans.to_dict()
                             for status, trans in (step.on_status or {}).items()
                         }
                     }
