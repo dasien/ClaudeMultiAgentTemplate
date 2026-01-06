@@ -53,6 +53,7 @@ env/
 tasks.txt
 *.bak
 *.tmp
+.claude/settings.local.json
 
 # Agent logs
 .claude/logs/*.log

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .utils import CMATInterface
 from .models import ConnectionState, QueueUIState
+from core.models import TaskStatus
 from .config import Config
 from .settings import Settings
 from .utils import TimeUtils
@@ -523,7 +524,7 @@ class MainView:
         Returns:
             bool: True if task completed with a blocked/warning status
         """
-        if task.status != 'completed':
+        if task.status != TaskStatus.COMPLETED:
             return False
 
         result = task.result or ''
@@ -721,9 +722,9 @@ class MainView:
 
             if task:
                 # Task row - show task-specific menu
-                can_start = task.status == 'pending'
-                can_cancel = task.status in ['pending', 'active']
-                can_rerun = task.status not in ['pending', 'active']
+                can_start = task.status == TaskStatus.PENDING
+                can_cancel = task.status in [TaskStatus.PENDING, TaskStatus.ACTIVE]
+                can_rerun = task.status not in [TaskStatus.PENDING, TaskStatus.ACTIVE]
 
                 menu.add_command(label="Start Task", command=self.start_task,
                                  state="normal" if can_start else "disabled")
@@ -740,7 +741,7 @@ class MainView:
                 menu.add_separator()
 
                 # Integration options
-                if task.status == 'completed' and task.metadata:
+                if task.status == TaskStatus.COMPLETED and task.metadata:
                     if not task.metadata.get('github_issue'):
                         menu.add_command(label="Sync to External Systems", command=lambda: self.sync_task(task.id))
 
@@ -812,7 +813,7 @@ class MainView:
             messagebox.showwarning("No Selection", "Select a task to start.")
             return
 
-        if task.status != 'pending':
+        if task.status != TaskStatus.PENDING:
             messagebox.showwarning("Invalid Status", "Only pending tasks can be started.")
             return
 
@@ -830,7 +831,7 @@ class MainView:
             messagebox.showwarning("No Selection", "Select a task to re-run.")
             return
 
-        if task.status in ['pending', 'active']:
+        if task.status in [TaskStatus.PENDING, TaskStatus.ACTIVE]:
             messagebox.showwarning("Invalid Status", "Cannot re-run pending or active tasks.")
             return
 
@@ -844,7 +845,7 @@ class MainView:
     def cancel_task(self):
         """Cancel selected task."""
         task = self.get_selected_task()
-        if not task or task.status not in ['pending', 'active']:
+        if not task or task.status not in [TaskStatus.PENDING, TaskStatus.ACTIVE]:
             return
 
         if messagebox.askyesno("Confirm", f"Cancel task {task.id}?"):
