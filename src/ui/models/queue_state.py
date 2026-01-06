@@ -3,10 +3,9 @@ Queue state data model.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List
 
-from .task import Task
-from .agent_status import AgentStatus
+from core.models import Task
 
 
 @dataclass
@@ -17,4 +16,3 @@ class QueueState:
     completed_tasks: List[Task]
     failed_tasks: List[Task]
     cancelled_tasks: List[Task]
-    agent_status: Dict[str, AgentStatus]

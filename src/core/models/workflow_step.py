@@ -30,6 +30,45 @@ class WorkflowStep:
         """Get a transition by status name."""
         return self.on_status.get(status_name)
 
+    def get_next_step_for_status(self, status: str) -> Optional[str]:
+        """
+        Get next step agent for a given status.
+
+        Args:
+            status: Status code (e.g., 'READY_FOR_DEVELOPMENT')
+
+        Returns:
+            Next agent name or None if workflow ends
+        """
+        transition = self.on_status.get(status)
+        if not transition:
+            return None
+        return transition.next_step
+
+    def should_auto_chain(self, status: str) -> bool:
+        """
+        Check if status should trigger auto-chain.
+
+        Args:
+            status: Status code
+
+        Returns:
+            True if should auto-chain, False otherwise
+        """
+        transition = self.on_status.get(status)
+        if not transition:
+            return False
+        return transition.auto_chain
+
+    def get_expected_statuses(self) -> list[str]:
+        """
+        Get list of expected status codes for this step.
+
+        Returns:
+            List of status codes
+        """
+        return list(self.on_status.keys())
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         result = {

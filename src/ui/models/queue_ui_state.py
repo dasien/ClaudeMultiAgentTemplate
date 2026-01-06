@@ -7,7 +7,7 @@ from typing import Optional
 from pathlib import Path
 
 from .connection_state import ConnectionState
-from .task import Task
+from core.models import Task
 
 
 @dataclass

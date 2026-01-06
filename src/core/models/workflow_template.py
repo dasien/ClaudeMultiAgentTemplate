@@ -41,6 +41,71 @@ class WorkflowTemplate:
         """Get the ordered list of agents in this workflow."""
         return [step.agent for step in self.steps]
 
+    def get_step_index_by_agent(self, agent: str) -> int | None:
+        """
+        Get step index for a specific agent.
+
+        Args:
+            agent: Agent name
+
+        Returns:
+            Step index (0-based) or None if not found
+        """
+        for i, step in enumerate(self.steps):
+            if step.agent == agent:
+                return i
+        return None
+
+    def get_total_steps(self) -> int:
+        """Get total number of steps."""
+        return len(self.steps)
+
+    def validate_chain(self) -> list[str]:
+        """
+        Validate workflow chain continuity.
+
+        Returns:
+            List of validation messages (empty if valid)
+        """
+        issues = []
+
+        if not self.steps:
+            issues.append("Workflow has no steps")
+            return issues
+
+        for i, step in enumerate(self.steps):
+            # Check if step has transitions defined
+            if not step.on_status:
+                issues.append(f"Step {i} ({step.agent}): No status transitions defined")
+
+            # Check next step references
+            for status, transition in step.on_status.items():
+                next_step = transition.next_step
+                if next_step and next_step != 'null':
+                    # Verify next agent exists in workflow
+                    if not self.get_step_by_agent(next_step):
+                        issues.append(
+                            f"Step {i} ({step.agent}): References non-existent agent '{next_step}' "
+                            f"in status '{status}'"
+                        )
+
+            # Check input/output chain
+            if i > 0:
+                prev_step = self.steps[i - 1]
+                # Check if current input references previous step
+                if '{previous_step}' in step.input:
+                    # Good - uses previous step output
+                    pass
+                elif prev_step.agent in step.input:
+                    # Good - explicitly references previous agent
+                    pass
+                else:
+                    issues.append(
+                        f"Step {i} ({step.agent}): Input doesn't reference previous step output"
+                    )
+
+        return issues
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {

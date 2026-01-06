@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
-from ..models import Task, QueueState
+from ..models import QueueState
+from core.models import Task, TaskStatus
 
 # Import core services directly (same package)
 from core.utils import set_project_root
@@ -223,85 +224,15 @@ class CMATInterface:
         self.queue.update_metadata(task_id, {key: value})
 
     def get_queue_state(self) -> QueueState:
-        """Get current queue state."""
-        all_tasks = self.queue.list_tasks()  # Get all tasks regardless of status
-
-        def convert_task(cmat_task) -> Task:
-            """Convert CMAT Task model to UI Task model."""
-            start_datetime = None
-            end_datetime = None
-            runtime_seconds = None
-
-            # CMAT v8.2+ uses datetime objects, not strings
-            if cmat_task.started:
-                try:
-                    if isinstance(cmat_task.started, datetime):
-                        start_datetime = int(cmat_task.started.timestamp())
-                    else:
-                        # Fallback for string format
-                        start_dt = datetime.fromisoformat(str(cmat_task.started).replace('Z', '+00:00'))
-                        start_datetime = int(start_dt.timestamp())
-                except (ValueError, AttributeError, TypeError):
-                    pass
-
-            if cmat_task.completed:
-                try:
-                    if isinstance(cmat_task.completed, datetime):
-                        end_datetime = int(cmat_task.completed.timestamp())
-                    else:
-                        # Fallback for string format
-                        end_dt = datetime.fromisoformat(str(cmat_task.completed).replace('Z', '+00:00'))
-                        end_datetime = int(end_dt.timestamp())
-                except (ValueError, AttributeError, TypeError):
-                    pass
-
-            # CMAT v8.2+ uses get_duration_seconds() method
-            try:
-                runtime_seconds = cmat_task.get_duration_seconds()
-            except (AttributeError, TypeError):
-                # Fallback to direct attribute if method doesn't exist
-                runtime_seconds = getattr(cmat_task, 'runtime_seconds', None)
-
-            # Convert metadata
-            metadata_dict = None
-            if cmat_task.metadata:
-                metadata_dict = cmat_task.metadata.to_dict()
-
-            # Convert datetime objects to ISO strings for UI
-            created_str = cmat_task.created.isoformat() if isinstance(cmat_task.created, datetime) else cmat_task.created
-            started_str = cmat_task.started.isoformat() if isinstance(cmat_task.started, datetime) else cmat_task.started
-            completed_str = cmat_task.completed.isoformat() if isinstance(cmat_task.completed, datetime) else cmat_task.completed
-
-            return Task(
-                id=cmat_task.id,
-                title=cmat_task.title,
-                assigned_agent=cmat_task.assigned_agent,
-                priority=cmat_task.priority.value if hasattr(cmat_task.priority, 'value') else cmat_task.priority,
-                task_type=cmat_task.task_type,
-                description=cmat_task.description,
-                source_file=cmat_task.source_file,
-                created=created_str,
-                status=cmat_task.status.value if hasattr(cmat_task.status, 'value') else cmat_task.status,
-                started=started_str,
-                completed=completed_str,
-                result=cmat_task.result,
-                start_datetime=start_datetime,
-                end_datetime=end_datetime,
-                runtime_seconds=runtime_seconds,
-                auto_complete=cmat_task.auto_complete,
-                auto_chain=cmat_task.auto_chain,
-                metadata=metadata_dict
-            )
-
-        ui_tasks = [convert_task(t) for t in all_tasks]
+        """Get current queue state with core Task objects."""
+        all_tasks = self.queue.list_tasks()
 
         return QueueState(
-            pending_tasks=[t for t in ui_tasks if t.status == 'pending'],
-            active_workflows=[t for t in ui_tasks if t.status == 'active'],
-            completed_tasks=[t for t in ui_tasks if t.status == 'completed'],
-            failed_tasks=[t for t in ui_tasks if t.status == 'failed'],
-            cancelled_tasks=[t for t in ui_tasks if t.status == 'cancelled'],
-            agent_status={}
+            pending_tasks=[t for t in all_tasks if t.status == TaskStatus.PENDING],
+            active_workflows=[t for t in all_tasks if t.status == TaskStatus.ACTIVE],
+            completed_tasks=[t for t in all_tasks if t.status == TaskStatus.COMPLETED],
+            failed_tasks=[t for t in all_tasks if t.status == TaskStatus.FAILED],
+            cancelled_tasks=[t for t in all_tasks if t.status == TaskStatus.CANCELLED]
         )
 
     # =========================================================================
@@ -337,65 +268,11 @@ class CMATInterface:
 
     def get_workflow_templates(self) -> List:
         """Get all workflow templates."""
-        from ..models import WorkflowTemplate
-
-        templates = self.workflow.list_all()
-
-        # Convert CMAT workflow models to UI models
-        ui_templates = []
-        for cmat_template in templates:
-            ui_template = WorkflowTemplate.from_dict(
-                cmat_template.id,
-                {
-                    'name': cmat_template.name,
-                    'description': cmat_template.description,
-                    'steps': [
-                        {
-                            'agent': step.agent,
-                            'input': step.input,
-                            'required_output': step.required_output,
-                            'model': step.model,
-                            'on_status': {
-                                status: trans.to_dict()
-                                for status, trans in (step.on_status or {}).items()
-                            }
-                        }
-                        for step in cmat_template.steps
-                    ]
-                }
-            )
-            ui_templates.append(ui_template)
-
-        return ui_templates
+        return self.workflow.list_all()
 
     def get_workflow_template(self, slug: str):
         """Get a specific workflow template by slug."""
-        from ..models import WorkflowTemplate
-
-        cmat_template = self.workflow.get(slug)
-        if not cmat_template:
-            return None
-
-        return WorkflowTemplate.from_dict(
-            cmat_template.id,
-            {
-                'name': cmat_template.name,
-                'description': cmat_template.description,
-                'steps': [
-                    {
-                        'agent': step.agent,
-                        'input': step.input,
-                        'required_output': step.required_output,
-                        'model': step.model,
-                        'on_status': {
-                            status: trans.to_dict()
-                            for status, trans in (step.on_status or {}).items()
-                        }
-                    }
-                    for step in cmat_template.steps
-                ]
-            }
-        )
+        return self.workflow.get(slug)
 
     def get_workflow_step_details(self, workflow_name: str, step_index: int) -> Optional[Dict]:
         """Get details for a specific workflow step."""

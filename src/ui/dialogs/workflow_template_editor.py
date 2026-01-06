@@ -198,7 +198,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
 
             # Load basic fields
             self.name_var.set(template.name)
-            self.slug_var.set(template.slug)
+            self.slug_var.set(template.id)
             self.description_var.set(template.description)
 
             # Load steps - use WorkflowStep.to_dict() for consistent serialization

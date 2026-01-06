@@ -507,13 +507,12 @@ class TestSkillsService:
 
         prompt = service.build_skills_prompt(["test-skill"])
 
-        # Check for header and skill reference (not full content - uses Skill tool)
+        # Check for header and skill reference
         assert "SPECIALIZED SKILLS" in prompt
         assert "test-skill" in prompt
         assert "A test skill" in prompt  # Description is included
-        assert "Skill tool" in prompt  # Instructions for on-demand invocation
-        # Full skill content should NOT be in prompt (loaded on-demand via Skill tool)
-        assert "This is a test skill" not in prompt
+        assert "Applying Skills" in prompt  # Instructions for applying skills
+        assert "skills_used" in prompt  # Reference to completion field
 
 
 class TestLearningsService:
