@@ -14,6 +14,7 @@ from core.models import TaskStatus
 from .config import Config
 from .settings import Settings
 from .utils import TimeUtils
+from .utils.text_utils import slug_to_display
 from .dialogs import WorkflowTemplateManagerDialog
 
 try:
@@ -37,6 +38,9 @@ class MainView:
 
         # Settings
         self.settings = Settings()
+
+        # Ensure cmat_root is set (for existing installations)
+        self._ensure_cmat_root()
 
         # State
         self.state = QueueUIState()
@@ -101,6 +105,18 @@ class MainView:
         except Exception as e:
             # Icon is optional, don't fail if it doesn't work
             print(f"Could not set window icon: {e}")
+
+    def _ensure_cmat_root(self):
+        """Ensure cmat_root is set in settings for hooks to use."""
+        if not self.settings.get_cmat_root():
+            try:
+                from ui.utils.cmat_installer import get_templates_dir
+                templates_dir = get_templates_dir()
+                if templates_dir:
+                    cmat_root = templates_dir.parent
+                    self.settings.set_cmat_root(str(cmat_root))
+            except Exception:
+                pass  # Non-critical - hooks will fail gracefully if not set
 
     def build_menu_bar(self):
         """Create enhanced menu bar."""
@@ -194,7 +210,7 @@ class MainView:
         menubar.add_cascade(label="About", menu=about_menu)
         about_menu.add_command(label="Documentation...", command=self.show_documentation)
         about_menu.add_separator()
-        about_menu.add_command(label="About Task Queue UI", command=self.show_about_dialog)
+        about_menu.add_command(label="About...", command=self.show_about_dialog)
 
         # Store menubar reference
         self.menubar = menubar
@@ -534,9 +550,9 @@ class MainView:
             return True
 
         # If task is part of a workflow, check if status has a defined transition
-        if task.metadata and isinstance(task.metadata, dict):
-            workflow_name = task.metadata.get('workflow_name')
-            workflow_step = task.metadata.get('workflow_step')
+        if task.metadata:
+            workflow_name = task.metadata.workflow_name
+            workflow_step = task.metadata.workflow_step
 
             if workflow_name and workflow_step is not None:
                 # Get workflow definition and check if result status has a transition
@@ -638,9 +654,9 @@ class MainView:
             # Extract workflow name and enhancement title from metadata
             workflow_name = ''
             enhancement_title = ''
-            if task.metadata and isinstance(task.metadata, dict):
-                workflow_name = task.metadata.get('workflow_name', '')
-                enhancement_title = task.metadata.get('enhancement_title', '')
+            if task.metadata:
+                workflow_name = task.metadata.workflow_name or ''
+                enhancement_title = task.metadata.enhancement_title or ''
 
             # Determine tag - use task_blocked for blocked completed tasks
             if self.current_status == 'completed' and self.is_blocked_status(task):
@@ -653,10 +669,10 @@ class MainView:
                 tk.END,
                 values=(
                     task.id,
-                    workflow_name,
-                    task.title,
-                    enhancement_title,
-                    task.assigned_agent,
+                    slug_to_display(workflow_name),
+                    slug_to_display(task.title),
+                    slug_to_display(enhancement_title),
+                    slug_to_display(task.assigned_agent),
                 ),
                 tags=(tag,)
             )
@@ -672,18 +688,11 @@ class MainView:
 
     def format_cost(self, task):
         """Format cost from task metadata."""
-        if not task.metadata or not isinstance(task.metadata, dict):
+        if not task.metadata:
             return "-"
 
-        # Check for nested cost structure (future format)
-        cost_data = task.metadata.get('cost')
-        if cost_data and isinstance(cost_data, dict):
-            total_cost = cost_data.get('total_cost')
-            if total_cost is not None:
-                return f"${total_cost:.4f}"
-
         # Check for flat cost structure (current CMAT format)
-        cost_usd = task.metadata.get('cost_usd')
+        cost_usd = task.metadata.cost_usd
         if cost_usd is not None:
             # Handle both string and numeric values
             try:
@@ -742,7 +751,7 @@ class MainView:
 
                 # Integration options
                 if task.status == TaskStatus.COMPLETED and task.metadata:
-                    if not task.metadata.get('github_issue'):
+                    if not task.metadata.github_issue:
                         menu.add_command(label="Sync to External Systems", command=lambda: self.sync_task(task.id))
 
                 menu.add_separator()
@@ -1132,8 +1141,17 @@ class MainView:
 
 def main():
     """Main entry point."""
+    from .dialogs import SplashScreen
+
     root = tk.Tk()
+
+    # Create main view first (so it's visible behind splash)
     app = MainView(root)
+
+    # Show splash screen overlay
+    splash = SplashScreen(root, duration_ms=2500)
+    splash.show()
+
     root.mainloop()
 
 

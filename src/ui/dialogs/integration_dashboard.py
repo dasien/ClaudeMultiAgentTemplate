@@ -116,10 +116,9 @@ class IntegrationDashboardDialog(BaseDialog):
             for task in completed_tasks:
                 enhancement = self._extract_enhancement(task.source_file)
 
-                metadata = task.metadata or {}
-                github_issue = metadata.get('github_issue')
-                jira_ticket = metadata.get('jira_ticket')
-                confluence_page = metadata.get('confluence_page')
+                github_issue = task.metadata.github_issue if task.metadata else None
+                jira_ticket = task.metadata.jira_ticket if task.metadata else None
+                confluence_page = task.metadata.confluence_page if task.metadata else None
 
                 has_github = bool(github_issue and github_issue != 'null')
                 has_jira = bool(jira_ticket and jira_ticket != 'null')

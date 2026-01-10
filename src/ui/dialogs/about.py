@@ -31,7 +31,7 @@ class AboutDialog(BaseDialog):
 
         # Icon
         try:
-            icon_path = Path(__file__).parent.parent.parent / "assets" / "icon.png"
+            icon_path = Path(__file__).parent.parent.parent.parent / "assets" / "icon.png"
             if icon_path.exists() and PIL_AVAILABLE:
                 img = Image.open(icon_path)
                 img = img.resize((96, 96), Image.Resampling.LANCZOS)

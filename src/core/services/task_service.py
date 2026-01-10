@@ -503,6 +503,10 @@ class TaskService:
         if (cmat_root / "src" / "core").exists():
             env["CMAT_ROOT"] = str(cmat_root)
 
+        # Enable hook debugging if CMAT_HOOK_DEBUG is set in parent environment
+        if os.environ.get("CMAT_HOOK_DEBUG"):
+            env["CMAT_HOOK_DEBUG"] = os.environ["CMAT_HOOK_DEBUG"]
+
         # Build command
         cmd = ["claude", "--permission-mode", "bypassPermissions"]
         if api_model_id:

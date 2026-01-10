@@ -17,6 +17,7 @@ from typing import Optional
 
 from .base_dialog import BaseDialog
 from ..utils import CMATInstaller
+from ..utils.cmat_installer import get_templates_dir
 
 
 class InstallCMATDialog(BaseDialog):
@@ -319,6 +320,13 @@ class InstallCMATDialog(BaseDialog):
         """Handle installation completion."""
         if success:
             self.current_state = self.STATE_COMPLETED
+
+            # Save CMAT root path for hooks to use
+            if self.settings:
+                templates_dir = get_templates_dir()
+                if templates_dir:
+                    cmat_root = templates_dir.parent
+                    self.settings.set_cmat_root(str(cmat_root))
 
             # Show simple success message
             messagebox.showinfo(

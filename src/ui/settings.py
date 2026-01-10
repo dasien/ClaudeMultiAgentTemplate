@@ -199,3 +199,29 @@ class Settings:
         if 'last_install_directory' in self._data:
             del self._data['last_install_directory']
             self._save()
+
+    def get_cmat_root(self) -> Optional[str]:
+        """Get the CMAT installation root directory.
+
+        This is the directory containing src/core/ - needed by hooks
+        to find the CMAT Python modules.
+
+        Returns:
+            Path to CMAT root or None if not set
+        """
+        return self._data.get('cmat_root')
+
+    def set_cmat_root(self, path: str):
+        """Set the CMAT installation root directory.
+
+        Args:
+            path: Path to CMAT root (directory containing src/core/)
+        """
+        self._data['cmat_root'] = path
+        self._save()
+
+    def clear_cmat_root(self):
+        """Clear the CMAT root directory."""
+        if 'cmat_root' in self._data:
+            del self._data['cmat_root']
+            self._save()

@@ -6,12 +6,12 @@ Shows workflow information from task metadata.
 import tkinter as tk
 from tkinter import ttk, messagebox
 from pathlib import Path
-import subprocess
-import sys
 from typing import Optional
 
 from .base_dialog import BaseDialog
+from .markdown_viewer import MarkdownViewerDialog
 from ..utils import TimeUtils
+from ..utils.path_utils import PathUtils
 
 
 class TaskDetailsDialog(BaseDialog):
@@ -76,31 +76,28 @@ class TaskDetailsDialog(BaseDialog):
         ttk.Separator(scrollable_frame, orient="horizontal").pack(fill="x", pady=10)
 
         # WORKFLOW CONTEXT (NEW in v5.0)
-        workflow_name = self.task.metadata.get('workflow_name') if self.task.metadata else None
+        workflow_name = self.task.metadata.workflow_name if self.task.metadata else None
         if workflow_name:
             self._build_workflow_section(scrollable_frame, workflow_name)
-
-        # MODEL INFORMATION
-        self._build_model_section(scrollable_frame)
 
         # Two-column layout for task info and cost
         columns_frame = ttk.Frame(scrollable_frame)
         columns_frame.pack(fill="x", pady=(0, 10))
 
         # Left column: Task Information
-        left_column = ttk.LabelFrame(columns_frame, text="TASK INFORMATION", padding=10)
+        left_column = ttk.LabelFrame(columns_frame, text="📋 TASK INFORMATION", padding=10)
         left_column.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
         fields = [
             ("Title", self.task.title),
             ("Agent", self.task.assigned_agent),
-            ("Status", f"● {self.task.status}"),
-            ("Priority", self.task.priority.upper()),
+            ("Status", f"● {self.task.status.value.upper()}"),
+            ("Priority", self.task.priority.value.upper()),
             ("Type", self.task.task_type),
             ("Created", self.task.created),
             ("Started", self.task.started or "(not started)"),
             ("Completed", self.task.completed or "(not completed)"),
-            ("Runtime", TimeUtils.format_runtime(self.task.runtime_seconds) or "(not available)"),
+            ("Runtime", TimeUtils.format_runtime(self.task.get_duration_seconds()) or "(not available)"),
         ]
 
         for i, (label, value) in enumerate(fields):
@@ -111,38 +108,41 @@ class TaskDetailsDialog(BaseDialog):
             ttk.Label(row_frame, text=str(value), font=('Arial', 9)).pack(side="left")
 
         # Right column: Cost Information
-        # Show model name in header if available
-        cost_model = self.task.metadata.get('cost_model') if self.task.metadata else None
-        header_text = "COST INFORMATION"
-        if cost_model:
-            # Try to get short model name
-            try:
-                model_obj = self.queue.models.get(cost_model)
-                model_name = model_obj.name if model_obj else cost_model
-            except:
-                model_name = cost_model
-            header_text = f"COST INFORMATION ({model_name})"
-
-        right_column = ttk.LabelFrame(columns_frame, text=header_text, padding=10)
+        right_column = ttk.LabelFrame(columns_frame, text="💰 COST INFORMATION", padding=10)
         right_column.pack(side="left", fill="both", expand=True, padx=(5, 0))
 
         cost_data = self.get_cost_data()
+        cost_model = self.task.metadata.cost_model if self.task.metadata else None
 
-        if cost_data:
-            cost_fields = [
-                ("Total Cost", self.format_cost(cost_data.get('total_cost'))),
-                ("Input Tokens", self.format_tokens(cost_data.get('input_tokens'))),
-                ("Output Tokens", self.format_tokens(cost_data.get('output_tokens'))),
-                ("Cache Read", self.format_tokens(cost_data.get('cache_read_tokens'))),
-                ("Cache Write", self.format_tokens(cost_data.get('cache_write_tokens'))),
-            ]
+        if cost_data or cost_model:
+            # Model Used (first line if available)
+            if cost_model:
+                try:
+                    model_obj = self.queue.models.get(cost_model)
+                    model_display = model_obj.name if model_obj else cost_model
+                except:
+                    model_display = cost_model
 
-            for label, value in cost_fields:
                 row_frame = ttk.Frame(right_column)
                 row_frame.pack(fill="x", pady=2)
+                ttk.Label(row_frame, text="Model Used:", font=('Arial', 9, 'bold'), width=13).pack(side="left")
+                ttk.Label(row_frame, text=model_display, font=('Arial', 9)).pack(side="left")
 
-                ttk.Label(row_frame, text=f"{label}:", font=('Arial', 9, 'bold'), width=13).pack(side="left")
-                ttk.Label(row_frame, text=value, font=('Arial', 9)).pack(side="left")
+            if cost_data:
+                cost_fields = [
+                    ("Total Cost", self.format_cost(cost_data.get('total_cost'))),
+                    ("Input Tokens", self.format_tokens(cost_data.get('input_tokens'))),
+                    ("Output Tokens", self.format_tokens(cost_data.get('output_tokens'))),
+                    ("Cache Read", self.format_tokens(cost_data.get('cache_read_tokens'))),
+                    ("Cache Write", self.format_tokens(cost_data.get('cache_write_tokens'))),
+                ]
+
+                for label, value in cost_fields:
+                    row_frame = ttk.Frame(right_column)
+                    row_frame.pack(fill="x", pady=2)
+
+                    ttk.Label(row_frame, text=f"{label}:", font=('Arial', 9, 'bold'), width=13).pack(side="left")
+                    ttk.Label(row_frame, text=value, font=('Arial', 9)).pack(side="left")
         else:
             ttk.Label(
                 right_column,
@@ -151,41 +151,8 @@ class TaskDetailsDialog(BaseDialog):
                 foreground='gray'
             ).pack(anchor="w")
 
-        # Source file with open button
-        source_frame = ttk.Frame(scrollable_frame)
-        source_frame.pack(fill="x", pady=5)
-
-        ttk.Label(source_frame, text="Source File:", font=('Arial', 9, 'bold'), width=12).pack(side="left")
-        ttk.Label(source_frame, text=self.task.source_file, wraplength=500).pack(side="left")
-        ttk.Button(source_frame, text="Open", command=self.open_file).pack(side="right")
-
-        # Automation flags
-        auto_frame = ttk.Frame(scrollable_frame)
-        auto_frame.pack(fill="x", pady=5)
-
-        ttk.Label(auto_frame, text="Automation:", font=('Arial', 9, 'bold'), width=12).pack(side="left")
-
-        auto_text = []
-        if self.task.auto_complete:
-            auto_text.append("Auto-Complete")
-        if self.task.auto_chain:
-            auto_text.append("Auto-Chain")
-
-        ttk.Label(
-            auto_frame,
-            text=" | ".join(auto_text) if auto_text else "Manual",
-            font=('Arial', 9)
-        ).pack(side="left")
-
-        # Result
-        if self.task.result:
-            ttk.Separator(scrollable_frame, orient="horizontal").pack(fill="x", pady=15)
-            ttk.Label(scrollable_frame, text="Result:", font=('Arial', 10, 'bold')).pack(anchor="w", pady=(0, 5))
-            ttk.Label(scrollable_frame, text=self.task.result, wraplength=650).pack(anchor="w")
-
         # SKILLS SECTION
-        ttk.Separator(scrollable_frame, orient="horizontal").pack(fill="x", pady=15)
-        skills_frame = ttk.LabelFrame(scrollable_frame, text="🎯 Skills", padding=10)
+        skills_frame = ttk.LabelFrame(scrollable_frame, text="🎯 AGENT SKILLS", padding=10)
         skills_frame.pack(fill="x", pady=(0, 15))
 
         # Get available skills and skills used
@@ -193,35 +160,19 @@ class TaskDetailsDialog(BaseDialog):
         skills_used = []
 
         # Extract skills used from log for completed/failed tasks
-        if self.task.status in ['completed', 'failed']:
+        if self.task.status.value in ['completed', 'failed']:
             log_content = self.queue.get_task_log(self.task.id, self.task.source_file)
             if log_content:
                 skills_used_raw = self.queue.extract_skills_used(log_content)
                 skills_used = [s.strip().lower() for s in skills_used_raw]
 
         if agent_skills:
-            used_count = 0
             skills_data = self.queue.get_skills_list()
 
-            # Count used skills
+            # Display skills with (Used) indicator
             for skill_dir in agent_skills:
-                skill_dir_normalized = skill_dir.strip().lower()
-                if skill_dir_normalized in skills_used:
-                    used_count += 1
+                skill_name = skill_dir  # Default to directory name
 
-            # Display header
-            header_text = f"Agent Skills ({len(agent_skills)})"
-            if used_count > 0:
-                header_text += f" - {used_count} Used"
-
-            ttk.Label(
-                skills_frame,
-                text=header_text,
-                font=('Arial', 9, 'bold')
-            ).pack(anchor="w", pady=(0, 5))
-
-            # Display skills with indicators
-            for skill_dir in agent_skills:
                 if skills_data:
                     skill_info = next(
                         (s for s in skills_data.get('skills', [])
@@ -231,23 +182,26 @@ class TaskDetailsDialog(BaseDialog):
                     if skill_info:
                         skill_name = skill_info.get('name', skill_dir)
 
-                        skill_dir_normalized = skill_dir.strip().lower()
-                        was_used = skill_dir_normalized in skills_used
+                # Check if skill was used by comparing both directory and name
+                # extract_skills_used returns skill names like "API Design"
+                skill_dir_normalized = skill_dir.strip().lower()
+                skill_name_normalized = skill_name.strip().lower()
+                was_used = skill_dir_normalized in skills_used or skill_name_normalized in skills_used
 
-                        if was_used:
-                            ttk.Label(
-                                skills_frame,
-                                text=f"  ✓ {skill_name} (Used!)",
-                                font=('Arial', 9),
-                                foreground='green'
-                            ).pack(anchor="w")
-                        else:
-                            ttk.Label(
-                                skills_frame,
-                                text=f"  • {skill_name}",
-                                font=('Arial', 9),
-                                foreground='gray'
-                            ).pack(anchor="w")
+                if was_used:
+                    ttk.Label(
+                        skills_frame,
+                        text=f"  • {skill_name} (Used)",
+                        font=('Arial', 9),
+                        foreground='green'
+                    ).pack(anchor="w")
+                else:
+                    ttk.Label(
+                        skills_frame,
+                        text=f"  • {skill_name}",
+                        font=('Arial', 9),
+                        foreground='gray'
+                    ).pack(anchor="w")
         else:
             ttk.Label(
                 skills_frame,
@@ -264,7 +218,7 @@ class TaskDetailsDialog(BaseDialog):
         workflow_frame.pack(fill="x", pady=(0, 10))
 
         # Get workflow details (convert to int if it's a string)
-        workflow_step = self.task.metadata.get('workflow_step', 0)
+        workflow_step = self.task.metadata.workflow_step or 0
         if isinstance(workflow_step, str):
             workflow_step = int(workflow_step)
 
@@ -289,55 +243,67 @@ class TaskDetailsDialog(BaseDialog):
                 foreground='blue'
             ).pack(side="right")
 
-            # Current step details
+            # Current step details - use pack for consistent row spacing
             current_step = workflow.get_step(workflow_step)
             if current_step:
-                step_details_frame = ttk.Frame(workflow_frame)
-                step_details_frame.pack(fill="x", pady=(5, 5))
-
                 # Input pattern
-                ttk.Label(
-                    step_details_frame,
-                    text="Input:",
-                    font=('Arial', 9, 'bold'),
-                    width=15
-                ).grid(row=0, column=0, sticky="w")
-                ttk.Label(
-                    step_details_frame,
-                    text=current_step.input,
-                    font=('Arial', 9),
-                    foreground='gray'
-                ).grid(row=0, column=1, sticky="w")
+                row = ttk.Frame(workflow_frame)
+                row.pack(fill="x", pady=2)
+                ttk.Label(row, text="Input:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
+                ttk.Label(row, text=current_step.input, font=('Arial', 9), foreground='gray').pack(side="left")
 
                 # Expected output
-                ttk.Label(
-                    step_details_frame,
-                    text="Expected Output:",
-                    font=('Arial', 9, 'bold'),
-                    width=15
-                ).grid(row=1, column=0, sticky="w")
-                ttk.Label(
-                    step_details_frame,
-                    text=current_step.required_output,
-                    font=('Arial', 9),
-                    foreground='gray'
-                ).grid(row=1, column=1, sticky="w")
+                row = ttk.Frame(workflow_frame)
+                row.pack(fill="x", pady=2)
+                ttk.Label(row, text="Expected Output:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
+                ttk.Label(row, text=current_step.required_output, font=('Arial', 9), foreground='gray').pack(side="left")
+
+                # Actual Output (based on workflow step's required_output pattern)
+                row = ttk.Frame(workflow_frame)
+                row.pack(fill="x", pady=2)
+                ttk.Label(row, text="Actual Output:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
+
+                # Get the actual output path from the workflow step
+                enhancement_name = self.task.metadata.enhancement_title if self.task.metadata else None
+                actual_output_path = None
+                if enhancement_name:
+                    actual_output_str = self.queue.get_step_output_path(
+                        workflow_name,
+                        workflow_step,
+                        enhancement_name,
+                        self.task.assigned_agent
+                    )
+                    if actual_output_str:
+                        actual_output_path = self.queue.project_root / actual_output_str
+
+                if actual_output_path and actual_output_path.exists():
+                    ttk.Button(row, text="Open", command=lambda p=actual_output_path: self._open_path(p)).pack(side="right")
+                    ttk.Label(row, text=str(actual_output_path.relative_to(self.queue.project_root)), font=('Arial', 9), foreground='gray').pack(side="left", fill="x", expand=True)
+                else:
+                    # Show expected output pattern if actual output doesn't exist yet
+                    ttk.Label(row, text=f"{current_step.required_output} (pending)", font=('Arial', 9), foreground='orange').pack(side="left", fill="x", expand=True)
 
                 # Expected statuses
                 expected_statuses = current_step.get_expected_statuses()
                 if expected_statuses:
-                    ttk.Label(
-                        step_details_frame,
-                        text="Expected Statuses:",
-                        font=('Arial', 9, 'bold'),
-                        width=15
-                    ).grid(row=2, column=0, sticky="w")
-                    ttk.Label(
-                        step_details_frame,
-                        text=", ".join(expected_statuses),
-                        font=('Arial', 9),
-                        foreground='gray'
-                    ).grid(row=2, column=1, sticky="w")
+                    row = ttk.Frame(workflow_frame)
+                    row.pack(fill="x", pady=2)
+                    ttk.Label(row, text="Expected Statuses:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
+                    ttk.Label(row, text=", ".join(expected_statuses), font=('Arial', 9), foreground='gray').pack(side="left")
+
+                # Actual Status (result)
+                if self.task.result:
+                    row = ttk.Frame(workflow_frame)
+                    row.pack(fill="x", pady=2)
+                    ttk.Label(row, text="Actual Status:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
+                    ttk.Label(row, text=self.task.result, font=('Arial', 9), foreground='blue').pack(side="left")
+
+            # Automation (last row in workflow section)
+            row = ttk.Frame(workflow_frame)
+            row.pack(fill="x", pady=2)
+            ttk.Label(row, text="Automation:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
+            auto_text = "Auto-Chain" if self.task.auto_chain else "Manual"
+            ttk.Label(row, text=auto_text, font=('Arial', 9), foreground='gray').pack(side="left")
         else:
             ttk.Label(
                 workflow_frame,
@@ -345,44 +311,6 @@ class TaskDetailsDialog(BaseDialog):
                 font=('Arial', 10),
                 foreground='orange'
             ).pack(anchor="w")
-
-    def _build_model_section(self, parent):
-        """Build model information section."""
-        requested_model = self.task.metadata.get('requested_model') if self.task.metadata else None
-        cost_model = self.task.metadata.get('cost_model') if self.task.metadata else None
-
-        # Only show section if we have model info
-        if not (requested_model or cost_model):
-            return
-
-        model_frame = ttk.LabelFrame(parent, text="🤖 MODEL INFORMATION", padding=10)
-        model_frame.pack(fill="x", pady=(0, 10))
-
-        if requested_model:
-            # Try to get model details from CMAT
-            try:
-                model_obj = self.queue.models.get(requested_model)
-                display_name = f"{model_obj.name} ({requested_model})" if model_obj else requested_model
-            except:
-                display_name = requested_model
-
-            row = ttk.Frame(model_frame)
-            row.pack(fill="x", pady=2)
-            ttk.Label(row, text="Requested Model:", font=('Arial', 9, 'bold'), width=16).pack(side="left")
-            ttk.Label(row, text=display_name, font=('Arial', 9)).pack(side="left")
-
-        if cost_model and cost_model != requested_model:
-            # Show actual model if different from requested
-            try:
-                model_obj = self.queue.models.get(cost_model)
-                display_name = f"{model_obj.name} ({cost_model})" if model_obj else cost_model
-            except:
-                display_name = cost_model
-
-            row = ttk.Frame(model_frame)
-            row.pack(fill="x", pady=2)
-            ttk.Label(row, text="Actual Model Used:", font=('Arial', 9, 'bold'), width=16).pack(side="left")
-            ttk.Label(row, text=display_name, font=('Arial', 9), foreground='blue').pack(side="left")
 
     def build_details_tab(self, parent):
         """Build Prompt tab."""
@@ -480,9 +408,9 @@ class TaskDetailsDialog(BaseDialog):
         """Get output path for this task."""
         # Try to get from workflow if available
         if self.task.metadata:
-            workflow_name = self.task.metadata.get('workflow_name')
-            workflow_step = self.task.metadata.get('workflow_step')
-            enhancement_name = self.task.metadata.get('enhancement_title')
+            workflow_name = self.task.metadata.workflow_name
+            workflow_step = self.task.metadata.workflow_step
+            enhancement_name = self.task.metadata.enhancement_title
 
             if workflow_name and workflow_step is not None and enhancement_name:
                 output_path_str = self.queue.get_step_output_path(
@@ -515,29 +443,32 @@ class TaskDetailsDialog(BaseDialog):
         if not source_path.is_absolute():
             source_path = self.queue.project_root / source_path
 
-        if not source_path.exists():
+        if not PathUtils.open_file(source_path):
             messagebox.showerror("Error", f"File not found: {source_path}")
-            return
-
-        if sys.platform == 'darwin':
-            subprocess.run(['open', str(source_path)])
-        elif sys.platform == 'win32':
-            subprocess.run(['start', str(source_path)], shell=True)
-        else:
-            subprocess.run(['xdg-open', str(source_path)])
 
     def open_folder(self, folder_path: Path):
         """Open folder in file browser."""
-        if not folder_path.exists():
+        if not PathUtils.open_folder(folder_path):
             messagebox.showerror("Error", f"Folder not found: {folder_path}")
+
+    def _open_path(self, path: Path):
+        """Open a file or folder depending on what path points to.
+
+        For .md files, opens in an in-app markdown viewer.
+        For other files/folders, uses the system default application.
+        """
+        if not path.exists():
+            messagebox.showerror("Error", f"Path not found: {path}")
             return
 
-        if sys.platform == 'darwin':
-            subprocess.run(['open', str(folder_path)])
-        elif sys.platform == 'win32':
-            subprocess.run(['explorer', str(folder_path)])
-        else:
-            subprocess.run(['xdg-open', str(folder_path)])
+        # For .md files, open in markdown viewer
+        if path.is_file() and path.suffix.lower() == '.md':
+            MarkdownViewerDialog(self.dialog, path)
+            return
+
+        # For other files/folders, use system default
+        if not PathUtils.open_path(path):
+            messagebox.showerror("Error", f"Failed to open: {path}")
 
     def view_log(self):
         """View full task log."""
@@ -608,28 +539,29 @@ class TaskDetailsDialog(BaseDialog):
 
     def get_cost_data(self):
         """Extract cost data from task metadata."""
-        if not self.task.metadata or not isinstance(self.task.metadata, dict):
+        if not self.task.metadata:
             return None
 
-        # Check for nested cost structure
-        cost_data = self.task.metadata.get('cost')
-        if cost_data and isinstance(cost_data, dict):
-            return cost_data
+        # Check if ANY cost field is populated
+        has_any_cost = (
+            self.task.metadata.cost_usd or
+            self.task.metadata.cost_input_tokens or
+            self.task.metadata.cost_output_tokens
+        )
 
-        # Check for flat cost structure (CMAT format)
-        if 'cost_usd' in self.task.metadata:
-            try:
-                return {
-                    'total_cost': float(self.task.metadata.get('cost_usd', 0)),
-                    'input_tokens': int(self.task.metadata.get('cost_input_tokens', 0)),
-                    'output_tokens': int(self.task.metadata.get('cost_output_tokens', 0)),
-                    'cache_read_tokens': int(self.task.metadata.get('cost_cache_read_tokens', 0)),
-                    'cache_write_tokens': int(self.task.metadata.get('cost_cache_creation_tokens', 0)),
-                }
-            except (ValueError, TypeError):
-                return None
+        if not has_any_cost:
+            return None
 
-        return None
+        try:
+            return {
+                'total_cost': float(self.task.metadata.cost_usd or 0),
+                'input_tokens': int(self.task.metadata.cost_input_tokens or 0),
+                'output_tokens': int(self.task.metadata.cost_output_tokens or 0),
+                'cache_read_tokens': int(self.task.metadata.cost_cache_read_tokens or 0),
+                'cache_write_tokens': int(self.task.metadata.cost_cache_creation_tokens or 0),
+            }
+        except (ValueError, TypeError):
+            return None
 
     def format_cost(self, cost_value):
         """Format cost as currency."""

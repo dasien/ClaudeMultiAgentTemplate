@@ -942,7 +942,18 @@ class CMATInterface:
         return ''.join(lines[-max_lines:])
 
     def extract_skills_used(self, log_content: str) -> List[str]:
-        """Extract skills that were applied from task log."""
+        """Extract skills that were applied from task log.
+
+        Looks for skills in the YAML block at the end of agent output:
+        ```yaml
+        ---
+        agent: requirements-analyst
+        task_id: task_123
+        status: READY_FOR_DEVELOPMENT
+        skills_used: [requirements-elicitation, api-design]
+        ---
+        ```
+        """
         import re
 
         skills_used = []
@@ -951,32 +962,26 @@ class CMATInterface:
         if "END OF PROMPT" in log_content:
             agent_output = log_content.split("END OF PROMPT", 1)[1]
 
-        # Try new format: SKILLS_USED: skill1, skill2
+        # Primary format: YAML block with skills_used: [skill1, skill2]
+        # Match both array format [a, b] and single value format
+        yaml_match = re.search(r'skills_used:\s*\[([^\]]+)\]', agent_output)
+        if yaml_match:
+            skills_line = yaml_match.group(1).strip()
+            skills_used = [s.strip() for s in skills_line.split(',') if s.strip()]
+            return skills_used
+
+        # Also try skills_used: single-skill (no brackets)
+        yaml_single_match = re.search(r'skills_used:\s*([a-zA-Z0-9_-]+)', agent_output)
+        if yaml_single_match:
+            return [yaml_single_match.group(1).strip()]
+
+        # Legacy format: SKILLS_USED: skill1, skill2
         if "SKILLS_USED:" in agent_output:
             match = re.search(r'SKILLS_USED:\s*([^\n]+)', agent_output)
             if match:
                 skills_line = match.group(1).strip()
                 skills_used = [s.strip() for s in skills_line.split(',') if s.strip()]
                 return skills_used
-
-        # Fall back to old format: ## Skills Applied
-        if "Skills Applied" not in log_content:
-            return skills_used
-
-        lines = log_content.split('\n')
-        in_skills = False
-
-        for line in lines:
-            if "## Skills Applied" in line or "Skills Applied:" in line:
-                in_skills = True
-                continue
-            elif in_skills:
-                if line.startswith('- '):
-                    match = re.search(r'\*\*([^*]+)\*\*', line)
-                    if match:
-                        skills_used.append(match.group(1))
-                elif not line.strip() or line.startswith('#'):
-                    break
 
         return skills_used
 

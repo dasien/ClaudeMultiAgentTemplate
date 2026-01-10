@@ -2,6 +2,8 @@
 Path utility functions.
 """
 
+import subprocess
+import sys
 from pathlib import Path
 from typing import Union
 
@@ -115,3 +117,89 @@ class PathUtils:
             return str(file_path.relative_to(project_root))
         except ValueError:
             return file_path.name
+
+    @staticmethod
+    def open_path(path: Union[str, Path]) -> bool:
+        """
+        Open a file or folder in the system default application.
+
+        Automatically detects whether the path is a file or directory
+        and opens it appropriately.
+
+        Args:
+            path: Path to file or folder to open
+
+        Returns:
+            True if path exists and was opened, False otherwise
+
+        Examples:
+            >>> PathUtils.open_path("/home/user/document.pdf")
+            True
+
+            >>> PathUtils.open_path("/home/user/project")
+            True
+        """
+        path = Path(path)
+        if not path.exists():
+            return False
+
+        if path.is_dir():
+            return PathUtils.open_folder(path)
+        else:
+            return PathUtils.open_file(path)
+
+    @staticmethod
+    def open_file(file_path: Union[str, Path]) -> bool:
+        """
+        Open a file in the system default application.
+
+        Args:
+            file_path: Path to file to open
+
+        Returns:
+            True if file exists and was opened, False otherwise
+
+        Examples:
+            >>> PathUtils.open_file("/home/user/document.pdf")
+            True
+        """
+        file_path = Path(file_path)
+        if not file_path.exists():
+            return False
+
+        if sys.platform == 'darwin':
+            subprocess.run(['open', str(file_path)])
+        elif sys.platform == 'win32':
+            subprocess.run(['start', str(file_path)], shell=True)
+        else:
+            subprocess.run(['xdg-open', str(file_path)])
+
+        return True
+
+    @staticmethod
+    def open_folder(folder_path: Union[str, Path]) -> bool:
+        """
+        Open a folder in the system file browser.
+
+        Args:
+            folder_path: Path to folder to open
+
+        Returns:
+            True if folder exists and was opened, False otherwise
+
+        Examples:
+            >>> PathUtils.open_folder("/home/user/project")
+            True
+        """
+        folder_path = Path(folder_path)
+        if not folder_path.exists():
+            return False
+
+        if sys.platform == 'darwin':
+            subprocess.run(['open', str(folder_path)])
+        elif sys.platform == 'win32':
+            subprocess.run(['explorer', str(folder_path)])
+        else:
+            subprocess.run(['xdg-open', str(folder_path)])
+
+        return True
