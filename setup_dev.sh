@@ -104,14 +104,66 @@ if ! python3 -c "import tkinter" 2>/dev/null; then
     echo ""
 fi
 
+# Check if venv module is available
+echo "Checking for venv module..."
+if ! python3 -c "import venv" 2>/dev/null; then
+    echo "ERROR: Python venv module is not installed."
+    echo ""
+    case $OS in
+        linux)
+            echo "On Debian/Ubuntu, install it with:"
+            echo "  sudo apt-get install python3-venv"
+            echo ""
+            echo "On Fedora:"
+            echo "  sudo dnf install python3-libs"
+            echo ""
+            read -p "Would you like to try 'sudo apt-get install python3-venv'? (y/n) " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                sudo apt-get install python3-venv
+                if ! python3 -c "import venv" 2>/dev/null; then
+                    echo "ERROR: venv still not available. Please install manually and re-run."
+                    exit 1
+                fi
+            else
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Please install the Python venv module for your platform."
+            exit 1
+            ;;
+    esac
+else
+    echo "venv module is available."
+fi
+echo ""
+
 # Create virtual environment if it doesn't exist
 echo "Setting up virtual environment..."
 if [[ ! -d ".venv" ]]; then
     echo "Creating virtual environment..."
     python3 -m venv .venv
+
+    # Verify it was actually created
+    if [[ ! -f ".venv/bin/activate" ]]; then
+        echo "ERROR: Failed to create virtual environment."
+        echo "The venv directory may be incomplete. Try removing it and running again:"
+        echo "  rm -rf .venv"
+        echo "  ./setup_dev.sh"
+        exit 1
+    fi
     echo "Virtual environment created."
 else
     echo "Virtual environment already exists."
+    # Verify existing venv is valid
+    if [[ ! -f ".venv/bin/activate" ]]; then
+        echo "ERROR: Existing .venv directory is invalid (missing bin/activate)."
+        echo "Remove it and run again:"
+        echo "  rm -rf .venv"
+        echo "  ./setup_dev.sh"
+        exit 1
+    fi
 fi
 echo ""
 
