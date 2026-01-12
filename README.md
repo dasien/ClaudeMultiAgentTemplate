@@ -70,12 +70,25 @@ Optional:
 git clone https://github.com/anthropics/claude-multi-agent-template.git
 cd claude-multi-agent-template
 
-# Install in development mode
-pip install -e .
+# Run the setup script (recommended)
+./setup_dev.sh
 
-# Install dev dependencies
+# Or manually:
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install in development mode with all dependencies
 pip install -e ".[dev]"
 ```
+
+**Note**: Always activate the virtual environment before running CMAT:
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+cmat
+```
+
+**IDE Setup**: If using PyCharm, VS Code, or another IDE, configure the Python interpreter to use `.venv/bin/python` in the project directory.
 
 ### Option 2: Install Package
 
