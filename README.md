@@ -38,7 +38,7 @@ CMAT is a multi-agent system that breaks down software development into speciali
 ## Features
 
 ### Core System
-- **18 Specialized Agents** - Clear responsibilities, reusable across workflows
+- **17 Specialized Agents** - Clear responsibilities, reusable across workflows
 - **Graphical UI** - Full-featured tkinter interface for managing projects
 - **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
 - **Output Validation** - Automatic validation of required outputs

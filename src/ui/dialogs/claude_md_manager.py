@@ -3,7 +3,8 @@ CLAUDE.md Management Dialog - Manage project CLAUDE.md file.
 """
 
 import re
-import shutil
+import subprocess
+import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
@@ -180,7 +181,7 @@ class ClaudeMdManagerDialog(BaseDialog):
         self.save_btn.config(state="normal" if has_content else "disabled")
 
     def on_create(self):
-        """Handle Create button - generate CLAUDE.md via agent."""
+        """Handle Create button - generate CLAUDE.md via Claude Code /init."""
         # Warn about unsaved changes
         if self.has_unsaved_changes():
             if not messagebox.askyesno(
@@ -193,128 +194,74 @@ class ClaudeMdManagerDialog(BaseDialog):
         # Confirm
         if not messagebox.askyesno(
             "Generate CLAUDE.md",
-            "This will analyze your project structure and generate a CLAUDE.md file.\n\n"
-            "This may take a few minutes.\n\nContinue?",
+            "This will analyze your project and generate a CLAUDE.md file.\n\n"
+            "This may take a minute or two.\n\nContinue?",
             parent=self.dialog
         ):
             return
-
-        # Create staging directory
-        staging_dir = self.queue.project_root / ".claude" / ".staging" / "claude-md-generator"
-
-        # Clean up any previous staging
-        if staging_dir.exists():
-            shutil.rmtree(staging_dir, ignore_errors=True)
-
-        staging_dir.mkdir(parents=True, exist_ok=True)
-
-        # Store staging_dir for cleanup later
-        self.staging_dir = staging_dir
 
         # Show working dialog
         self.working_dialog = WorkingDialog(
             self.dialog,
             "Generating CLAUDE.md",
-            "180-300 seconds"
+            "60-120 seconds"
         )
         self.working_dialog.show()
 
-        # Run agent with staging directory
-        self.queue.run_agent_async(
-            agent_name="claude-md-creator-agent",
-            input_file=None,
-            output_dir=staging_dir,
-            task_description="Generate CLAUDE.md for project",
-            task_type="documentation",
-            on_success=self._on_agent_success,
-            on_error=self._on_agent_error
-        )
+        # Run /init in background thread
+        def run_init():
+            project_path = str(self.queue.project_root)
 
-    def _on_agent_success(self, result_dir):
-        """Handle successful agent generation."""
-        if self.working_dialog:
-            self.working_dialog.close()
-            self.working_dialog = None
-
-        try:
-            # Look for generated CLAUDE.md in various locations
-            content = None
-            staging_dir = getattr(self, 'staging_dir', None)
-
-            # Priority 1: Agent's required_output directory
-            if staging_dir:
-                agent_output = staging_dir / "claude-md-creator-agent" / "required_output"
-                if agent_output.exists():
-                    # Look for any .md file
-                    for md_file in agent_output.glob("*.md"):
-                        content = md_file.read_text()
-                        break
-
-                # Priority 2: CLAUDE.md in staging dir
-                if not content:
-                    staging_claude_md = staging_dir / "CLAUDE.md"
-                    if staging_claude_md.exists():
-                        content = staging_claude_md.read_text()
-
-            # Priority 3: CLAUDE.md written directly to project root
-            if not content:
-                project_claude_md = self.queue.project_root / "CLAUDE.md"
-                if project_claude_md.exists():
-                    content = project_claude_md.read_text()
-
-            if content:
-                self.set_text_content(content)
-                self.update_button_states()
-            else:
-                messagebox.showerror(
-                    "Error",
-                    "Agent completed but no CLAUDE.md output was found.",
-                    parent=self.dialog
+            try:
+                # Use subprocess with prompt via stdin
+                # Command equivalent: claude -p "/init" --allowedTools "Write"
+                result = subprocess.run(
+                    ["claude", "--print", "--allowedTools", "Write"],
+                    input="/init",
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    cwd=project_path,
                 )
 
-        except Exception as e:
-            messagebox.showerror(
-                "Error",
-                f"Failed to read generated content:\n\n{e}",
-                parent=self.dialog
-            )
-        finally:
-            # Clean up staging directory
-            self._cleanup_staging()
+                if result.returncode == 0:
+                    self.dialog.after(0, self._on_init_success)
+                else:
+                    error = result.stderr or result.stdout or "Unknown error"
+                    self.dialog.after(0, lambda e=error: self._on_init_error(e))
+            except subprocess.TimeoutExpired:
+                self.dialog.after(0, lambda: self._on_init_error("Timed out after 5 minutes"))
+            except FileNotFoundError:
+                self.dialog.after(0, lambda: self._on_init_error(
+                    "Claude CLI not found. Please ensure 'claude' is installed and in your PATH."
+                ))
+            except Exception as e:
+                self.dialog.after(0, lambda e=str(e): self._on_init_error(e))
 
-    def _on_agent_error(self, error: Exception):
-        """Handle agent generation failure."""
+        threading.Thread(target=run_init, daemon=True).start()
+
+    def _on_init_success(self):
+        """Handle successful /init completion."""
         if self.working_dialog:
             self.working_dialog.close()
             self.working_dialog = None
+        self.load_content()  # Reload CLAUDE.md from disk
+        messagebox.showinfo(
+            "Success",
+            "CLAUDE.md generated successfully.\n\nReview the content and click Save to keep it.",
+            parent=self.dialog
+        )
 
-        # Clean up staging directory
-        self._cleanup_staging()
-
-        error_msg = str(error)
-
-        if "timeout" in error_msg.lower():
-            response = messagebox.askyesno(
-                "Timeout",
-                "Agent timed out. Project may be too large.\n\nTry again?",
-                parent=self.dialog
-            )
-            if response:
-                self.on_create()
-                return
-        else:
-            messagebox.showerror(
-                "Generation Failed",
-                f"Failed to generate CLAUDE.md:\n\n{error}",
-                parent=self.dialog
-            )
-
-    def _cleanup_staging(self):
-        """Clean up the staging directory."""
-        staging_dir = getattr(self, 'staging_dir', None)
-        if staging_dir and staging_dir.exists():
-            shutil.rmtree(staging_dir, ignore_errors=True)
-        self.staging_dir = None
+    def _on_init_error(self, error: str):
+        """Handle /init failure."""
+        if self.working_dialog:
+            self.working_dialog.close()
+            self.working_dialog = None
+        messagebox.showerror(
+            "Generation Failed",
+            f"Failed to generate CLAUDE.md:\n\n{error}",
+            parent=self.dialog
+        )
 
     def on_load(self):
         """Handle Load button - load from external file."""

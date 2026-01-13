@@ -46,15 +46,6 @@
       "validations": {"metadata_required": false}
     },
     {
-      "name": "Claude Markdown Creator",
-      "agent-file": "claude-md-creator",
-      "role": "documentation",
-      "tools": ["Read", "Glob", "Grep", "Bash", "Write"],
-      "skills": [],
-      "description": "Analyzes a project and generates a focused, effective CLAUDE.md file",
-      "validations": {"metadata_required": false}
-    },
-    {
       "name": "Code Reviewer",
       "agent-file": "code-reviewer",
       "role": "analysis",
