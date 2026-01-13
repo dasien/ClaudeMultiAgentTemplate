@@ -64,8 +64,19 @@ class MainView:
         # Window close handler
         self.root.protocol("WM_DELETE_WINDOW", self.quit_app)
 
-        # Try auto-connect
+        # Try connecting to CMAT instance
         self.try_auto_connect()
+
+        # Initial focus will be set by splash screen callback (see main())
+
+    def _set_initial_focus(self):
+        """Set initial focus to status list after window is fully rendered."""
+        self.status_listbox.focus_set()
+        if self.status_listbox.size() > 0:
+            # Select first item if nothing selected
+            if not self.status_listbox.curselection():
+                self.status_listbox.selection_set(0)
+            self.status_listbox.activate(0)
 
     def set_window_icon(self):
         """Set the window icon."""
@@ -239,7 +250,22 @@ class MainView:
         self.root.bind('<Control-l>', lambda e: self.show_operations_log())
         self.root.bind('<F5>', lambda e: self.refresh())
         self.root.bind('<Delete>', lambda e: self.cancel_task())
-        self.root.bind('<Return>', lambda e: self.start_task())
+
+        # List navigation - Tab switches between status list and task tree
+        self.status_listbox.bind('<Tab>', self._focus_task_tree)
+        self.task_tree.bind('<Tab>', self._focus_status_list)
+        self.status_listbox.bind('<Shift-Tab>', self._focus_task_tree)
+        self.task_tree.bind('<Shift-Tab>', self._focus_status_list)
+
+        # Enter opens task details (on task tree)
+        self.task_tree.bind('<Return>', lambda e: self.show_task_details())
+
+        # Enter on status list moves focus to task tree
+        self.status_listbox.bind('<Return>', self._focus_task_tree)
+
+        # Arrow key navigation for task tree (ensures selection follows focus)
+        self.task_tree.bind('<Up>', self._tree_navigate_up)
+        self.task_tree.bind('<Down>', self._tree_navigate_down)
 
     def build_connection_header(self):
         """Create connection status header."""
@@ -364,14 +390,6 @@ class MainView:
             foreground='gray'
         )
 
-        # Hint
-        ttk.Label(
-            label_frame,
-            text="[Right-click for actions | Double-click for details | Ctrl+W for workflows]",
-            font=('Arial', 9),
-            foreground='gray'
-        ).pack(pady=(5, 0))
-
         # Events
         self.task_tree.bind('<Double-Button-1>', self.on_double_click)
         self.task_tree.bind('<Button-3>', self.show_context_menu)
@@ -394,6 +412,58 @@ class MainView:
         if index < len(self.status_config):
             self.current_status = self.status_config[index][0]
             self.update_task_list()
+
+    def _focus_task_tree(self, event=None):
+        """Move focus to the task tree and select first item if none selected."""
+        self.task_tree.focus_set()
+        # Select first item if nothing is selected
+        if not self.task_tree.selection():
+            children = self.task_tree.get_children()
+            if children:
+                self.task_tree.selection_set(children[0])
+                self.task_tree.focus(children[0])
+        return "break"  # Prevent default Tab behavior
+
+    def _focus_status_list(self, event=None):
+        """Move focus to the status list and activate the currently selected item."""
+        self.status_listbox.focus_set()
+        # Activate the currently selected item so the dotbox shows correctly
+        selection = self.status_listbox.curselection()
+        if selection:
+            self.status_listbox.activate(selection[0])
+        return "break"  # Prevent default Tab behavior
+
+    def _tree_navigate_up(self, event=None):
+        """Navigate up in the task tree, keeping selection in sync with focus."""
+        selection = self.task_tree.selection()
+        if not selection:
+            return
+        children = self.task_tree.get_children()
+        if not children:
+            return
+        current_idx = children.index(selection[0])
+        if current_idx > 0:
+            prev_item = children[current_idx - 1]
+            self.task_tree.selection_set(prev_item)
+            self.task_tree.focus(prev_item)
+            self.task_tree.see(prev_item)
+        return "break"
+
+    def _tree_navigate_down(self, event=None):
+        """Navigate down in the task tree, keeping selection in sync with focus."""
+        selection = self.task_tree.selection()
+        if not selection:
+            return
+        children = self.task_tree.get_children()
+        if not children:
+            return
+        current_idx = children.index(selection[0])
+        if current_idx < len(children) - 1:
+            next_item = children[current_idx + 1]
+            self.task_tree.selection_set(next_item)
+            self.task_tree.focus(next_item)
+            self.task_tree.see(next_item)
+        return "break"
 
     def build_status_bar(self):
         """Create status bar."""
@@ -594,7 +664,7 @@ class MainView:
             self.tasks_by_status = {
                 'pending': queue_state.pending_tasks,
                 'active': queue_state.active_workflows,
-                'completed': queue_state.completed_tasks[-50:],  # Limit completed
+                'completed': queue_state.completed_tasks,
                 'failed': queue_state.failed_tasks,
                 'cancelled': queue_state.cancelled_tasks,
             }
@@ -605,10 +675,11 @@ class MainView:
                 count = len(self.tasks_by_status.get(status_key, []))
                 self.status_listbox.insert(tk.END, f"{status_label} ({count})")
 
-            # Select current status in listbox
+            # Select current status in listbox and activate it
             for i, (status_key, _, _) in enumerate(self.status_config):
                 if status_key == self.current_status:
                     self.status_listbox.selection_set(i)
+                    self.status_listbox.activate(i)
                     break
 
             # Update task list for current status
@@ -1148,8 +1219,8 @@ def main():
     # Create main view first (so it's visible behind splash)
     app = MainView(root)
 
-    # Show splash screen overlay
-    splash = SplashScreen(root, duration_ms=2500)
+    # Show splash screen overlay with callback to set initial focus
+    splash = SplashScreen(root, duration_ms=2500, on_close=app._set_initial_focus)
     splash.show()
 
     root.mainloop()

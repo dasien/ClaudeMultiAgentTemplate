@@ -18,15 +18,17 @@ except ImportError:
 class SplashScreen:
     """A simple splash screen that displays briefly on startup."""
 
-    def __init__(self, root, duration_ms=2500):
+    def __init__(self, root, duration_ms=2500, on_close=None):
         """Create splash screen.
 
         Args:
             root: The main Tk root window (visible behind splash)
             duration_ms: How long to show splash in milliseconds
+            on_close: Optional callback to invoke when splash closes
         """
         self.root = root
         self.duration_ms = duration_ms
+        self.on_close = on_close
         self.splash = None
         self.photo = None
 
@@ -74,7 +76,7 @@ class SplashScreen:
         # App name
         tk.Label(
             frame,
-            text="Claude Multi-Agent Manager",
+            text="Claude Multi-Agent Template",
             font=('Arial', 14, 'bold'),
             fg='#333333',
             bg=bg_color
@@ -120,3 +122,7 @@ class SplashScreen:
         # Bring main window to front
         self.root.lift()
         self.root.focus_force()
+
+        # Invoke callback if provided
+        if self.on_close:
+            self.on_close()
