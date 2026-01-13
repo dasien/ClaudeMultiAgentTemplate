@@ -1,101 +1,166 @@
-{"agents":[
-  {
-    "name": "Agent Architect",
-    "agent-file": "agent-architect",
-    "role": "AI Agent Design & Creation",
-    "tools": ["Read", "Write", "Glob", "Grep"],
-    "skills": ["agent-design", "system-architecture-patterns", "technical-writing"],
-    "description": "Designs and creates CMAT agent definitions with appropriate tools, skills, and personas",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "Architect",
-    "agent-file": "architect",
-    "role": "technical_design",
-    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"],
-    "skills": ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"],
-    "description": "Designs system architecture, creates technical specifications, and makes high-level design decisions",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "atlassian-integration-coordinator",
-    "agent-file": "atlassian-integration-coordinator",
-    "role": "integration",
-    "tools": [],
-    "skills": [],
-    "description": "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms",
-    "validations": {"metadata_required": false}
-  },
-  {
-    "name": "Claude Markdown Creator",
-    "agent-file": "claude-md-creator",
-    "role": "documentation",
-    "tools": ["Read", "Glob", "Grep", "Bash", "Write"],
-    "skills": [],
-    "description": "Analyzes a project and generates a focused, effective CLAUDE.md file",
-    "validations": {"metadata_required": false}
-  },
-  {
-    "name": "Code Reviewer",
-    "agent-file": "code-reviewer",
-    "role": "analysis",
-    "tools": ["Read", "Glob", "Grep", "WebSearch", "Edit"],
-    "skills": ["architecture-patterns", "code-refactoring"],
-    "description": "Reviews code changes for errors, inelegant solutions, security and performance issues, and good coding practices",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "Documenter",
-    "agent-file": "documenter",
-    "role": "documentation",
-    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"],
-    "skills": ["technical-writing", "api-documentation"],
-    "description": "Creates and maintains comprehensive project documentation, user guides, and API references",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "github-integration-coordinator",
-    "agent-file": "github-integration-coordinator",
-    "role": "integration",
-    "tools": [],
-    "skills": [],
-    "description": "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub",
-    "validations": {"metadata_required": false}
-  },
-  {
-    "name": "Implementer",
-    "agent-file": "implementer",
-    "role": "implementation",
-    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
-    "skills": ["error-handling", "code-refactoring", "sql-development"],
-    "description": "Implements features based on architectural specifications, writes production-quality code",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "Product Analyst",
-    "agent-file": "product-analyst",
-    "role": "Enhancement Specification & Template Selection",
-    "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
-    "skills": ["requirements-elicitation"],
-    "description": "Synthesizes sources and creates structured enhancement specifications using project-standard templates",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "Requirements Analyst",
-    "agent-file": "requirements-analyst",
-    "role": "analysis",
-    "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
-    "skills": ["requirements-elicitation", "user-story-writing", "bug-triage"],
-    "description": "Analyzes project requirements, creates implementation plans, and manages project scope",
-    "validations": {"metadata_required": true}
-  },
-  {
-    "name": "Tester",
-    "agent-file": "tester",
-    "role": "testing",
-    "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
-    "skills": ["test-design-patterns", "test-coverage", "bug-triage"],
-    "description": "Designs and implements comprehensive test suites, validates functionality and quality",
-    "validations": {"metadata_required": true}
-  }
-]}
+{
+  "agents": [
+    {
+      "name": "Accessibility Specialist",
+      "agent-file": "accessibility-specialist",
+      "role": "accessibility_compliance",
+      "tools": ["Read", "Write", "Bash", "WebSearch", "Edit"],
+      "skills": ["wcag-compliance", "screen-reader-testing", "keyboard-navigation", "web-ui-design"],
+      "description": "Ensures UI compliance with WCAG standards and tests with assistive technologies",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Agent Architect",
+      "agent-file": "agent-architect",
+      "role": "AI Agent Design & Creation",
+      "tools": ["Read", "Write", "Glob", "Grep"],
+      "skills": ["agent-design", "architecture-patterns", "technical-writing"],
+      "description": "Designs and creates CMAT agent definitions with appropriate tools, skills, and personas",
+      "validations": {"metadata_required": false}
+    },
+    {
+      "name": "API Integration Specialist",
+      "agent-file": "api-integration-specialist",
+      "role": "integration_implementation",
+      "tools": ["Read", "Write", "Edit", "Bash", "WebSearch", "WebFetch"],
+      "skills": ["api-integration", "webhook-design", "rate-limiting", "error-handling"],
+      "description": "Implements robust third-party API integrations with proper authentication, error handling, and rate limiting",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Architect",
+      "agent-file": "architect",
+      "role": "technical_design",
+      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"],
+      "skills": ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"],
+      "description": "Designs system architecture, creates technical specifications, and makes high-level design decisions",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "atlassian-integration-coordinator",
+      "agent-file": "atlassian-integration-coordinator",
+      "role": "integration",
+      "tools": [],
+      "skills": [],
+      "description": "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms",
+      "validations": {"metadata_required": false}
+    },
+    {
+      "name": "Claude Markdown Creator",
+      "agent-file": "claude-md-creator",
+      "role": "documentation",
+      "tools": ["Read", "Glob", "Grep", "Bash", "Write"],
+      "skills": [],
+      "description": "Analyzes a project and generates a focused, effective CLAUDE.md file",
+      "validations": {"metadata_required": false}
+    },
+    {
+      "name": "Code Reviewer",
+      "agent-file": "code-reviewer",
+      "role": "analysis",
+      "tools": ["Read", "Glob", "Grep", "WebSearch", "Edit"],
+      "skills": ["architecture-patterns", "code-refactoring"],
+      "description": "Reviews code changes for errors, inelegant solutions, security and performance issues, and good coding practices",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Data Engineer",
+      "agent-file": "data-engineer",
+      "role": "data_pipeline_design",
+      "tools": ["Read", "Write", "Edit", "Bash", "WebSearch", "Glob"],
+      "skills": ["data-modeling", "etl-design", "data-quality", "sql-development"],
+      "description": "Designs data pipelines, ETL processes, and ensures data quality for data-intensive applications",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "DevOps Engineer",
+      "agent-file": "devops-engineer",
+      "role": "infrastructure_deployment",
+      "tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch"],
+      "skills": ["ci-cd-pipelines", "infrastructure-as-code", "container-orchestration", "logging-strategies", "metrics-monitoring"],
+      "description": "Designs CI/CD pipelines, creates deployment configurations, and manages infrastructure as code",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Documenter",
+      "agent-file": "documenter",
+      "role": "documentation",
+      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"],
+      "skills": ["technical-writing", "api-documentation"],
+      "description": "Creates and maintains comprehensive project documentation, user guides, and API references",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "github-integration-coordinator",
+      "agent-file": "github-integration-coordinator",
+      "role": "integration",
+      "tools": [],
+      "skills": [],
+      "description": "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub",
+      "validations": {"metadata_required": false}
+    },
+    {
+      "name": "Implementer",
+      "agent-file": "implementer",
+      "role": "implementation",
+      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
+      "skills": ["error-handling", "code-refactoring", "sql-development", "logging-strategies"],
+      "description": "Implements features based on architectural specifications, writes production-quality code",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Performance Engineer",
+      "agent-file": "performance-engineer",
+      "role": "performance_optimization",
+      "tools": ["Read", "Bash", "Grep", "Glob", "WebSearch", "Write", "Edit"],
+      "skills": ["performance-profiling", "optimization-patterns", "load-testing", "metrics-monitoring"],
+      "description": "Profiles code execution, identifies bottlenecks, and optimizes application performance",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Product Analyst",
+      "agent-file": "product-analyst",
+      "role": "Enhancement Specification & Template Selection",
+      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
+      "skills": ["requirements-elicitation", "work-breakdown"],
+      "description": "Synthesizes sources and creates structured enhancement specifications using project-standard templates",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Refactoring Specialist",
+      "agent-file": "refactoring-specialist",
+      "role": "code_improvement",
+      "tools": ["Read", "Edit", "MultiEdit", "Grep", "Glob", "Bash", "Write"],
+      "skills": ["code-refactoring", "design-patterns", "tech-debt-assessment"],
+      "description": "Analyzes code for improvement opportunities and executes systematic refactoring to reduce technical debt",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Requirements Analyst",
+      "agent-file": "requirements-analyst",
+      "role": "analysis",
+      "tools": ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"],
+      "skills": ["requirements-elicitation", "user-story-writing", "bug-triage", "work-breakdown"],
+      "description": "Analyzes project requirements, creates implementation plans, and manages project scope",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Security Auditor",
+      "agent-file": "security-auditor",
+      "role": "security_analysis",
+      "tools": ["Read", "Grep", "Glob", "WebSearch", "Bash", "Write"],
+      "skills": ["security-review", "threat-modeling", "vulnerability-scanning"],
+      "description": "Reviews code for security vulnerabilities, performs threat modeling, and validates security controls",
+      "validations": {"metadata_required": true}
+    },
+    {
+      "name": "Tester",
+      "agent-file": "tester",
+      "role": "testing",
+      "tools": ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"],
+      "skills": ["test-design-patterns", "test-coverage", "bug-triage"],
+      "description": "Designs and implements comprehensive test suites, validates functionality and quality",
+      "validations": {"metadata_required": true}
+    }
+  ]
+}

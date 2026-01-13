@@ -3,7 +3,9 @@ name: Product Analyst
 role: Enhancement Specification & Template Selection
 description: Synthesizes sources and creates structured enhancement specifications using project-standard templates
 tools: ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
-skills: ["requirements-elicitation"]
+skills: ["requirements-elicitation", "work-breakdown"]
+validations:
+  metadata_required: true
 ---
 
 # Product Analyst Agent

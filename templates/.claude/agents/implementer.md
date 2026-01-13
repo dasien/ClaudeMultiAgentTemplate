@@ -3,7 +3,7 @@ name: "Implementer"
 role: "implementation"
 description: "Implements features based on architectural specifications, writes production-quality code"
 tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
-skills: ["error-handling", "code-refactoring", "sql-development"]
+skills: ["error-handling", "code-refactoring", "sql-development", "logging-strategies"]
 validations:
   metadata_required: true
 ---

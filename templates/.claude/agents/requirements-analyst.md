@@ -3,7 +3,7 @@ name: "Requirements Analyst"
 role: "analysis"
 description: "Analyzes project requirements, creates implementation plans, and manages project scope"
 tools: ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
-skills: ["requirements-elicitation", "user-story-writing", "bug-triage"]
+skills: ["requirements-elicitation", "user-story-writing", "bug-triage", "work-breakdown"]
 validations:
   metadata_required: true
 ---

@@ -2,7 +2,7 @@
 
 A workflow-based multi-agent development system with a graphical UI. CMAT provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
 
-**Version**: 10.0.0
+**Version**: 10.1.0
 
 ---
 
@@ -18,18 +18,27 @@ CMAT is a multi-agent system that breaks down software development into speciali
 - **Documenter**: Maintains project documentation
 - **Code Reviewer**: Reviews code for quality and security
 
+**Specialist Agents**:
+- **Security Auditor**: Security analysis, threat modeling, vulnerability scanning
+- **Performance Engineer**: Profiling, optimization, load testing
+- **Data Engineer**: Data modeling, ETL design, data quality
+- **DevOps Engineer**: CI/CD, infrastructure-as-code, container orchestration
+- **Accessibility Specialist**: WCAG compliance, screen reader testing
+- **API Integration Specialist**: API integration, webhooks, rate limiting
+- **Refactoring Specialist**: Code improvement, design patterns, tech debt
+
 **Integration Agents**:
 - **GitHub Integration Coordinator**: Syncs workflow with GitHub issues and PRs
 - **Atlassian Integration Coordinator**: Syncs workflow with Jira and Confluence
 
-**Skills System**: 14+ specialized skills providing domain expertise, automatically injected into agent prompts.
+**Skills System**: 38 specialized skills providing domain expertise, automatically injected into agent prompts.
 
 ---
 
 ## Features
 
 ### Core System
-- **7 Specialized Agents** - Clear responsibilities, reusable across workflows
+- **18 Specialized Agents** - Clear responsibilities, reusable across workflows
 - **Graphical UI** - Full-featured tkinter interface for managing projects
 - **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
 - **Output Validation** - Automatic validation of required outputs

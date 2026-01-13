@@ -539,8 +539,12 @@ Guide implementation of robust error handling...
 - **implementation** - Coding and development skills
 - **testing** - Test design and execution skills
 - **documentation** - Documentation writing skills
-- **security** - Security analysis skills
-- **performance** - Optimization skills
+- **security** - Security analysis and threat modeling skills
+- **performance** - Optimization and profiling skills
+- **devops** - CI/CD, infrastructure, and container orchestration skills
+- **data** - Data modeling, ETL, and data quality skills
+- **accessibility** - WCAG compliance and assistive technology skills
+- **integration** - API integration and webhook design skills
 
 ### Skills Assignment
 
