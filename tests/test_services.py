@@ -322,24 +322,6 @@ class TestQueueService:
         assert len(impl_tasks) == 1
         assert arch_tasks[0].title == "Arch Task"
 
-    def test_agent_status_updates(self, cmat_test_env):
-        """Test that agent status is updated during task lifecycle."""
-        service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
-
-        service.start(task.id)
-        status = service.get_agent_status("architect")
-
-        assert status is not None
-        assert status["status"] == "active"
-        assert status["current_task"] == task.id
-
-        service.complete(task.id, "DONE")
-        status = service.get_agent_status("architect")
-
-        assert status["status"] == "idle"
-        assert status["current_task"] is None
-
     def test_update_single_metadata(self, cmat_test_env):
         """Test updating a single metadata field."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))

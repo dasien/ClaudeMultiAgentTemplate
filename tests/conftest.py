@@ -88,7 +88,6 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
             "description": "Task queue for multi-agent development system"
         },
         "tasks": [],
-        "agent_status": {},
     }
     with open(temp_dir / ".claude/data/task_queue.json", "w") as f:
         json.dump(queue_data, f)

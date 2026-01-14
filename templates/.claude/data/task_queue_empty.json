@@ -4,6 +4,5 @@
     "version": "3.0.0",
     "description": "Task queue for multi-agent development system"
   },
-  "tasks": [],
-  "agent_status": {}
+  "tasks": []
 }

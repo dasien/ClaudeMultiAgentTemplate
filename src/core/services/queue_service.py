@@ -57,7 +57,6 @@ class QueueService:
                 "description": "Task queue for multi-agent development system"
             },
             "tasks": [],
-            "agent_status": {}
         }
 
     def _read_queue(self) -> dict:
@@ -226,9 +225,6 @@ class QueueService:
         queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
 
-        # Update agent status
-        self.update_agent_status(task.assigned_agent, "active", task_id)
-
         log_operation("TASK_STARTED", f"Task: {task_id}, Agent: {task.assigned_agent}")
 
         return task
@@ -256,9 +252,6 @@ class QueueService:
         # Update in place
         queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
-
-        # Update agent status
-        self.update_agent_status(task.assigned_agent, "idle", None)
 
         log_operation("TASK_COMPLETED", f"Task: {task_id}, Result: {result}")
 
@@ -288,9 +281,6 @@ class QueueService:
         queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
 
-        # Update agent status
-        self.update_agent_status(task.assigned_agent, "idle", None)
-
         log_operation("TASK_FAILED", f"Task: {task_id}, Reason: {reason}")
 
         return task
@@ -313,10 +303,8 @@ class QueueService:
         if task.status not in (TaskStatus.PENDING, TaskStatus.ACTIVE):
             return None
 
-        was_active = task.status == TaskStatus.ACTIVE
-
         # Try to kill process if active and PID stored
-        if was_active and task.metadata.process_pid:
+        if task.status == TaskStatus.ACTIVE and task.metadata.process_pid:
             try:
                 os.kill(int(task.metadata.process_pid), signal.SIGTERM)
             except (ProcessLookupError, ValueError, OSError):
@@ -327,9 +315,6 @@ class QueueService:
         # Update in place
         queue["tasks"][task_index] = task.to_dict()
         self._write_queue(queue)
-
-        if was_active:
-            self.update_agent_status(task.assigned_agent, "idle", None)
 
         log_operation("TASK_CANCELLED", f"Task: {task_id}, Reason: {reason}")
 
@@ -431,33 +416,6 @@ class QueueService:
         self._write_queue(queue)
         return task
 
-    def get_agent_status(self, agent_name: str) -> Optional[dict]:
-        """Get the current status of an agent."""
-        queue = self._read_queue()
-        return queue.get("agent_status", {}).get(agent_name)
-
-    def update_agent_status(
-            self,
-            agent_name: str,
-            status: str,
-            current_task: Optional[str] = None
-    ) -> None:
-        """Update an agent's status."""
-        queue = self._read_queue()
-
-        if "agent_status" not in queue:
-            queue["agent_status"] = {}
-
-        queue["agent_status"][agent_name] = {
-            "status": status,
-            "last_activity": get_timestamp(),
-            "current_task": current_task
-        }
-
-        self._write_queue(queue)
-
-        log_operation("AGENT_STATUS_UPDATE", f"Agent: {agent_name}, Status: {status}, Task: {current_task}")
-
     def clear_tasks(self, task_ids: list[str]) -> int:
         """
         Remove specific tasks from the queue by ID.
@@ -497,14 +455,13 @@ class QueueService:
         """
         Get queue status summary.
 
-        Returns dict with counts and agent status:
+        Returns dict with counts:
         {
             "pending": count,
             "active": count,
             "completed": count,
             "failed": count,
             "total": count,
-            "agent_status": {agent_name: {status, current_task, last_activity}}
         }
         """
         queue = self._read_queue()
@@ -521,7 +478,6 @@ class QueueService:
             "completed": completed,
             "failed": failed,
             "total": len(tasks),
-            "agent_status": queue.get("agent_status", {}),
         }
 
     def init(self, force: bool = False) -> bool:

@@ -132,9 +132,8 @@ class WorkflowLauncherDialog(BaseDialog):
 
         self.check_labels = {
             'workflow_valid': ttk.Label(checks_frame, text="○ Workflow template validation", foreground='gray'),
-            'agents_exist': ttk.Label(checks_frame, text="○ Agent availability", foreground='gray'),
+            'agents_exist': ttk.Label(checks_frame, text="○ Workflow agents exist", foreground='gray'),
             'enhancement_exists': ttk.Label(checks_frame, text="○ Enhancement specification file", foreground='gray'),
-            'no_conflicts': ttk.Label(checks_frame, text="○ No conflicting workflows", foreground='gray'),
         }
 
         for label in self.check_labels.values():
@@ -360,42 +359,6 @@ class WorkflowLauncherDialog(BaseDialog):
                 foreground='red'
             )
             all_checks_pass = False
-
-        # Check 4: No conflicting workflows
-        if self.enhancement_file and self.selected_template:
-            # Extract enhancement name from file path
-            enhancement_name = self._extract_enhancement_name(self.enhancement_file)
-
-            if enhancement_name:
-                # Check for active workflows on this enhancement
-                queue_state = self.queue.get_queue_state()
-                conflicting = []
-
-                for task in queue_state.active_workflows:
-                    if task.source_file.startswith(f'enhancements/{enhancement_name}/'):
-                        conflicting.append(task.id)
-
-                if conflicting:
-                    self.check_labels['no_conflicts'].config(
-                        text=f"⚠ {len(conflicting)} active task(s) for this enhancement",
-                        foreground='orange'
-                    )
-                    # Don't block, just warn
-                else:
-                    self.check_labels['no_conflicts'].config(
-                        text="✓ No conflicting workflows",
-                        foreground='green'
-                    )
-            else:
-                self.check_labels['no_conflicts'].config(
-                    text="○ Cannot determine enhancement name",
-                    foreground='gray'
-                )
-        else:
-            self.check_labels['no_conflicts'].config(
-                text="○ Conflict check pending",
-                foreground='gray'
-            )
 
         # Update status and button
         if all_checks_pass:
