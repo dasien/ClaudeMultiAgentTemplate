@@ -63,9 +63,10 @@ CMAT is a multi-agent system that breaks down software development into speciali
 - **Python 3.10+** - Core runtime
 - **Claude Code** - Multi-agent orchestration platform
 - **tkinter** - GUI framework (included with Python)
+- **pyyaml** - YAML parsing for agents and workflows
+- **pillow** - Image processing for UI icons
 
 Optional:
-- **pyyaml** - YAML parsing (pip install pyyaml)
 - **Node.js 16+** - For MCP servers (GitHub/Jira integration)
 
 ---
