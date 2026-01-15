@@ -67,7 +67,7 @@ class AgentDetailsDialog(BaseDialog):
             ("Cancel", self.cancel)
         ])
 
-        ttk.Label(main_frame, text="* Required fields", font=('Arial', 9), foreground='gray').pack()
+        ttk.Label(main_frame, text="* Required fields", font=('Arial', 9)).pack()
 
     def build_basic_tab(self, parent):
         """Build basic information tab."""
@@ -119,8 +119,7 @@ class AgentDetailsDialog(BaseDialog):
         ttk.Label(
             parent,
             text="Role is used for categorization and task type suggestions",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w")
 
         self.role_var = tk.StringVar()
@@ -141,8 +140,7 @@ class AgentDetailsDialog(BaseDialog):
         ttk.Label(
             parent,
             text="Describe what this agent does, its responsibilities, and output standards",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 5))
 
         details_frame = ttk.Frame(parent)
@@ -163,7 +161,7 @@ class AgentDetailsDialog(BaseDialog):
             note_frame,
             text="ℹ️  Note: Workflow orchestration (inputs, outputs, next steps) is configured in Workflow Templates.",
             font=('Arial', 9),
-            foreground='blue',
+            bootstyle="info",
             wraplength=700
         ).pack(anchor="w")
 
@@ -215,7 +213,7 @@ class AgentDetailsDialog(BaseDialog):
             ttk.Label(
                 tools_frame,
                 text="No tools available. Check tools configuration.",
-                foreground='red'
+                bootstyle="danger"
             ).pack(anchor="w")
 
     def build_skills_tab(self, parent):
@@ -268,8 +266,7 @@ class AgentDetailsDialog(BaseDialog):
         self.skills_summary_label = ttk.Label(
             parent,
             text="0 skills selected",
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         )
         self.skills_summary_label.pack(anchor="w", pady=(10, 0))
 
@@ -282,7 +279,7 @@ class AgentDetailsDialog(BaseDialog):
             ttk.Label(
                 self.skills_checkboxes_frame,
                 text="Skills system not available",
-                foreground='red'
+                bootstyle="danger"
             ).pack(anchor="w")
             return
 
@@ -340,7 +337,6 @@ class AgentDetailsDialog(BaseDialog):
                     cb_frame,
                     text=description,
                     font=('Arial', 8),
-                    foreground='gray',
                     wraplength=700
                 ).pack(anchor="w", padx=(20, 0))
 

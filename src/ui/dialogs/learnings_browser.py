@@ -293,7 +293,7 @@ class AddLearningDialog(BaseDialog):
 
         # Help text
         help_text = "Example tags: python, architecture, testing, conventions, error-handling"
-        ttk.Label(self.dialog, text=help_text, foreground='gray').pack(anchor=tk.W, padx=10)
+        ttk.Label(self.dialog, text=help_text).pack(anchor=tk.W, padx=10)
 
         # Button frame
         button_frame = ttk.Frame(self.dialog)

@@ -90,8 +90,7 @@ class InstallCMATDialog(BaseDialog):
         # Validation status
         self.status_label = ttk.Label(
             dir_frame,
-            text="",
-            foreground="gray"
+            text=""
         )
         self.status_label.pack(anchor="w", pady=(0, 5))
 
@@ -99,8 +98,7 @@ class InstallCMATDialog(BaseDialog):
         self.info_label = ttk.Label(
             dir_frame,
             text="",
-            font=('Arial', 9),
-            foreground="blue"
+            font=('Arial', 9)
         )
         self.info_label.pack(anchor="w")
 
@@ -122,8 +120,7 @@ class InstallCMATDialog(BaseDialog):
         # Progress message
         self.progress_label = ttk.Label(
             progress_frame,
-            text="Ready to install",
-            foreground="gray"
+            text="Ready to install"
         )
         self.progress_label.pack(anchor="w")
 
@@ -236,8 +233,20 @@ class InstallCMATDialog(BaseDialog):
             self.current_state = self.STATE_SELECTING
 
     def _update_validation_status(self, status: str, color: str, info: str):
-        """Update validation status labels."""
-        self.status_label.config(text=status, foreground=color)
+        """Update validation status labels using ttkbootstrap bootstyle."""
+        # Map color names to bootstyle
+        bootstyle_map = {
+            "gray": "",  # default
+            "green": "success",
+            "red": "danger",
+            "orange": "warning",
+            "blue": "info"
+        }
+        bootstyle = bootstyle_map.get(color, "")
+        if bootstyle:
+            self.status_label.config(text=status, bootstyle=bootstyle)
+        else:
+            self.status_label.config(text=status)
         self.info_label.config(text=info)
 
     def start_installation(self):
@@ -265,7 +274,7 @@ class InstallCMATDialog(BaseDialog):
         self.install_btn.config(state=tk.DISABLED)
         self.path_entry.config(state=tk.DISABLED)
         self.progress_var.set(0)
-        self.progress_label.config(text="Starting installation...", foreground="blue")
+        self.progress_label.config(text="Starting installation...", bootstyle="info")
 
         # Start installation thread
         self.installation_thread = threading.Thread(
@@ -301,7 +310,7 @@ class InstallCMATDialog(BaseDialog):
     def _update_progress_ui(self, message: str, percent: int):
         """Update progress UI components (runs on main thread only)."""
         self.progress_var.set(percent)
-        self.progress_label.config(text=message, foreground="blue")
+        self.progress_label.config(text=message, bootstyle="info")
         self.dialog.update_idletasks()
 
     def _poll_installation_result(self):
@@ -344,13 +353,13 @@ class InstallCMATDialog(BaseDialog):
             self.close(self.result)
         else:
             self.current_state = self.STATE_FAILED
-            self.progress_label.config(text="Installation failed", foreground="red")
+            self.progress_label.config(text="Installation failed", bootstyle="danger")
             self._reset_ui()
 
     def handle_error(self, error: Exception):
         """Display error message to user using exception title and message."""
         self.current_state = self.STATE_FAILED
-        self.progress_label.config(text="Installation failed", foreground="red")
+        self.progress_label.config(text="Installation failed", bootstyle="danger")
         self.progress_var.set(0)
 
         # Get title from error_title attribute if present, otherwise use default

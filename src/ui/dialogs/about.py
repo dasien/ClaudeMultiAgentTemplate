@@ -83,8 +83,7 @@ class AboutDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="© 2025 Claude Multi-Agent Template Project",
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         ).pack(pady=5)
 
         # Close button

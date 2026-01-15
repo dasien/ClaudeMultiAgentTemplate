@@ -225,3 +225,24 @@ class Settings:
         if 'cmat_root' in self._data:
             del self._data['cmat_root']
             self._save()
+
+    # =============================================================================
+    # Theme Settings
+    # =============================================================================
+
+    def get_theme(self) -> str:
+        """Get the current theme preference.
+
+        Returns:
+            Theme name ('light' or 'dark'), defaults to 'light'
+        """
+        return self._data.get('theme', 'light')
+
+    def set_theme(self, theme: str):
+        """Set the theme preference.
+
+        Args:
+            theme: Theme name ('light' or 'dark')
+        """
+        self._data['theme'] = theme
+        self._save()

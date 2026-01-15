@@ -56,8 +56,7 @@ class MarkdownViewerDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text=str(self.file_path),
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         ).pack(anchor="w", pady=(0, 5))
 
         ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=5)

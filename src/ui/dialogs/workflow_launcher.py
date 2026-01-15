@@ -62,7 +62,6 @@ class WorkflowLauncherDialog(BaseDialog):
             main_frame,
             text="",
             font=('Arial', 9),
-            foreground='gray',
             wraplength=600
         )
         self.workflow_desc_label.pack(anchor="w", pady=(0, 5))
@@ -71,8 +70,7 @@ class WorkflowLauncherDialog(BaseDialog):
         self.workflow_steps_label = ttk.Label(
             main_frame,
             text="",
-            font=('Arial', 9),
-            foreground='blue'
+            font=('Arial', 9)
         )
         self.workflow_steps_label.pack(anchor="w", pady=(0, 20))
 
@@ -119,8 +117,7 @@ class WorkflowLauncherDialog(BaseDialog):
         self.enhancement_info_label = ttk.Label(
             main_frame,
             text="Select or create an enhancement specification file",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         )
         self.enhancement_info_label.pack(anchor="w", pady=(0, 20))
 
@@ -131,9 +128,9 @@ class WorkflowLauncherDialog(BaseDialog):
         checks_frame.pack(fill="x", pady=(0, 15))
 
         self.check_labels = {
-            'workflow_valid': ttk.Label(checks_frame, text="○ Workflow template validation", foreground='gray'),
-            'agents_exist': ttk.Label(checks_frame, text="○ Workflow agents exist", foreground='gray'),
-            'enhancement_exists': ttk.Label(checks_frame, text="○ Enhancement specification file", foreground='gray'),
+            'workflow_valid': ttk.Label(checks_frame, text="○ Workflow template validation"),
+            'agents_exist': ttk.Label(checks_frame, text="○ Workflow agents exist"),
+            'enhancement_exists': ttk.Label(checks_frame, text="○ Enhancement specification file"),
         }
 
         for label in self.check_labels.values():
@@ -143,8 +140,7 @@ class WorkflowLauncherDialog(BaseDialog):
         self.status_label = ttk.Label(
             main_frame,
             text="Status: Select workflow and enhancement to begin",
-            font=('Arial', 10, 'bold'),
-            foreground='gray'
+            font=('Arial', 10, 'bold')
         )
         self.status_label.pack(anchor="w", pady=(5, 15))
 
@@ -263,10 +259,7 @@ class WorkflowLauncherDialog(BaseDialog):
 
             # Extract enhancement name from path
             rel_path = self.enhancement_file.relative_to(self.queue.project_root)
-            self.enhancement_info_label.config(
-                text=f"Selected: {rel_path}",
-                foreground='green'
-            )
+            self.enhancement_info_label.config(text=f"Selected: {rel_path}")
 
             self.run_preflight_checks()
 
@@ -282,35 +275,30 @@ class WorkflowLauncherDialog(BaseDialog):
             self.enhancement_var.set(str(self.enhancement_file))
 
             rel_path = self.enhancement_file.relative_to(self.queue.project_root)
-            self.enhancement_info_label.config(
-                text=f"Created: {rel_path}",
-                foreground='green'
-            )
+            self.enhancement_info_label.config(text=f"Created: {rel_path}")
 
             self.run_preflight_checks()
 
     def run_preflight_checks(self):
-        """Run all pre-flight checks and update UI."""
+        """Run all pre-flight checks and update UI.
+
+        Uses ttkbootstrap bootstyle for theme-aware colors:
+        - 'success' for passed checks (green)
+        - 'danger' for failed checks (red)
+        - 'warning' for warnings (orange)
+        - 'secondary' for pending/neutral (gray)
+        """
         all_checks_pass = True
 
         # Check 1: Workflow template valid
         if self.selected_template:
             issues = self.selected_template.validate_chain()
             if issues:
-                self.check_labels['workflow_valid'].config(
-                    text="⚠ Workflow template has warnings",
-                    foreground='orange'
-                )
+                self.check_labels['workflow_valid'].config(text="⚠ Workflow template has warnings", bootstyle="warning")
             else:
-                self.check_labels['workflow_valid'].config(
-                    text="✓ Workflow template is valid",
-                    foreground='green'
-                )
+                self.check_labels['workflow_valid'].config(text="✓ Workflow template is valid", bootstyle="success")
         else:
-            self.check_labels['workflow_valid'].config(
-                text="✗ No workflow selected",
-                foreground='red'
-            )
+            self.check_labels['workflow_valid'].config(text="✗ No workflow selected", bootstyle="danger")
             all_checks_pass = False
 
         # Check 2: All agents exist
@@ -323,55 +311,31 @@ class WorkflowLauncherDialog(BaseDialog):
                     missing_agents.append(step.agent)
 
             if missing_agents:
-                self.check_labels['agents_exist'].config(
-                    text=f"✗ Missing agents: {', '.join(missing_agents)}",
-                    foreground='red'
-                )
+                self.check_labels['agents_exist'].config(text=f"✗ Missing agents: {', '.join(missing_agents)}", bootstyle="danger")
                 all_checks_pass = False
             else:
                 agent_count = len(self.selected_template.steps)
-                self.check_labels['agents_exist'].config(
-                    text=f"✓ All {agent_count} agents are available",
-                    foreground='green'
-                )
+                self.check_labels['agents_exist'].config(text=f"✓ All {agent_count} agents are available", bootstyle="success")
         else:
-            self.check_labels['agents_exist'].config(
-                text="○ Agent availability check pending",
-                foreground='gray'
-            )
+            self.check_labels['agents_exist'].config(text="○ Agent availability check pending", bootstyle="secondary")
 
         # Check 3: Enhancement spec exists
         if self.enhancement_file:
             if self.enhancement_file.exists():
-                self.check_labels['enhancement_exists'].config(
-                    text=f"✓ Enhancement spec found: {self.enhancement_file.name}",
-                    foreground='green'
-                )
+                self.check_labels['enhancement_exists'].config(text=f"✓ Enhancement spec found: {self.enhancement_file.name}", bootstyle="success")
             else:
-                self.check_labels['enhancement_exists'].config(
-                    text=f"✗ Enhancement spec not found: {self.enhancement_file}",
-                    foreground='red'
-                )
+                self.check_labels['enhancement_exists'].config(text=f"✗ Enhancement spec not found: {self.enhancement_file}", bootstyle="danger")
                 all_checks_pass = False
         else:
-            self.check_labels['enhancement_exists'].config(
-                text="✗ No enhancement spec selected",
-                foreground='red'
-            )
+            self.check_labels['enhancement_exists'].config(text="✗ No enhancement spec selected", bootstyle="danger")
             all_checks_pass = False
 
         # Update status and button
         if all_checks_pass:
-            self.status_label.config(
-                text="Status: ✓ Ready to start",
-                foreground='green'
-            )
+            self.status_label.config(text="Status: ✓ Ready to start", bootstyle="success")
             self.start_button.config(state=tk.NORMAL)
         else:
-            self.status_label.config(
-                text="Status: ✗ Cannot start - resolve issues above",
-                foreground='red'
-            )
+            self.status_label.config(text="Status: ✗ Cannot start - resolve issues above", bootstyle="danger")
             self.start_button.config(state=tk.DISABLED)
 
     def _extract_enhancement_name(self, file_path: Path) -> str:

@@ -8,11 +8,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from pathlib import Path
 
+import ttkbootstrap as ttkb
+
 from .utils import CMATInterface
 from .models import ConnectionState, QueueUIState
 from core.models import TaskStatus
 from .config import Config
 from .settings import Settings
+from .utils import ThemeManager
 from .utils import TimeUtils
 from .utils.text_utils import slug_to_display
 from .dialogs import WorkflowTemplateManagerDialog
@@ -27,7 +30,7 @@ except ImportError:
 class MainView:
     """Main application window for Task Queue Manager."""
 
-    def __init__(self, root):
+    def __init__(self, root, theme_manager: ThemeManager = None):
         self.root = root
         self.root.title("Claude Multi-Agent Manager")
         self.root.geometry("1200x750")
@@ -36,8 +39,9 @@ class MainView:
         # Set window icon
         self.set_window_icon()
 
-        # Settings
+        # Settings and theme
         self.settings = Settings()
+        self.theme_manager = theme_manager or ThemeManager(self.settings)
 
         # Ensure cmat_root is set (for existing installations)
         self._ensure_cmat_root()
@@ -72,11 +76,12 @@ class MainView:
     def _set_initial_focus(self):
         """Set initial focus to status list after window is fully rendered."""
         self.status_listbox.focus_set()
-        if self.status_listbox.size() > 0:
+        children = self.status_listbox.get_children()
+        if children:
             # Select first item if nothing selected
-            if not self.status_listbox.curselection():
-                self.status_listbox.selection_set(0)
-            self.status_listbox.activate(0)
+            if not self.status_listbox.selection():
+                self.status_listbox.selection_set(children[0])
+                self.status_listbox.focus(children[0])
 
     def set_window_icon(self):
         """Set the window icon."""
@@ -208,6 +213,11 @@ class MainView:
         logs_menu.add_command(label="View Operations Log", command=self.show_operations_log, accelerator="Ctrl+L")
         self.menus['logs'] = menubar.index("Logs")
 
+        # View menu (always enabled)
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Toggle Dark Mode", command=self.toggle_theme, accelerator="Ctrl+D")
+
         # Claude menu (always enabled for API key, other items require connection)
         self.claude_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Claude", menu=self.claude_menu)
@@ -220,6 +230,7 @@ class MainView:
         about_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="About", menu=about_menu)
         about_menu.add_command(label="Documentation...", command=self.show_documentation)
+        about_menu.add_command(label="Select Theme...", command=self.show_theme_selector)
         about_menu.add_separator()
         about_menu.add_command(label="About...", command=self.show_about_dialog)
 
@@ -248,6 +259,7 @@ class MainView:
         self.root.bind('<Control-k>', lambda e: self.show_skills_viewer())
         self.root.bind('<Control-i>', lambda e: self.show_integration_dashboard())
         self.root.bind('<Control-l>', lambda e: self.show_operations_log())
+        self.root.bind('<Control-d>', lambda e: self.toggle_theme())
         self.root.bind('<F5>', lambda e: self.refresh())
         self.root.bind('<Delete>', lambda e: self.cancel_task())
 
@@ -312,22 +324,24 @@ class MainView:
         status_list_frame = ttk.Frame(left_frame)
         status_list_frame.pack(fill="both", expand=True)
 
-        self.status_listbox = tk.Listbox(
+        # Use ttk.Treeview instead of tk.Listbox for auto-theming
+        self.status_listbox = ttk.Treeview(
             status_list_frame,
-            font=('Arial', 11),
+            show='tree',  # Show only tree column, no headers
             selectmode='browse',
-            activestyle='dotbox',
-            width=20,
-            exportselection=False
+            height=10
         )
         status_scrollbar = ttk.Scrollbar(status_list_frame, orient="vertical", command=self.status_listbox.yview)
         self.status_listbox.configure(yscrollcommand=status_scrollbar.set)
 
+        # Configure the tree column width
+        self.status_listbox.column('#0', width=150, minwidth=100)
+
         self.status_listbox.pack(side="left", fill="both", expand=True)
         status_scrollbar.pack(side="right", fill="y")
 
-        # Bind status selection
-        self.status_listbox.bind('<<ListboxSelect>>', self.on_status_select)
+        # Bind status selection (Treeview uses different event)
+        self.status_listbox.bind('<<TreeviewSelect>>', self.on_status_select)
 
         # Define status configuration
         self.status_config = [
@@ -386,8 +400,7 @@ class MainView:
         self.empty_label = ttk.Label(
             right_frame,
             text="No tasks",
-            font=('Arial', 12),
-            foreground='gray'
+            font=('Arial', 12)
         )
 
         # Events
@@ -404,14 +417,17 @@ class MainView:
 
     def on_status_select(self, event=None):
         """Handle status selection change."""
-        selection = self.status_listbox.curselection()
+        selection = self.status_listbox.selection()
         if not selection:
             return
 
-        index = selection[0]
-        if index < len(self.status_config):
-            self.current_status = self.status_config[index][0]
-            self.update_task_list()
+        # Get index from item position in tree
+        children = self.status_listbox.get_children()
+        if selection[0] in children:
+            index = children.index(selection[0])
+            if index < len(self.status_config):
+                self.current_status = self.status_config[index][0]
+                self.update_task_list()
 
     def _focus_task_tree(self, event=None):
         """Move focus to the task tree and select first item if none selected."""
@@ -425,12 +441,12 @@ class MainView:
         return "break"  # Prevent default Tab behavior
 
     def _focus_status_list(self, event=None):
-        """Move focus to the status list and activate the currently selected item."""
+        """Move focus to the status list and select the current item."""
         self.status_listbox.focus_set()
-        # Activate the currently selected item so the dotbox shows correctly
-        selection = self.status_listbox.curselection()
+        # Ensure current item is selected and focused
+        selection = self.status_listbox.selection()
         if selection:
-            self.status_listbox.activate(selection[0])
+            self.status_listbox.focus(selection[0])
         return "break"  # Prevent default Tab behavior
 
     def _tree_navigate_up(self, event=None):
@@ -477,21 +493,15 @@ class MainView:
         self.refresh_label.pack(side="right", padx=5)
 
     def configure_styles(self):
-        """Configure styles."""
+        """Configure styles with theme-aware colors."""
         style = ttk.Style()
         style.configure('Connection.TFrame', background='#F0F0F0')
         style.configure('Connection.TLabel', background='#F0F0F0')
 
-        # Status group header styles (parent rows)
-        self.task_tree.tag_configure('header_pending', background='#E3F2FD', font=('Arial', 10, 'bold'))  # Light blue
-        self.task_tree.tag_configure('header_active', background='#FFF3E0', font=('Arial', 10, 'bold'))   # Light orange
-        self.task_tree.tag_configure('header_completed', background='#E8F5E9', font=('Arial', 10, 'bold'))  # Light green
-        self.task_tree.tag_configure('header_failed', background='#FFEBEE', font=('Arial', 10, 'bold'))    # Light red
-        self.task_tree.tag_configure('header_cancelled', background='#EEEEEE', font=('Arial', 10, 'bold'))  # Light grey
-
-        # Task row styles (child rows) - plain white, no colors
-        self.task_tree.tag_configure('task', background='white')
-        self.task_tree.tag_configure('task_blocked', background='#FFF3CD')  # Yellow - blocked/warning
+        # Task row styles - only configure special highlighting, let theme handle normal rows
+        self.task_tree.tag_configure('task')  # No background - use theme default
+        warning_color = self.root.style.colors.warning
+        self.task_tree.tag_configure('task_blocked', background=warning_color)
 
     def update_ui_state(self):
         """Update UI based on connection state."""
@@ -507,11 +517,7 @@ class MainView:
             self.update_menu_states(connected=False)
 
         elif self.state.connection_state == ConnectionState.CONNECTED:
-            # Reset foreground color (in case it was red from error)
-            self.connection_label.config(
-                text=f"Connected: {self.state.project_root}",
-                foreground='black'
-            )
+            self.connection_label.config(text=f"Connected: {self.state.project_root}")
 
             # Show system version
             version = self.queue.get_version()
@@ -524,7 +530,7 @@ class MainView:
             self.update_menu_states(connected=True)
 
         elif self.state.connection_state == ConnectionState.ERROR:
-            self.connection_label.config(text=f"Error: {self.state.error_message}", foreground='red')
+            self.connection_label.config(text=f"Error: {self.state.error_message}")
 
             # Disable menus on error
             self.update_menu_states(connected=False)
@@ -669,17 +675,23 @@ class MainView:
                 'cancelled': queue_state.cancelled_tasks,
             }
 
-            # Update status listbox
-            self.status_listbox.delete(0, tk.END)
-            for i, (status_key, status_label, _) in enumerate(self.status_config):
-                count = len(self.tasks_by_status.get(status_key, []))
-                self.status_listbox.insert(tk.END, f"{status_label} ({count})")
+            # Update status listbox (Treeview)
+            # Clear existing items
+            for item in self.status_listbox.get_children():
+                self.status_listbox.delete(item)
 
-            # Select current status in listbox and activate it
-            for i, (status_key, _, _) in enumerate(self.status_config):
+            # Insert status items and track item IDs
+            status_item_ids = []
+            for status_key, status_label, _ in self.status_config:
+                count = len(self.tasks_by_status.get(status_key, []))
+                item_id = self.status_listbox.insert('', tk.END, text=f"{status_label} ({count})")
+                status_item_ids.append((status_key, item_id))
+
+            # Select and focus current status
+            for status_key, item_id in status_item_ids:
                 if status_key == self.current_status:
-                    self.status_listbox.selection_set(i)
-                    self.status_listbox.activate(i)
+                    self.status_listbox.selection_set(item_id)
+                    self.status_listbox.focus(item_id)
                     break
 
             # Update task list for current status
@@ -1190,6 +1202,34 @@ class MainView:
         from .dialogs import DocumentationViewerDialog
         DocumentationViewerDialog(self.root)
 
+    def show_theme_selector(self):
+        """Show theme selector dialog."""
+        from .dialogs import ThemeSelectorDialog
+        dialog = ThemeSelectorDialog(
+            self.root,
+            self.theme_manager,
+            on_theme_change=self._update_tk_widgets_for_theme
+        )
+        if dialog.result:
+            # Theme was applied - no need to call apply_theme() since dialog already did it
+            pass
+
+    def _update_tk_widgets_for_theme(self, theme_name: str):
+        """Update tk widgets for a specific theme (used for live preview).
+
+        This is called by the theme selector dialog when previewing themes.
+        It updates widgets that don't auto-theme with ttkbootstrap.
+        Note: Status listbox is now a ttk.Treeview and auto-themes.
+        """
+        # Determine if theme is dark or light
+        dark_themes = {"cyborg", "darkly", "solar", "superhero", "vapor"}
+        is_dark = theme_name in dark_themes
+
+        # Update treeview tags - only special highlighting, let theme handle normal rows
+        self.task_tree.tag_configure('task')  # No background - use theme default
+        warning_color = self.root.style.colors.warning
+        self.task_tree.tag_configure('task_blocked', background=warning_color)
+
     def sort_by(self, column):
         """Sort table by column."""
         if self.sort_column == column:
@@ -1204,6 +1244,22 @@ class MainView:
         for index, (val, item) in enumerate(items):
             self.task_tree.move(item, '', index)
 
+    def toggle_theme(self):
+        """Toggle between light and dark themes."""
+        new_theme = self.theme_manager.toggle()
+        self.apply_theme()
+
+    def apply_theme(self):
+        """Apply current theme to all widgets."""
+        # Update ttkbootstrap theme (auto-updates all ttk widgets including status_listbox)
+        ttk_theme = self.theme_manager.get_ttkbootstrap_theme()
+        self.root.style.theme_use(ttk_theme)
+
+        # Update treeview tags - use theme's warning color for blocked tasks
+        self.task_tree.tag_configure('task')  # No background - use theme default
+        warning_color = self.root.style.colors.warning
+        self.task_tree.tag_configure('task_blocked', background=warning_color)
+
     def quit_app(self):
         """Quit application."""
         if messagebox.askyesno("Quit", "Are you sure?"):
@@ -1214,10 +1270,15 @@ def main():
     """Main entry point."""
     from .dialogs import SplashScreen
 
-    root = tk.Tk()
+    # Initialize settings to get theme preference
+    settings = Settings()
+    theme_manager = ThemeManager(settings)
+
+    # Create ttkbootstrap window with saved theme
+    root = ttkb.Window(themename=theme_manager.get_ttkbootstrap_theme())
 
     # Create main view first (so it's visible behind splash)
-    app = MainView(root)
+    app = MainView(root, theme_manager)
 
     # Show splash screen overlay with callback to set initial focus
     splash = SplashScreen(root, duration_ms=2500, on_close=app._set_initial_focus)

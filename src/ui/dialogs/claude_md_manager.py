@@ -53,8 +53,7 @@ class ClaudeMdManagerDialog(BaseDialog):
         self.path_label = ttk.Label(
             status_frame,
             text=f"File: {self.queue.project_root / 'CLAUDE.md'}",
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         )
         self.path_label.pack(anchor="w")
 

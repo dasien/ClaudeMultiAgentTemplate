@@ -32,7 +32,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         self.transitions = existing_step.get('on_status', {}).copy() if existing_step else {}
 
         mode_text = "Edit" if existing_step else "Add"
-        super().__init__(parent, f"{mode_text} Workflow Step", 650, 550)
+        super().__init__(parent, f"{mode_text} Workflow Step", 650, 600)
 
         self.build_ui()
         self.show()
@@ -65,17 +65,25 @@ class WorkflowStepEditorDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="Leave as default to use project's default model",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 5))
 
-        from ..components.model_selector import ModelSelectorFrame
-        self.model_selector = ModelSelectorFrame(main_frame, self.queue, show_default_option=True)
-        self.model_selector.pack(fill="x", pady=(0, 15))
+        self.models_map = self.queue.get_models_list(include_default_option=True)
+        self.model_var = tk.StringVar()
+        self.model_combo = ttk.Combobox(main_frame, textvariable=self.model_var, state='readonly')
+        self.model_combo['values'] = list(self.models_map.keys())
+        if self.model_combo['values']:
+            self.model_combo.current(0)
+        self.model_combo.pack(fill="x", pady=(0, 15))
 
         # Load existing model if editing
         if self.existing_step and self.existing_step.get('model'):
-            self.model_selector.set_model(self.existing_step['model'])
+            existing_model = self.existing_step['model']
+            # Find display name for this model ID
+            for display_name, model_id in self.models_map.items():
+                if model_id == existing_model:
+                    self.model_var.set(display_name)
+                    break
 
         # Input pattern
         ttk.Label(main_frame, text="Input Pattern: *", font=('Arial', 10, 'bold')).pack(anchor="w")
@@ -83,8 +91,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="Specify where this step reads its input from",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 5))
 
         # Placeholder buttons
@@ -94,8 +101,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         ttk.Label(
             placeholder_frame,
             text="Insert:",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(side="left", padx=(0, 5))
 
         ttk.Button(
@@ -128,7 +134,7 @@ class WorkflowStepEditorDialog(BaseDialog):
             main_frame,
             text="",
             font=('Arial', 8),
-            foreground='blue'
+            bootstyle="info"
         )
         self.input_preview.pack(anchor="w", pady=(0, 15))
 
@@ -141,8 +147,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="Filename only (must end with .md, no path separators)",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 5))
 
         self.output_var = tk.StringVar()
@@ -159,8 +164,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="Configure what happens when agent outputs specific status codes",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 5))
 
         transitions_frame = ttk.Frame(main_frame)
@@ -175,8 +179,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         self.transitions_summary = ttk.Label(
             transitions_frame,
             text=self._format_transitions_summary(),
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         )
         self.transitions_summary.pack(side="left", padx=(10, 0))
 
@@ -305,7 +308,7 @@ class WorkflowStepEditorDialog(BaseDialog):
             return
 
         # Get selected model (None = use default)
-        model = self.model_selector.get_selected_model()
+        model = self.models_map.get(self.model_var.get())
 
         # Build result
         result = {

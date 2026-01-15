@@ -47,8 +47,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="Configure what happens when the agent outputs each status code",
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         ).pack(pady=(0, 15))
 
         # Current transitions list
@@ -90,7 +89,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
             main_frame,
             text="💡 Tip: Double-click a transition in the list above to edit it",
             font=('Arial', 8),
-            foreground='blue'
+            bootstyle="info"
         ).pack(anchor="w", pady=(0, 10))
 
         # Add/Edit transition form
@@ -106,8 +105,7 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         ttk.Label(
             form_frame,
             text="Examples: READY_FOR_DEVELOPMENT, TESTING_COMPLETE, BLOCKED",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 10))
 
         # Next step

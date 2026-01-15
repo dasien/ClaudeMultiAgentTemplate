@@ -74,8 +74,7 @@ class SkillDetailsDialog(BaseDialog):
         ttk.Label(
             info_frame,
             text="Directory name (lowercase, hyphens only). Creates .claude/skills/<directory>/SKILL.md",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 10))
 
         # Category
@@ -103,8 +102,7 @@ class SkillDetailsDialog(BaseDialog):
         ttk.Label(
             info_frame,
             text="Brief description of what this skill provides",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w")
 
         # Content Section
@@ -116,7 +114,6 @@ class SkillDetailsDialog(BaseDialog):
             text="The skill content provides guidance and methodology for the agent. "
                  "Write in markdown format.",
             font=('Arial', 9),
-            foreground='gray',
             wraplength=700
         ).pack(anchor="w", pady=(0, 10))
 

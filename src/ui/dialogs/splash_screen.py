@@ -32,6 +32,15 @@ class SplashScreen:
         self.splash = None
         self.photo = None
 
+    def _is_dark_theme(self) -> bool:
+        """Check if the current ttkbootstrap theme is dark."""
+        dark_themes = {'darkly', 'cyborg', 'solar', 'superhero', 'vapor'}
+        try:
+            current_theme = self.root.style.theme_use()
+            return current_theme in dark_themes
+        except (AttributeError, Exception):
+            return False
+
     def show(self):
         """Show the splash screen overlaying the main window."""
         # Show main window in background (don't hide it)
@@ -52,8 +61,19 @@ class SplashScreen:
         y = main_y + (main_height - height) // 2
         self.splash.geometry(f"{width}x{height}+{x}+{y}")
 
-        # Style - light theme to match app
-        bg_color = '#f5f5f5'
+        # Style - theme-aware colors
+        is_dark = self._is_dark_theme()
+        if is_dark:
+            bg_color = '#212529'
+            fg_title = '#f8f9fa'
+            fg_version = '#adb5bd'
+            fg_loading = '#6c757d'
+        else:
+            bg_color = '#f5f5f5'
+            fg_title = '#333333'
+            fg_version = '#666666'
+            fg_loading = '#888888'
+
         self.splash.configure(bg=bg_color)
 
         # Main frame
@@ -78,7 +98,7 @@ class SplashScreen:
             frame,
             text="Claude Multi-Agent Template",
             font=('Arial', 14, 'bold'),
-            fg='#333333',
+            fg=fg_title,
             bg=bg_color
         ).pack(pady=(0, 5))
 
@@ -87,7 +107,7 @@ class SplashScreen:
             frame,
             text=f"v{Config.VERSION}",
             font=('Arial', 10),
-            fg='#666666',
+            fg=fg_version,
             bg=bg_color
         ).pack()
 
@@ -96,7 +116,7 @@ class SplashScreen:
             frame,
             text="Loading...",
             font=('Arial', 9),
-            fg='#888888',
+            fg=fg_loading,
             bg=bg_color
         ).pack(side="bottom", pady=(10, 0))
 

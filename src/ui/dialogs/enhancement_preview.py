@@ -109,8 +109,7 @@ class EnhancementPreviewDialog(BaseDialog):
         ttk.Label(
             main_frame,
             text="You can edit the content above before saving",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack()
 
     def save_enhancement(self) -> Path:

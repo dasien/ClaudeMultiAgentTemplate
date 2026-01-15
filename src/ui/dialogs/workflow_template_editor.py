@@ -59,8 +59,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         ttk.Label(
             name_frame,
             text="(lowercase, hyphens only: my-custom-workflow)",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 10))
 
         # Description
@@ -109,10 +108,8 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         self.steps_tree.column('output', width=150)
         self.steps_tree.column('transitions', width=150)
 
-        # Configure tags
-        self.steps_tree.tag_configure('complete', background='#E8F5E9')
-        self.steps_tree.tag_configure('incomplete', background='#FFF9E6')
-        self.steps_tree.tag_configure('first', background='#E3F2FD')
+        # Configure tags with theme-aware colors
+        self._configure_treeview_tags()
 
         steps_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.steps_tree.yview)
         self.steps_tree.configure(yscrollcommand=steps_scroll.set)
@@ -177,7 +174,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             ("Cancel", self.cancel)
         ])
 
-        ttk.Label(main_frame, text="* Required fields", font=('Arial', 9), foreground='gray').pack()
+        ttk.Label(main_frame, text="* Required fields", font=('Arial', 9)).pack()
 
     def on_name_changed(self, *args):
         """Auto-generate slug from name in create mode."""
@@ -499,3 +496,11 @@ class WorkflowTemplateEditorDialog(BaseDialog):
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save template: {e}")
+
+    def _configure_treeview_tags(self):
+        """Configure treeview tags - let theme handle backgrounds."""
+        # Don't set background colors - let ttkbootstrap theme handle it
+        # Only configure non-color attributes if needed
+        self.steps_tree.tag_configure('complete')
+        self.steps_tree.tag_configure('incomplete')
+        self.steps_tree.tag_configure('first')

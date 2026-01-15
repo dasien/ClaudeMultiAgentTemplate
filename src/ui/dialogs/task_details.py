@@ -147,8 +147,7 @@ class TaskDetailsDialog(BaseDialog):
             ttk.Label(
                 right_column,
                 text="No cost data available",
-                font=('Arial', 9),
-                foreground='gray'
+                font=('Arial', 9)
             ).pack(anchor="w")
 
         # SKILLS SECTION
@@ -193,21 +192,19 @@ class TaskDetailsDialog(BaseDialog):
                         skills_frame,
                         text=f"  • {skill_name} (Used)",
                         font=('Arial', 9),
-                        foreground='green'
+                        bootstyle="success"
                     ).pack(anchor="w")
                 else:
                     ttk.Label(
                         skills_frame,
                         text=f"  • {skill_name}",
-                        font=('Arial', 9),
-                        foreground='gray'
+                        font=('Arial', 9)
                     ).pack(anchor="w")
         else:
             ttk.Label(
                 skills_frame,
                 text="This agent has no skills assigned",
-                font=('Arial', 9),
-                foreground='gray'
+                font=('Arial', 9)
             ).pack(anchor="w")
 
         return scrollable_frame
@@ -240,7 +237,7 @@ class TaskDetailsDialog(BaseDialog):
                 info_frame,
                 text=f"Step {workflow_step + 1} of {workflow.get_total_steps()}",
                 font=('Arial', 9),
-                foreground='blue'
+                bootstyle="info"
             ).pack(side="right")
 
             # Current step details - use pack for consistent row spacing
@@ -250,13 +247,13 @@ class TaskDetailsDialog(BaseDialog):
                 row = ttk.Frame(workflow_frame)
                 row.pack(fill="x", pady=2)
                 ttk.Label(row, text="Input:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
-                ttk.Label(row, text=current_step.input, font=('Arial', 9), foreground='gray').pack(side="left")
+                ttk.Label(row, text=current_step.input, font=('Arial', 9)).pack(side="left")
 
                 # Expected output
                 row = ttk.Frame(workflow_frame)
                 row.pack(fill="x", pady=2)
                 ttk.Label(row, text="Expected Output:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
-                ttk.Label(row, text=current_step.required_output, font=('Arial', 9), foreground='gray').pack(side="left")
+                ttk.Label(row, text=current_step.required_output, font=('Arial', 9)).pack(side="left")
 
                 # Actual Output (based on workflow step's required_output pattern)
                 row = ttk.Frame(workflow_frame)
@@ -278,10 +275,10 @@ class TaskDetailsDialog(BaseDialog):
 
                 if actual_output_path and actual_output_path.exists():
                     ttk.Button(row, text="Open", command=lambda p=actual_output_path: self._open_path(p)).pack(side="right")
-                    ttk.Label(row, text=str(actual_output_path.relative_to(self.queue.project_root)), font=('Arial', 9), foreground='gray').pack(side="left", fill="x", expand=True)
+                    ttk.Label(row, text=str(actual_output_path.relative_to(self.queue.project_root)), font=('Arial', 9)).pack(side="left", fill="x", expand=True)
                 else:
                     # Show expected output pattern if actual output doesn't exist yet
-                    ttk.Label(row, text=f"{current_step.required_output} (pending)", font=('Arial', 9), foreground='orange').pack(side="left", fill="x", expand=True)
+                    ttk.Label(row, text=f"{current_step.required_output} (pending)", font=('Arial', 9), bootstyle="warning").pack(side="left", fill="x", expand=True)
 
                 # Expected statuses
                 expected_statuses = current_step.get_expected_statuses()
@@ -289,27 +286,27 @@ class TaskDetailsDialog(BaseDialog):
                     row = ttk.Frame(workflow_frame)
                     row.pack(fill="x", pady=2)
                     ttk.Label(row, text="Expected Statuses:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
-                    ttk.Label(row, text=", ".join(expected_statuses), font=('Arial', 9), foreground='gray').pack(side="left")
+                    ttk.Label(row, text=", ".join(expected_statuses), font=('Arial', 9)).pack(side="left")
 
                 # Actual Status (result)
                 if self.task.result:
                     row = ttk.Frame(workflow_frame)
                     row.pack(fill="x", pady=2)
                     ttk.Label(row, text="Actual Status:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
-                    ttk.Label(row, text=self.task.result, font=('Arial', 9), foreground='blue').pack(side="left")
+                    ttk.Label(row, text=self.task.result, font=('Arial', 9), bootstyle="info").pack(side="left")
 
             # Automation (last row in workflow section)
             row = ttk.Frame(workflow_frame)
             row.pack(fill="x", pady=2)
             ttk.Label(row, text="Automation:", font=('Arial', 9, 'bold'), width=15).pack(side="left")
             auto_text = "Auto-Chain" if self.task.auto_chain else "Manual"
-            ttk.Label(row, text=auto_text, font=('Arial', 9), foreground='gray').pack(side="left")
+            ttk.Label(row, text=auto_text, font=('Arial', 9)).pack(side="left")
         else:
             ttk.Label(
                 workflow_frame,
                 text=f"Workflow: {workflow_name} (template not found)",
                 font=('Arial', 10),
-                foreground='orange'
+                bootstyle="warning"
             ).pack(anchor="w")
 
     def build_details_tab(self, parent):
@@ -328,8 +325,7 @@ class TaskDetailsDialog(BaseDialog):
             ttk.Label(
                 scrollable_frame,
                 text="(Full prompt not available - showing task description only)",
-                font=('Arial', 8),
-                foreground='gray'
+                font=('Arial', 8)
             ).pack(anchor="w", pady=(0, 5))
             prompt_to_show = self.task.description
 

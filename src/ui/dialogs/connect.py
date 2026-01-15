@@ -50,14 +50,11 @@ class ConnectDialog(BaseDialog):
 
         # Validation items (updated for Python CMAT v8.2+)
         self.validation_items = {
-            'project_root': ttk.Label(self.validation_frame, text="○ Project root directory", foreground='gray'),
-            'cmat_package': ttk.Label(self.validation_frame, text="○ CMAT Python package (.claude/cmat/__init__.py)",
-                                     foreground='gray'),
-            'queue_file': ttk.Label(self.validation_frame, text="○ Task queue (.claude/data/task_queue.json)",
-                                    foreground='gray'),
-            'skills': ttk.Label(self.validation_frame, text="○ Skills system (.claude/skills/skills.json)",
-                                foreground='gray'),
-            'agents': ttk.Label(self.validation_frame, text="○ Agents (.claude/agents/agents.json)", foreground='gray'),
+            'project_root': ttk.Label(self.validation_frame, text="○ Project root directory"),
+            'cmat_package': ttk.Label(self.validation_frame, text="○ CMAT Python package (.claude/cmat/__init__.py)"),
+            'queue_file': ttk.Label(self.validation_frame, text="○ Task queue (.claude/data/task_queue.json)"),
+            'skills': ttk.Label(self.validation_frame, text="○ Skills system (.claude/skills/skills.json)"),
+            'agents': ttk.Label(self.validation_frame, text="○ Agents (.claude/agents/agents.json)"),
         }
 
         for label in self.validation_items.values():
@@ -67,8 +64,7 @@ class ConnectDialog(BaseDialog):
         self.version_label = ttk.Label(
             self.validation_frame,
             text="",
-            font=('Arial', 9, 'bold'),
-            foreground='blue'
+            font=('Arial', 9, 'bold')
         )
         self.version_label.pack(anchor="w", pady=(10, 0))
 
@@ -122,13 +118,13 @@ class ConnectDialog(BaseDialog):
             'agents': (project_root / ".claude/agents/agents.json").exists(),
         }
 
-        # Update validation labels
+        # Update validation labels with ttkbootstrap bootstyle
         for key, is_valid in checks.items():
             label = self.validation_items[key]
             if is_valid:
-                label.config(text=f"✓ {label.cget('text')[2:]}", foreground='green')
+                label.config(text=f"✓ {label.cget('text')[2:]}", bootstyle="success")
             else:
-                label.config(text=f"✗ {label.cget('text')[2:]}", foreground='red')
+                label.config(text=f"✗ {label.cget('text')[2:]}", bootstyle="danger")
 
         # Use installer validation logic to check if this is a valid CMAT installation
         claude_dir = project_root / ".claude"
@@ -145,15 +141,15 @@ class ConnectDialog(BaseDialog):
         optional = ['queue_file', 'agents']
         has_optional = all(checks[k] for k in optional)
 
-        # Update version label
+        # Update version label with ttkbootstrap bootstyle
         if is_valid_cmat:
             if has_optional:
-                self.version_label.config(text="✓ Valid CMAT Project", foreground='green')
+                self.version_label.config(text="✓ Valid CMAT Project", bootstyle="success")
                 self.connect_btn.config(state=tk.NORMAL)
             else:
                 self.version_label.config(
                     text="⚠ Valid CMAT structure (queue/agents will be created)",
-                    foreground='orange'
+                    bootstyle="warning"
                 )
                 self.connect_btn.config(state=tk.NORMAL)
         else:
@@ -161,12 +157,12 @@ class ConnectDialog(BaseDialog):
             if (project_root / ".claude/queues/queue_manager.sh").exists():
                 self.version_label.config(
                     text="✗ This appears to be an older version - please reinstall template",
-                    foreground='red'
+                    bootstyle="danger"
                 )
             else:
                 self.version_label.config(
                     text="✗ Not a valid CMAT project",
-                    foreground='red'
+                    bootstyle="danger"
                 )
             self.connect_btn.config(state=tk.DISABLED)
 

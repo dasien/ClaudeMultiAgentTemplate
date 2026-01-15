@@ -2,7 +2,7 @@
 
 A workflow-based multi-agent development system with a graphical UI. CMAT provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
 
-**Version**: 10.2.0
+**Version**: 10.3.0
 
 ---
 
@@ -40,6 +40,7 @@ CMAT is a multi-agent system that breaks down software development into speciali
 ### Core System
 - **17 Specialized Agents** - Clear responsibilities, reusable across workflows
 - **Graphical UI** - Full-featured tkinter interface for managing projects
+- **Dark Mode Support** - 15 ttkbootstrap themes with live preview (View > Toggle Dark Mode or Ctrl+D)
 - **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
 - **Output Validation** - Automatic validation of required outputs
 - **Automated Workflows** - Template-driven intelligent task chaining
@@ -65,6 +66,7 @@ CMAT is a multi-agent system that breaks down software development into speciali
 - **tkinter** - GUI framework (included with Python)
 - **pyyaml** - YAML parsing for agents and workflows
 - **pillow** - Image processing for UI icons
+- **ttkbootstrap** - Modern UI themes with dark mode support
 
 Optional:
 - **Node.js 16+** - For MCP servers (GitHub/Jira integration)

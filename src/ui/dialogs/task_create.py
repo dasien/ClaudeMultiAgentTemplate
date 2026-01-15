@@ -79,10 +79,13 @@ class CreateTaskDialog(BaseDialog):
         model_col = ttk.Frame(config_frame)
         model_col.pack(side="left", fill="x", expand=True, padx=(5, 0))
         ttk.Label(model_col, text="Model:").pack(anchor="w")
-
-        from ..components.model_selector import ModelSelectorFrame
-        self.model_selector = ModelSelectorFrame(model_col, self.queue, show_default_option=True)
-        self.model_selector.pack(fill="x")
+        self.models_map = self.queue.get_models_list(include_default_option=True)
+        self.model_var = tk.StringVar()
+        self.model_combo = ttk.Combobox(model_col, textvariable=self.model_var, state='readonly')
+        self.model_combo['values'] = list(self.models_map.keys())
+        if self.model_combo['values']:
+            self.model_combo.current(0)
+        self.model_combo.pack(fill="x")
 
         # Skills Preview Frame
         self.skills_frame = ttk.LabelFrame(main_frame, text="🎯 Agent Skills", padding=10)
@@ -91,8 +94,7 @@ class CreateTaskDialog(BaseDialog):
         self.skills_list_label = ttk.Label(
             self.skills_frame,
             text="Select an agent to see available skills",
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         )
         self.skills_list_label.pack(anchor="w")
 
@@ -119,8 +121,7 @@ class CreateTaskDialog(BaseDialog):
         self.source_validation_label = ttk.Label(
             main_frame,
             text="If not specified, output will be saved to enhancements/<task_id>/",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         )
         self.source_validation_label.pack(anchor="w", pady=(0, 10))
 
@@ -133,8 +134,7 @@ class CreateTaskDialog(BaseDialog):
         note_label = ttk.Label(
             main_frame,
             text="Note: Tasks will auto-complete but will not auto-chain to other agents.",
-            font=('Arial', 9, 'italic'),
-            foreground='gray'
+            font=('Arial', 9, 'italic')
         )
         note_label.pack(anchor="w", pady=(0, 10))
 
@@ -205,8 +205,7 @@ class CreateTaskDialog(BaseDialog):
             ttk.Label(
                 self.skills_frame,
                 text="This agent has no skills assigned",
-                font=('Arial', 9),
-                foreground='gray'
+                font=('Arial', 9)
             ).pack(anchor="w")
 
         # Trigger source validation
@@ -267,7 +266,7 @@ class CreateTaskDialog(BaseDialog):
         source_file = self.source_var.get().strip()
 
         if not source_file:
-            self.source_validation_label.config(text="", foreground='black')
+            self.source_validation_label.config(text="", bootstyle="default")
             return
 
         # Convert to absolute path if relative
@@ -278,20 +277,11 @@ class CreateTaskDialog(BaseDialog):
         # Basic validation: check if file/directory exists
         if source_path.exists():
             if source_path.is_file():
-                self.source_validation_label.config(
-                    text="✓ File exists",
-                    foreground='green'
-                )
+                self.source_validation_label.config(text="✓ File exists", bootstyle="success")
             elif source_path.is_dir():
-                self.source_validation_label.config(
-                    text="✓ Directory exists",
-                    foreground='green'
-                )
+                self.source_validation_label.config(text="✓ Directory exists", bootstyle="success")
         else:
-            self.source_validation_label.config(
-                text="⚠ File/directory not found",
-                foreground='orange'
-            )
+            self.source_validation_label.config(text="⚠ File/directory not found", bootstyle="warning")
 
     def browse_source(self):
         """Browse for source file."""
@@ -364,7 +354,7 @@ class CreateTaskDialog(BaseDialog):
         description = self.description_text.get('1.0', tk.END).strip()
 
         # Get selected model (None = use default)
-        model = self.model_selector.get_selected_model()
+        model = self.models_map.get(self.model_var.get())
 
         # Convert to keys
         agent = self.get_agent_key(agent_display)

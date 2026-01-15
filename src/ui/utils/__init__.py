@@ -16,6 +16,7 @@ from .cmat_installer import (
     ValidationError,
     get_templates_dir,
 )
+from .theme_manager import ThemeManager
 
 __all__ = [
     'ClaudeAPIClient',
@@ -31,4 +32,5 @@ __all__ = [
     'NetworkError',
     'ValidationError',
     'get_templates_dir',
+    'ThemeManager',
 ]

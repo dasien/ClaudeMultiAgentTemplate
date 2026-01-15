@@ -98,7 +98,6 @@ class SkillsManagerDialog(BaseDialog):
             info_frame,
             text="",
             font=('Arial', 9),
-            foreground='gray',
             wraplength=400
         )
         self.skill_desc_label.pack(anchor="w", pady=(5, 0))
@@ -135,8 +134,7 @@ class SkillsManagerDialog(BaseDialog):
         self.agents_label = ttk.Label(
             self.agents_frame,
             text="(none)",
-            font=('Arial', 9),
-            foreground='gray'
+            font=('Arial', 9)
         )
         self.agents_label.pack(anchor="w")
 
@@ -282,8 +280,7 @@ class SkillsManagerDialog(BaseDialog):
                 ttk.Label(
                     self.agents_frame,
                     text="(no agents currently use this skill)",
-                    font=('Arial', 9),
-                    foreground='gray'
+                    font=('Arial', 9)
                 ).pack(anchor="w")
 
         except Exception as e:
@@ -291,7 +288,7 @@ class SkillsManagerDialog(BaseDialog):
                 self.agents_frame,
                 text=f"Error: {e}",
                 font=('Arial', 9),
-                foreground='red'
+                bootstyle="danger"
             ).pack(anchor="w")
 
     def _get_agents_using_skill(self, skill_directory: str) -> List[str]:

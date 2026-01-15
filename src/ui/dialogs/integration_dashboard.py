@@ -38,7 +38,7 @@ class IntegrationDashboardDialog(BaseDialog):
             label = ttk.Label(frame, text="0", font=('Arial', 16, 'bold'))
             label.pack()
 
-            ttk.Label(frame, text=key.title(), font=('Arial', 9), foreground='gray').pack()
+            ttk.Label(frame, text=key.title(), font=('Arial', 9)).pack()
             self.stats_labels[key] = label
 
         # Main table
@@ -162,11 +162,11 @@ class IntegrationDashboardDialog(BaseDialog):
                     tags=(tag,)
                 )
 
-            # Update stats
+            # Update stats with ttkbootstrap bootstyle
             self.stats_labels['total'].config(text=str(total))
-            self.stats_labels['synced'].config(text=str(synced), foreground='green')
-            self.stats_labels['unsynced'].config(text=str(unsynced), foreground='orange')
-            self.stats_labels['failed'].config(text=str(failed), foreground='red')
+            self.stats_labels['synced'].config(text=str(synced), bootstyle="success")
+            self.stats_labels['unsynced'].config(text=str(unsynced), bootstyle="warning")
+            self.stats_labels['failed'].config(text=str(failed), bootstyle="danger")
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load integration status: {e}")

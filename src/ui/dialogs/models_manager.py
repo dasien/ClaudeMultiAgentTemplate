@@ -320,7 +320,7 @@ class ModelEditDialog(BaseDialog):
         self.pattern_entry.grid(row=row, column=1, sticky=tk.EW, pady=5)
         if self.mode == 'edit':
             self.pattern_entry.insert(0, self.model.pattern)
-        ttk.Label(fields_frame, text="(e.g., *sonnet-4*|*sonnet-4-5*)", foreground='gray').grid(
+        ttk.Label(fields_frame, text="(e.g., *sonnet-4*|*sonnet-4-5*)").grid(
             row=row+1, column=1, sticky=tk.W
         )
         row += 2

@@ -871,6 +871,30 @@ class CMATInterface:
             return None
         return agent_obj.role
 
+    def get_models_list(self, include_default_option: bool = True) -> Dict[str, Optional[str]]:
+        """Get dictionary of available models for combobox display.
+
+        Args:
+            include_default_option: If True, include a "Use Default" option that maps to None
+
+        Returns:
+            Dict mapping display name to model ID (or None for default option)
+        """
+        models = self.models.list_all()
+        default = self.models.get_default()
+
+        result = {}
+
+        # Add default option first if requested
+        if include_default_option and default:
+            result[f"⭐ {default.name} (Default)"] = None
+
+        # Add all models
+        for model in models:
+            result[model.name] = model.id
+
+        return result
+
     # =========================================================================
     # UTILITY METHODS
     # =========================================================================

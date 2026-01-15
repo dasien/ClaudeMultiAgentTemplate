@@ -70,8 +70,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         self.filename_validation_label = ttk.Label(
             main_frame,
             text="(lowercase, hyphens only: my-feature-name)",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         )
         self.filename_validation_label.pack(anchor="w", pady=(0, 10))
 
@@ -146,8 +145,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         ttk.Label(
             main_frame,
             text="Describe what you want to accomplish and why",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(5, 15))
 
         # Generate Button
@@ -162,7 +160,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         # Bottom buttons
         self.create_button_frame(main_frame, [("Cancel", self.cancel)])
 
-        ttk.Label(main_frame, text="* Required fields", font=('Arial', 8), foreground='gray').pack(pady=(10, 0))
+        ttk.Label(main_frame, text="* Required fields", font=('Arial', 8)).pack(pady=(10, 0))
 
         # Validate initially
         self.validate_form()
@@ -262,8 +260,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         ttk.Label(
             main_frame,
             text="Example: https://github.com/owner/repo/issues/123",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 10))
 
         def add_url():
@@ -324,8 +321,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         ttk.Label(
             main_frame,
             text="Example: https://example.com/documentation/feature",
-            font=('Arial', 8),
-            foreground='gray'
+            font=('Arial', 8)
         ).pack(anchor="w", pady=(0, 10))
 
         def add_url():
@@ -380,21 +376,20 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         has_filename = bool(filename) and validate_slug(filename)
         has_description = bool(description)
 
-        # Update filename validation label
+        # Update filename validation label with bootstyle
         if filename and not validate_slug(filename):
             self.filename_validation_label.config(
                 text="✗ Invalid format (use lowercase and hyphens only)",
-                foreground='red'
+                bootstyle="danger"
             )
         elif filename:
             self.filename_validation_label.config(
                 text="✓ Valid slug format",
-                foreground='green'
+                bootstyle="success"
             )
         else:
             self.filename_validation_label.config(
-                text="(lowercase, hyphens only: my-feature-name)",
-                foreground='gray'
+                text="(lowercase, hyphens only: my-feature-name)"
             )
 
         # Enable/disable generate button
