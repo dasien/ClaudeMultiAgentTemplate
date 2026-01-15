@@ -3,7 +3,7 @@ Workflow Launcher Dialog - Quick workflow launcher with validation.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, filedialog
 from pathlib import Path
 
 from .base_dialog import BaseDialog
@@ -190,7 +190,7 @@ class WorkflowLauncherDialog(BaseDialog):
                 self.on_workflow_selected()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load workflows: {e}")
+            self.show_error("Error", f"Failed to load workflows: {e}")
             self.workflow_combo['values'] = ["(error loading workflows)"]
 
     def _get_workflow_display_name(self, template) -> str:
@@ -356,19 +356,17 @@ class WorkflowLauncherDialog(BaseDialog):
     def start_workflow(self):
         """Start the workflow."""
         if not self.selected_template or not self.enhancement_file:
-            messagebox.showerror("Error", "Select workflow and enhancement first.")
+            self.show_error("Error", "Select workflow and enhancement first.")
             return
 
         # Extract enhancement name
         enhancement_name = self._extract_enhancement_name(self.enhancement_file)
 
         # Confirm
-        response = messagebox.askyesno(
+        if not self.confirm_action(
             "Confirm Start",
             f"Start workflow '{self.selected_template.name}'?"
-        )
-
-        if not response:
+        ):
             return
 
         try:
@@ -379,4 +377,4 @@ class WorkflowLauncherDialog(BaseDialog):
             self.close(result=True)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to start workflow: {e}")
+            self.show_error("Error", f"Failed to start workflow: {e}")

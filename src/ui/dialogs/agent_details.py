@@ -4,7 +4,7 @@ Simplified - agents are just capabilities, no workflow orchestration.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from .base_dialog import BaseDialog
 from ..utils import to_slug, validate_slug
@@ -356,7 +356,7 @@ class AgentDetailsDialog(BaseDialog):
         selected_skills = [skill_dir for skill_dir, var in self.skill_checkboxes.items() if var.get()]
 
         if not selected_skills:
-            messagebox.showinfo("No Skills", "No skills selected. Select skills first to preview.")
+            self.show_info("No Skills", "No skills selected. Select skills first to preview.")
             return
 
         try:
@@ -410,13 +410,13 @@ class AgentDetailsDialog(BaseDialog):
             def copy_to_clipboard():
                 preview.clipboard_clear()
                 preview.clipboard_append('\n'.join(preview_content))
-                messagebox.showinfo("Copied", "Skills prompt copied to clipboard!")
+                self.show_info("Copied", "Skills prompt copied to clipboard!")
 
             ttk.Button(button_frame, text="Copy to Clipboard", command=copy_to_clipboard).pack(side="left", padx=5)
             ttk.Button(button_frame, text="Close", command=preview.destroy).pack(side="left", padx=5)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to build preview: {e}")
+            self.show_error("Error", f"Failed to build preview: {e}")
 
     def on_name_changed(self, *args):
         """Auto-generate filename from name if enabled."""
@@ -445,15 +445,15 @@ class AgentDetailsDialog(BaseDialog):
         skills = [skill_dir for skill_dir, var in self.skill_checkboxes.items() if var.get()]
 
         if not all([name, file_slug, description, role, details]):
-            messagebox.showwarning("Validation", "All required fields must be filled.")
+            self.show_warning("Validation", "All required fields must be filled.")
             return False
 
         if not tools:
-            messagebox.showwarning("Validation", "Select at least one tool.")
+            self.show_warning("Validation", "Select at least one tool.")
             return False
 
         if not validate_slug(file_slug):
-            messagebox.showerror("Invalid File Name", "File name must be lowercase with hyphens only.")
+            self.show_error("Invalid File Name", "File name must be lowercase with hyphens only.")
             return False
 
         return True
@@ -467,7 +467,7 @@ class AgentDetailsDialog(BaseDialog):
             agent_data = next((a for a in agents if a.get('agent-file') == self.agent_file), None)
 
             if not agent_data:
-                messagebox.showerror("Error", f"Agent '{self.agent_file}' not found")
+                self.show_error("Error", f"Agent '{self.agent_file}' not found")
                 self.cancel()
                 return
 
@@ -494,7 +494,7 @@ class AgentDetailsDialog(BaseDialog):
                 self.details_text.insert('1.0', agent_full['instructions'])
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load: {e}")
+            self.show_error("Error", f"Failed to load: {e}")
             self.cancel()
 
     def save_agent(self):
@@ -532,7 +532,7 @@ class AgentDetailsDialog(BaseDialog):
                 # Check for duplicates
                 existing = self.queue.get_agent_list()
                 if file_slug in existing:
-                    messagebox.showerror("Duplicate", f"Agent '{file_slug}' already exists.")
+                    self.show_error("Duplicate", f"Agent '{file_slug}' already exists.")
                     return
                 self.queue.create_agent(agent_data)
             else:
@@ -542,7 +542,7 @@ class AgentDetailsDialog(BaseDialog):
             self.close(result=file_slug)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save: {e}")
+            self.show_error("Error", f"Failed to save: {e}")
 
     def on_persona_selected(self, event=None):
         """Apply persona tool selection."""

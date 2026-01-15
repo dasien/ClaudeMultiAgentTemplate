@@ -5,7 +5,6 @@ Combines BaseDialog with threaded API calling and working dialog.
 
 import threading
 from typing import Optional, Callable
-from tkinter import messagebox
 
 from ..working import  WorkingDialog
 from ...utils.claude_api_client import ClaudeAPIClient
@@ -76,7 +75,7 @@ class ClaudeGeneratorMixin:
         """
         # Check if API is configured
         if not self.api_client.is_configured():
-            messagebox.showwarning(
+            self.show_warning(
                 "No API Key",
                 "Claude API key not configured.\n\n"
                 "Go to Settings > Claude Settings..."
@@ -119,7 +118,7 @@ class ClaudeGeneratorMixin:
             callback(error)
         else:
             # Default error handling
-            messagebox.showerror(
+            self.show_error(
                 "API Error",
                 f"Failed to generate content:\n\n{error}"
             )

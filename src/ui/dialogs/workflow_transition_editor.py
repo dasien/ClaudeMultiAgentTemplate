@@ -3,7 +3,7 @@ Workflow Transition Editor Dialog - Manage status transitions for a workflow ste
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from .base_dialog import BaseDialog
 
@@ -220,12 +220,12 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         auto_chain = self.auto_chain_var.get()
 
         if not status:
-            messagebox.showwarning("Validation", "Status code is required.")
+            self.show_warning("Validation", "Status code is required.")
             return
 
         # Validate status code format
         if not all(c.isalnum() or c == '_' for c in status):
-            messagebox.showwarning(
+            self.show_warning(
                 "Validation",
                 "Status code should contain only uppercase letters, numbers, and underscores."
             )
@@ -264,14 +264,14 @@ class WorkflowTransitionEditorDialog(BaseDialog):
         """Remove selected transition."""
         selection = self.trans_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Select a transition to remove.")
+            self.show_selection_required("transition")
             return
 
         item = selection[0]
         values = self.trans_tree.item(item, 'values')
         status = values[0]
 
-        if messagebox.askyesno("Confirm", f"Remove transition for status '{status}'?"):
+        if self.confirm_action("Confirm", f"Remove transition for status '{status}'?"):
             del self.transitions[status]
             self.refresh_transitions()
             self.clear_form()

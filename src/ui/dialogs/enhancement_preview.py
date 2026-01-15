@@ -3,7 +3,7 @@ Enhancement Preview Dialog - Preview and save generated enhancements.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from pathlib import Path
 import shutil
 
@@ -136,10 +136,9 @@ class EnhancementPreviewDialog(BaseDialog):
             return output_file
 
         except Exception as e:
-            messagebox.showerror(
+            self.show_error(
                 "Save Error",
-                f"Failed to save enhancement:\n\n{e}",
-                parent=self.dialog
+                f"Failed to save enhancement:\n\n{e}"
             )
             return None
 
@@ -167,11 +166,10 @@ class EnhancementPreviewDialog(BaseDialog):
                     preselected_enhancement=str(output_file)
                 )
             except ImportError:
-                messagebox.showinfo(
+                self.show_info(
                     "Workflow Dialog Not Found",
                     f"Enhancement saved to:\n{output_file}\n\n"
-                    "Please use the Workflow menu to start a workflow.",
-                    parent=self.parent
+                    "Please use the Workflow menu to start a workflow."
                 )
 
     def cancel_preview(self):

@@ -3,7 +3,7 @@ Workflow Step Editor Dialog - Configure input/output/transitions for a workflow 
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from .workflow_transition_editor import WorkflowTransitionEditorDialog
 from .base_dialog import BaseDialog
 
@@ -261,35 +261,34 @@ class WorkflowStepEditorDialog(BaseDialog):
         output_filename = self.output_var.get().strip()
 
         if not agent:
-            messagebox.showwarning("Validation", "Agent is required.")
+            self.show_warning("Validation", "Agent is required.")
             return False
 
         if not input_pattern:
-            messagebox.showwarning("Validation", "Input pattern is required.")
+            self.show_warning("Validation", "Input pattern is required.")
             return False
 
         if not output_filename:
-            messagebox.showwarning("Validation", "Output filename is required.")
+            self.show_warning("Validation", "Output filename is required.")
             return False
 
         # Validate output filename
         if not output_filename.endswith('.md'):
-            messagebox.showwarning("Validation", "Output filename must end with .md")
+            self.show_warning("Validation", "Output filename must end with .md")
             return False
 
         if '/' in output_filename or '\\' in output_filename:
-            messagebox.showwarning("Validation", "Output should be filename only (no path separators)")
+            self.show_warning("Validation", "Output should be filename only (no path separators)")
             return False
 
         # Warn if no transitions
         if not self.transitions:
-            response = messagebox.askyesno(
+            if not self.confirm_action(
                 "No Transitions",
                 "This step has no status transitions configured.\n\n"
                 "The workflow will stop at this step unless you add transitions.\n\n"
                 "Continue anyway?"
-            )
-            if not response:
+            ):
                 return False
 
         return True
@@ -304,7 +303,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         agent_key = next((k for k, v in agents_map.items() if v == agent_display), None)
 
         if not agent_key:
-            messagebox.showerror("Error", "Agent not found")
+            self.show_error("Error", "Agent not found")
             return
 
         # Get selected model (None = use default)

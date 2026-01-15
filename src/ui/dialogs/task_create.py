@@ -4,7 +4,7 @@ Updated validation to work without agent contracts.
 """
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 from pathlib import Path
 
 from .base_dialog import BaseDialog
@@ -223,7 +223,7 @@ class CreateTaskDialog(BaseDialog):
             skills_prompt = self.queue.get_skills_prompt(agent_key)
 
             if not skills_prompt:
-                messagebox.showinfo("No Skills", "This agent has no skills assigned.")
+                self.show_info("No Skills", "This agent has no skills assigned.")
                 return
 
             # Create preview window
@@ -253,13 +253,13 @@ class CreateTaskDialog(BaseDialog):
             def copy_to_clipboard():
                 preview.clipboard_clear()
                 preview.clipboard_append(skills_prompt)
-                messagebox.showinfo("Copied", "Skills prompt copied to clipboard!")
+                self.show_info("Copied", "Skills prompt copied to clipboard!")
 
             ttk.Button(button_frame, text="Copy to Clipboard", command=copy_to_clipboard).pack(side="left", padx=5)
             ttk.Button(button_frame, text="Close", command=preview.destroy).pack(side="left", padx=5)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load skills prompt: {e}")
+            self.show_error("Error", f"Failed to load skills prompt: {e}")
 
     def validate_source_file(self):
         """Validate source file (v5.0 - simplified validation)."""
@@ -320,7 +320,7 @@ class CreateTaskDialog(BaseDialog):
 
         # Source file is now optional
         if not all([title, agent_display, priority, task_type_display, description]):
-            messagebox.showwarning("Validation Error", "Title, Agent, Priority, Task Type, and Description are required.")
+            self.show_warning("Validation Error", "Title, Agent, Priority, Task Type, and Description are required.")
             return False
 
         # If source file is provided, validate it exists (optional warning)
@@ -331,11 +331,10 @@ class CreateTaskDialog(BaseDialog):
                 source_path = self.queue.project_root / source_path
 
             if not source_path.exists():
-                response = messagebox.askyesno(
+                if not self.confirm_action(
                     "File Not Found",
                     f"Source file does not exist: {source_file}\n\nCreate task anyway?"
-                )
-                if not response:
+                ):
                     return False
 
         return True
@@ -379,7 +378,7 @@ class CreateTaskDialog(BaseDialog):
             self.close(result=task_id)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to create task: {e}")
+            self.show_error("Error", f"Failed to create task: {e}")
 
     def create_and_start(self):
         """Create task and mark to start immediately."""

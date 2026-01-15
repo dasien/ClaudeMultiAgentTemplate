@@ -10,7 +10,7 @@ Provides interface for:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, scrolledtext
 from typing import Optional
 
 
@@ -61,35 +61,19 @@ class ModelsManagerDialog(BaseDialog):
         list_frame = ttk.Frame(top_frame)
         list_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Create treeview
-        columns = ('name', 'pattern', 'max_tokens', 'input_price', 'output_price')
-        self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', selectmode='browse')
-
-        # Column headings
-        self.tree.heading('name', text='Name')
-        self.tree.heading('pattern', text='Pattern')
-        self.tree.heading('max_tokens', text='Max Tokens')
-        self.tree.heading('input_price', text='Input ($/1M)')
-        self.tree.heading('output_price', text='Output ($/1M)')
-
-        # Column widths
-        self.tree.column('name', width=200)
-        self.tree.column('pattern', width=200)
-        self.tree.column('max_tokens', width=100)
-        self.tree.column('input_price', width=100)
-        self.tree.column('output_price', width=100)
-
-        # Scrollbars
-        vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(list_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
-        # Grid layout
-        self.tree.grid(row=0, column=0, sticky='nsew')
-        vsb.grid(row=0, column=1, sticky='ns')
-        hsb.grid(row=1, column=0, sticky='ew')
-        list_frame.grid_rowconfigure(0, weight=1)
-        list_frame.grid_columnconfigure(0, weight=1)
+        # Create treeview using BaseDialog helper
+        self.tree = self.create_scrolled_treeview(
+            list_frame,
+            columns={
+                'name': ('Name', 200),
+                'pattern': ('Pattern', 200),
+                'max_tokens': ('Max Tokens', 100),
+                'input_price': ('Input ($/1M)', 100),
+                'output_price': ('Output ($/1M)', 100),
+            },
+            sortable=True,
+            dual_scroll=True
+        )
 
         # Bind selection event
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
@@ -126,7 +110,7 @@ class ModelsManagerDialog(BaseDialog):
             self.default_model_id = default_model.id if default_model else None
             self.update_tree()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load models: {e}")
+            self.show_error("Error", f"Failed to load models: {e}")
 
     def update_tree(self):
         """Update the treeview with current models."""
@@ -201,42 +185,39 @@ Pricing (per {model.pricing.per_tokens:,} tokens):
     def set_default(self):
         """Set the selected model as default."""
         if not self.selected_model:
-            messagebox.showwarning("No Selection", "Please select a model to set as default.")
+            self.show_selection_required("model")
             return
 
         try:
             self.queue.models.set_default(self.selected_model.id)
             self.refresh()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to set default model: {e}")
+            self.show_error("Error", f"Failed to set default model: {e}")
 
     def delete_model(self):
         """Delete the selected model."""
         if not self.selected_model:
-            messagebox.showwarning("No Selection", "Please select a model to delete.")
+            self.show_selection_required("model")
             return
 
         # Check if it's the default
         if self.selected_model.id == self.default_model_id:
-            messagebox.showwarning(
+            self.show_warning(
                 "Cannot Delete",
                 "Cannot delete the default model. Set another model as default first."
             )
             return
 
         # Confirm deletion
-        result = messagebox.askyesno(
-            "Confirm Delete",
-            f"Delete model:\n\n{self.selected_model.name}"
-        )
+        if not self.confirm_delete("model", self.selected_model.name):
+            return
 
-        if result:
-            try:
-                self.queue.models.delete(self.selected_model.id)
-                self.selected_model = None
-                self.refresh()
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete model: {e}")
+        try:
+            self.queue.models.delete(self.selected_model.id)
+            self.selected_model = None
+            self.refresh()
+        except Exception as e:
+            self.show_error("Error", f"Failed to delete model: {e}")
 
     def show_add_dialog(self):
         """Show dialog to add a new model."""
@@ -245,7 +226,7 @@ Pricing (per {model.pricing.per_tokens:,} tokens):
     def show_edit_dialog(self):
         """Show dialog to edit the selected model."""
         if not self.selected_model:
-            messagebox.showwarning("No Selection", "Please select a model to edit.")
+            self.show_selection_required("model")
             return
 
         ModelEditDialog(
@@ -417,7 +398,7 @@ class ModelEditDialog(BaseDialog):
             cache_read = float(self.cache_read_entry.get())
 
         except ValueError as e:
-            messagebox.showerror("Validation Error", str(e))
+            self.show_error("Validation Error", str(e))
             return
 
         try:
@@ -457,4 +438,4 @@ class ModelEditDialog(BaseDialog):
             self.close()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save model: {e}")
+            self.show_error("Error", f"Failed to save model: {e}")

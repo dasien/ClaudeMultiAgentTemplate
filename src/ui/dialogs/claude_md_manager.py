@@ -6,7 +6,7 @@ import re
 import subprocess
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, filedialog
 from pathlib import Path
 from .base_dialog import BaseDialog
 from .working import WorkingDialog
@@ -183,19 +183,17 @@ class ClaudeMdManagerDialog(BaseDialog):
         """Handle Create button - generate CLAUDE.md via Claude Code /init."""
         # Warn about unsaved changes
         if self.has_unsaved_changes():
-            if not messagebox.askyesno(
+            if not self.confirm_action(
                 "Unsaved Changes",
-                "You have unsaved changes. Generating will replace them.\n\nContinue?",
-                parent=self.dialog
+                "You have unsaved changes. Generating will replace them.\n\nContinue?"
             ):
                 return
 
         # Confirm
-        if not messagebox.askyesno(
+        if not self.confirm_action(
             "Generate CLAUDE.md",
             "This will analyze your project and generate a CLAUDE.md file.\n\n"
-            "This may take a minute or two.\n\nContinue?",
-            parent=self.dialog
+            "This may take a minute or two.\n\nContinue?"
         ):
             return
 
@@ -245,10 +243,9 @@ class ClaudeMdManagerDialog(BaseDialog):
             self.working_dialog.close()
             self.working_dialog = None
         self.load_content()  # Reload CLAUDE.md from disk
-        messagebox.showinfo(
+        self.show_info(
             "Success",
-            "CLAUDE.md generated successfully.\n\nReview the content and click Save to keep it.",
-            parent=self.dialog
+            "CLAUDE.md generated successfully.\n\nReview the content and click Save to keep it."
         )
 
     def _on_init_error(self, error: str):
@@ -256,20 +253,18 @@ class ClaudeMdManagerDialog(BaseDialog):
         if self.working_dialog:
             self.working_dialog.close()
             self.working_dialog = None
-        messagebox.showerror(
+        self.show_error(
             "Generation Failed",
-            f"Failed to generate CLAUDE.md:\n\n{error}",
-            parent=self.dialog
+            f"Failed to generate CLAUDE.md:\n\n{error}"
         )
 
     def on_load(self):
         """Handle Load button - load from external file."""
         # Warn about unsaved changes
         if self.has_unsaved_changes():
-            if not messagebox.askyesno(
+            if not self.confirm_action(
                 "Unsaved Changes",
-                "You have unsaved changes. Loading a file will replace them.\n\nContinue?",
-                parent=self.dialog
+                "You have unsaved changes. Loading a file will replace them.\n\nContinue?"
             ):
                 return
 
@@ -287,16 +282,14 @@ class ClaudeMdManagerDialog(BaseDialog):
             content = Path(file_path).read_text()
             self.set_text_content(content)
             self.update_button_states()
-            messagebox.showinfo(
+            self.show_info(
                 "Loaded",
-                f"Content loaded from:\n{file_path}\n\nClick Save to copy to project.",
-                parent=self.dialog
+                f"Content loaded from:\n{file_path}\n\nClick Save to copy to project."
             )
         except Exception as e:
-            messagebox.showerror(
+            self.show_error(
                 "Error",
-                f"Failed to read file:\n\n{e}",
-                parent=self.dialog
+                f"Failed to read file:\n\n{e}"
             )
 
     def on_render(self):
@@ -523,10 +516,9 @@ class ClaudeMdManagerDialog(BaseDialog):
         """Handle Save button - write to project."""
         content = self.get_text_content()
         if not content.strip():
-            messagebox.showwarning(
+            self.show_warning(
                 "No Content",
-                "Nothing to save. Add content first.",
-                parent=self.dialog
+                "Nothing to save. Add content first."
             )
             return
 
@@ -537,19 +529,17 @@ class ClaudeMdManagerDialog(BaseDialog):
             self.status_label.config(text="Status: Present")
 
         except Exception as e:
-            messagebox.showerror(
+            self.show_error(
                 "Error",
-                f"Failed to save file:\n\n{e}",
-                parent=self.dialog
+                f"Failed to save file:\n\n{e}"
             )
 
     def on_close(self):
         """Handle Close button."""
         if self.has_unsaved_changes():
-            if not messagebox.askyesno(
+            if not self.confirm_action(
                 "Unsaved Changes",
-                "You have unsaved changes.\n\nDiscard and close?",
-                parent=self.dialog
+                "You have unsaved changes.\n\nDiscard and close?"
             ):
                 return
 

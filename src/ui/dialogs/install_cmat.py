@@ -9,10 +9,10 @@ Provides:
 """
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 from pathlib import Path
 import threading
-import queue
+import queue as queuemod
 from typing import Optional
 
 from .base_dialog import BaseDialog
@@ -42,7 +42,7 @@ class InstallCMATDialog(BaseDialog):
         self.settings = settings
         self.installer: Optional[CMATInstaller] = None
         self.installation_thread: Optional[threading.Thread] = None
-        self.result_queue = queue.Queue()
+        self.result_queue = queuemod.Queue()
         self.current_state = self.STATE_SELECTING
 
         super().__init__(parent, "Install CMAT Template", 700, 550)
@@ -256,13 +256,11 @@ class InstallCMATDialog(BaseDialog):
 
         # Confirm overwrite if existing .claude exists
         if self.installer.check_existing_installation():
-            response = messagebox.askyesno(
+            if not self.confirm_action(
                 "Confirm Overwrite",
                 "A .claude folder already exists in this directory.\n\n"
-                "Do you want to overwrite it? (A backup will be created)",
-                parent=self.dialog
-            )
-            if not response:
+                "Do you want to overwrite it? (A backup will be created)"
+            ):
                 return
 
         # Save last directory
@@ -321,7 +319,7 @@ class InstallCMATDialog(BaseDialog):
                 self.on_installation_complete(True)
             elif result_type == "error":
                 self.handle_error(data)
-        except queue.Empty:
+        except queuemod.Empty:
             # Not done yet, poll again
             self.dialog.after(100, self._poll_installation_result)
 
@@ -338,10 +336,9 @@ class InstallCMATDialog(BaseDialog):
                     self.settings.set_cmat_root(str(cmat_root))
 
             # Show simple success message
-            messagebox.showinfo(
+            self.show_info(
                 "Installation Complete",
-                f"CMAT installed successfully.",
-                parent=self.dialog
+                "CMAT installed successfully."
             )
 
             # Close dialog and connect
@@ -370,11 +367,7 @@ class InstallCMATDialog(BaseDialog):
         if not error_msg:
             error_msg = "Please try again or contact support if the problem persists."
 
-        messagebox.showerror(
-            error_title,
-            error_msg,
-            parent=self.dialog
-        )
+        self.show_error(error_title, error_msg)
 
         self._reset_ui()
 

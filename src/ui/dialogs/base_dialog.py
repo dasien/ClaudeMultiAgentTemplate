@@ -4,7 +4,7 @@ All dialogs should inherit from this to avoid code duplication.
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from abc import ABC, abstractmethod
 from typing import Optional, Any
 
@@ -300,3 +300,314 @@ class BaseDialog(ABC):
         # Bind each column heading
         for col in tree['columns']:
             tree.heading(col, command=lambda c=col: sort_column(c, False))
+
+    # ========================================================================
+    # Widget Factory Methods
+    # ========================================================================
+
+    def create_scrolled_treeview(
+        self,
+        parent: tk.Widget,
+        columns: dict[str, tuple[str, int]],
+        show_headings: bool = True,
+        sortable: bool = True,
+        selectmode: str = "browse",
+        height: int = 10,
+        dual_scroll: bool = False
+    ) -> ttk.Treeview:
+        """
+        Create a Treeview with attached scrollbars.
+
+        Args:
+            parent: Parent widget
+            columns: Dict mapping column_id to (heading_text, width)
+            show_headings: Whether to show column headings
+            sortable: Whether to enable column sorting
+            selectmode: Selection mode ('browse', 'extended', 'none')
+            height: Number of visible rows
+            dual_scroll: If True, attach both vertical and horizontal scrollbars
+
+        Returns:
+            Configured ttk.Treeview instance (scrollbars auto-attached via grid)
+
+        Example:
+            tree = self.create_scrolled_treeview(
+                frame,
+                columns={
+                    "name": ("Name", 200),
+                    "role": ("Role", 150),
+                    "description": ("Description", 300),
+                },
+                sortable=True
+            )
+        """
+        # Create container frame for grid layout
+        container = ttk.Frame(parent)
+        container.pack(fill="both", expand=True)
+
+        # Configure grid weights
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        # Create treeview
+        column_ids = list(columns.keys())
+        show = "headings" if show_headings else ""
+        tree = ttk.Treeview(
+            container,
+            columns=column_ids,
+            show=show,
+            selectmode=selectmode,
+            height=height
+        )
+
+        # Configure columns
+        for col_id, (heading, width) in columns.items():
+            tree.heading(col_id, text=heading)
+            tree.column(col_id, width=width)
+
+        # Create and attach vertical scrollbar
+        v_scroll = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=v_scroll.set)
+
+        # Grid layout
+        tree.grid(row=0, column=0, sticky="nsew")
+        v_scroll.grid(row=0, column=1, sticky="ns")
+
+        # Optional horizontal scrollbar
+        if dual_scroll:
+            h_scroll = ttk.Scrollbar(container, orient="horizontal", command=tree.xview)
+            tree.configure(xscrollcommand=h_scroll.set)
+            h_scroll.grid(row=1, column=0, sticky="ew")
+
+        # Make sortable if requested
+        if sortable and show_headings:
+            self.make_treeview_sortable(tree)
+
+        return tree
+
+    def create_scrolled_text(
+        self,
+        parent: tk.Widget,
+        height: int = 10,
+        width: int = 80,
+        font: tuple = ("Courier", 9),
+        wrap: str = "word",
+        dual_scroll: bool = False,
+        read_only: bool = False
+    ) -> tuple[tk.Text, ttk.Frame]:
+        """
+        Create a Text widget with attached scrollbars.
+
+        Args:
+            parent: Parent widget
+            height: Text widget height in lines
+            width: Text widget width in characters
+            font: Font tuple (family, size)
+            wrap: Text wrapping mode ('word', 'char', 'none')
+            dual_scroll: If True, attach both vertical and horizontal scrollbars
+            read_only: If True, set state to DISABLED after creation
+
+        Returns:
+            (text_widget, container_frame) tuple
+
+        Example:
+            text, frame = self.create_scrolled_text(
+                parent,
+                height=20,
+                dual_scroll=True,
+                read_only=True
+            )
+            frame.pack(fill="both", expand=True)
+        """
+        # Create container frame for grid layout
+        container = ttk.Frame(parent)
+
+        # Configure grid weights
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
+
+        # Create text widget
+        text = tk.Text(
+            container,
+            height=height,
+            width=width,
+            font=font,
+            wrap=wrap
+        )
+
+        # Create and attach vertical scrollbar
+        v_scroll = ttk.Scrollbar(container, orient="vertical", command=text.yview)
+        text.configure(yscrollcommand=v_scroll.set)
+
+        # Grid layout
+        text.grid(row=0, column=0, sticky="nsew")
+        v_scroll.grid(row=0, column=1, sticky="ns")
+
+        # Optional horizontal scrollbar
+        if dual_scroll:
+            h_scroll = ttk.Scrollbar(container, orient="horizontal", command=text.xview)
+            text.configure(xscrollcommand=h_scroll.set)
+            h_scroll.grid(row=1, column=0, sticky="ew")
+
+        # Set read-only if requested
+        if read_only:
+            text.configure(state="disabled")
+
+        return text, container
+
+    # ========================================================================
+    # Tree Selection Helpers
+    # ========================================================================
+
+    def get_selected_tree_item(
+        self,
+        tree: ttk.Treeview,
+        error_message: Optional[str] = None
+    ) -> tuple[Optional[str], Optional[tuple]]:
+        """
+        Get the selected item from a treeview.
+
+        Args:
+            tree: Treeview widget
+            error_message: Optional warning message if nothing selected
+
+        Returns:
+            (item_id, values) tuple, or (None, None) if nothing selected
+
+        Example:
+            item_id, values = self.get_selected_tree_item(
+                self.tree,
+                "Please select an agent to edit."
+            )
+            if item_id is None:
+                return
+            agent_name = values[0]
+        """
+        selection = tree.selection()
+        if not selection:
+            if error_message:
+                self.show_warning("No Selection", error_message)
+            return None, None
+
+        item_id = selection[0]
+        values = tree.item(item_id, 'values')
+        return item_id, values
+
+    def get_selected_tree_field(
+        self,
+        tree: ttk.Treeview,
+        column_index: int,
+        error_message: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Get a specific field from the selected treeview item.
+
+        Args:
+            tree: Treeview widget
+            column_index: Index of column to retrieve (0-based)
+            error_message: Optional warning message if nothing selected
+
+        Returns:
+            Field value as string, or None if nothing selected
+
+        Example:
+            agent_name = self.get_selected_tree_field(self.tree, 0, "Please select an agent.")
+            if agent_name is None:
+                return
+        """
+        item_id, values = self.get_selected_tree_item(tree, error_message)
+        if values is None:
+            return None
+        if column_index >= len(values):
+            return None
+        return values[column_index]
+
+    # ========================================================================
+    # Error Handling Methods
+    # ========================================================================
+
+    def show_error(self, title: str, message: str) -> None:
+        """Show error messagebox centered on dialog."""
+        messagebox.showerror(title, message, parent=self.dialog)
+
+    def show_warning(self, title: str, message: str) -> None:
+        """Show warning messagebox centered on dialog."""
+        messagebox.showwarning(title, message, parent=self.dialog)
+
+    def show_info(self, title: str, message: str) -> None:
+        """Show info messagebox centered on dialog."""
+        messagebox.showinfo(title, message, parent=self.dialog)
+
+    def confirm_action(self, title: str, message: str) -> bool:
+        """Show yes/no confirmation dialog centered on dialog."""
+        return messagebox.askyesno(title, message, parent=self.dialog)
+
+    def confirm_delete(self, item_type: str, item_name: str, details: str = "") -> bool:
+        """
+        Show standardized delete confirmation dialog.
+
+        Args:
+            item_type: Type of item (e.g., "agent", "skill", "workflow")
+            item_name: Name of item being deleted
+            details: Optional additional details
+
+        Returns:
+            True if user confirmed, False otherwise
+        """
+        message = f"Delete {item_type} '{item_name}'?"
+        if details:
+            message += f"\n\n{details}"
+        message += "\n\nThis action cannot be undone."
+        return messagebox.askyesno("Confirm Delete", message, parent=self.dialog)
+
+    def show_selection_required(self, item_type: str = "item") -> None:
+        """Show standardized 'nothing selected' warning."""
+        self.show_warning("No Selection", f"Please select a {item_type} first.")
+
+    # ========================================================================
+    # Child Window Helper
+    # ========================================================================
+
+    def create_child_window(
+        self,
+        title: str,
+        width: int = 800,
+        height: int = 600,
+        modal: bool = True
+    ) -> tk.Toplevel:
+        """
+        Create a child window (nested modal or modeless).
+
+        Automatically configures:
+        - transient relationship to parent dialog
+        - grab_set for modal behavior
+        - Escape key binding to close
+        - Initial focus
+
+        Args:
+            title: Window title
+            width: Window width in pixels
+            height: Window height in pixels
+            modal: If True, grab input focus (blocks parent)
+
+        Returns:
+            Configured tk.Toplevel instance
+
+        Example:
+            preview = self.create_child_window("Preview", 800, 600)
+            # Add content to preview
+            text = tk.Text(preview)
+            text.pack(fill="both", expand=True)
+        """
+        window = tk.Toplevel(self.dialog)
+        window.title(title)
+        window.geometry(f"{width}x{height}")
+        window.transient(self.dialog)
+
+        if modal:
+            window.grab_set()
+
+        window.bind('<Escape>', lambda e: window.destroy())
+        window.focus_set()
+
+        return window

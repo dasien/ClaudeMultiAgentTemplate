@@ -3,7 +3,7 @@ Skills Manager Dialog - Browse, create, edit, and delete skills.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from typing import List, Dict
 
 from .base_dialog import BaseDialog
@@ -48,36 +48,20 @@ class SkillsManagerDialog(BaseDialog):
         left_frame = ttk.LabelFrame(content_frame, text="Available Skills", padding=10)
         left_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
-        # Treeview for skills
-        columns = ('name', 'category', 'directory')
-        self.skills_tree = ttk.Treeview(
+        # Treeview with scrollbar using BaseDialog helper
+        self.skills_tree = self.create_scrolled_treeview(
             left_frame,
-            columns=columns,
-            show='headings',
-            selectmode='browse'
+            columns={
+                'name': ('Skill Name', 200),
+                'category': ('Category', 120),
+                'directory': ('Directory', 150),
+            },
+            sortable=True
         )
-
-        self.skills_tree.heading('name', text='Skill Name')
-        self.skills_tree.heading('category', text='Category')
-        self.skills_tree.heading('directory', text='Directory')
-
-        self.skills_tree.column('name', width=200)
-        self.skills_tree.column('category', width=120)
-        self.skills_tree.column('directory', width=150)
-
-        # Scrollbar
-        skills_scroll = ttk.Scrollbar(left_frame, orient="vertical", command=self.skills_tree.yview)
-        self.skills_tree.configure(yscrollcommand=skills_scroll.set)
-
-        self.skills_tree.pack(side="left", fill="both", expand=True)
-        skills_scroll.pack(side="right", fill="y")
 
         # Bind selection and double-click
         self.skills_tree.bind('<<TreeviewSelect>>', self.on_skill_selected)
         self.skills_tree.bind('<Double-Button-1>', lambda e: self.edit_skill())
-
-        # Make columns sortable
-        self.make_treeview_sortable(self.skills_tree)
 
         # Right pane - Skill preview
         right_frame = ttk.LabelFrame(content_frame, text="Skill Details", padding=10)
@@ -107,20 +91,14 @@ class SkillsManagerDialog(BaseDialog):
         # Skill content preview
         ttk.Label(right_frame, text="Content:", font=('Arial', 10, 'bold')).pack(anchor="w", pady=(0, 5))
 
-        preview_frame = ttk.Frame(right_frame)
-        preview_frame.pack(fill="both", expand=True)
-
-        self.preview_text = tk.Text(
-            preview_frame,
+        # Text widget with scrollbar using BaseDialog helper
+        self.preview_text, preview_frame = self.create_scrolled_text(
+            right_frame,
             wrap="word",
             font=('Courier', 9),
-            state=tk.DISABLED
+            read_only=True
         )
-        preview_scroll = ttk.Scrollbar(preview_frame, orient="vertical", command=self.preview_text.yview)
-        self.preview_text.configure(yscrollcommand=preview_scroll.set)
-
-        self.preview_text.pack(side="left", fill="both", expand=True)
-        preview_scroll.pack(side="right", fill="y")
+        preview_frame.pack(fill="both", expand=True)
 
         ttk.Separator(right_frame, orient="horizontal").pack(fill="x", pady=10)
 
@@ -153,7 +131,7 @@ class SkillsManagerDialog(BaseDialog):
             self.skills_data = self.queue.get_skills_list()
 
             if not self.skills_data:
-                messagebox.showerror("Error", "Could not load skills.json")
+                self.show_error("Error", "Could not load skills.json")
                 return
 
             # Extract categories
@@ -170,7 +148,7 @@ class SkillsManagerDialog(BaseDialog):
             self.populate_skills_tree(skills_list)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load skills: {e}")
+            self.show_error("Error", f"Failed to load skills: {e}")
 
     def populate_skills_tree(self, skills_list: List[Dict]):
         """Populate the skills tree with filtered skills."""
@@ -316,14 +294,11 @@ class SkillsManagerDialog(BaseDialog):
 
     def edit_skill(self):
         """Open dialog to edit the selected skill."""
-        selection = self.skills_tree.selection()
-        if not selection:
-            messagebox.showwarning("No Selection", "Please select a skill to edit.")
+        skill_dir = self.get_selected_tree_field(
+            self.skills_tree, 2, "Please select a skill to edit."
+        )
+        if skill_dir is None:
             return
-
-        item = selection[0]
-        values = self.skills_tree.item(item, 'values')
-        skill_dir = values[2]
 
         from .skill_details import SkillDetailsDialog
         dialog = SkillDetailsDialog(
@@ -337,13 +312,12 @@ class SkillsManagerDialog(BaseDialog):
 
     def delete_skill(self):
         """Delete the selected skill."""
-        selection = self.skills_tree.selection()
-        if not selection:
-            messagebox.showwarning("No Selection", "Please select a skill to delete.")
+        _, values = self.get_selected_tree_item(
+            self.skills_tree, "Please select a skill to delete."
+        )
+        if values is None:
             return
 
-        item = selection[0]
-        values = self.skills_tree.item(item, 'values')
         skill_name = values[0]
         skill_dir = values[2]
 
@@ -352,14 +326,14 @@ class SkillsManagerDialog(BaseDialog):
 
         if agents_using_skill:
             agents_list = "\n".join(f"  • {name}" for name in sorted(agents_using_skill))
-            result = messagebox.askyesno(
+            result = self.confirm_action(
                 "Confirm Delete",
                 f"Delete skill '{skill_name}'?\n\n"
                 f"This skill is used by the following agents:\n{agents_list}\n\n"
                 f"It will be removed from these agents."
             )
         else:
-            result = messagebox.askyesno(
+            result = self.confirm_action(
                 "Confirm Delete",
                 f"Delete skill '{skill_name}'?\n\n"
                 f"This will remove the skill and its files."
@@ -388,7 +362,7 @@ class SkillsManagerDialog(BaseDialog):
             self.load_skills()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to delete skill: {e}")
+            self.show_error("Error", f"Failed to delete skill: {e}")
 
 
 # Keep old name as alias for backwards compatibility

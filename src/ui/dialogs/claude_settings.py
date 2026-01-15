@@ -4,7 +4,7 @@ Manages Claude API key configuration.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from .base_dialog import BaseDialog
 
@@ -86,7 +86,7 @@ class ClaudeSettingsDialog(BaseDialog):
         # Validate API key
         api_key = self.api_key_var.get().strip()
         if not api_key:
-            messagebox.showwarning(
+            self.show_warning(
                 "API Key Required",
                 "Please enter your Claude API key.\n\n"
                 "Get one at: console.anthropic.com"
@@ -109,7 +109,7 @@ class ClaudeSettingsDialog(BaseDialog):
             self.close(result=True)
 
         except Exception as e:
-            messagebox.showerror(
+            self.show_error(
                 "Save Error",
                 f"Failed to save settings:\n\n{e}"
             )

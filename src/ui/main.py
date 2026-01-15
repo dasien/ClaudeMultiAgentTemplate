@@ -213,11 +213,6 @@ class MainView:
         logs_menu.add_command(label="View Operations Log", command=self.show_operations_log, accelerator="Ctrl+L")
         self.menus['logs'] = menubar.index("Logs")
 
-        # View menu (always enabled)
-        view_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="View", menu=view_menu)
-        view_menu.add_command(label="Toggle Dark Mode", command=self.toggle_theme, accelerator="Ctrl+D")
-
         # Claude menu (always enabled for API key, other items require connection)
         self.claude_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Claude", menu=self.claude_menu)
@@ -257,9 +252,7 @@ class MainView:
         self.root.bind('<Control-e>', lambda e: self.show_enhancement_generator())
         self.root.bind('<Control-w>', lambda e: self.show_workflow_launcher())
         self.root.bind('<Control-k>', lambda e: self.show_skills_viewer())
-        self.root.bind('<Control-i>', lambda e: self.show_integration_dashboard())
         self.root.bind('<Control-l>', lambda e: self.show_operations_log())
-        self.root.bind('<Control-d>', lambda e: self.toggle_theme())
         self.root.bind('<F5>', lambda e: self.refresh())
         self.root.bind('<Delete>', lambda e: self.cancel_task())
 

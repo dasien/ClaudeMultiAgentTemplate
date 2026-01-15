@@ -4,7 +4,7 @@ Uses separate dialogs for step and transition editing.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 import json
 
 from .base_dialog import BaseDialog
@@ -189,7 +189,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             template = self.queue.get_workflow_template(self.template_slug)
 
             if not template:
-                messagebox.showerror("Error", "Template not found")
+                self.show_error("Error", "Template not found")
                 self.cancel()
                 return
 
@@ -206,7 +206,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             self.refresh_steps_list()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load template: {e}")
+            self.show_error("Error", f"Failed to load template: {e}")
             self.cancel()
 
     def load_initial_data(self):
@@ -242,7 +242,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         """Edit selected step using StepEditorDialog."""
         selection = self.steps_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a step to edit.")
+            self.show_selection_required("step")
             return
 
         item = selection[0]
@@ -268,14 +268,14 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         """Remove selected step."""
         selection = self.steps_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a step to remove.")
+            self.show_selection_required("step")
             return
 
         item = selection[0]
         values = self.steps_tree.item(item, 'values')
         step_num = int(values[0])
 
-        if messagebox.askyesno("Confirm", f"Remove step {step_num}?"):
+        if self.confirm_action("Confirm", f"Remove step {step_num}?"):
             self.steps.pop(step_num - 1)
             self.refresh_steps_list()
 
@@ -283,7 +283,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         """Move selected step up in order."""
         selection = self.steps_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a step to move.")
+            self.show_selection_required("step")
             return
 
         item = selection[0]
@@ -291,7 +291,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         step_num = int(values[0])
 
         if step_num == 1:
-            messagebox.showinfo("Info", "Step is already at the top.")
+            self.show_info("Info", "Step is already at the top.")
             return
 
         idx = step_num - 1
@@ -306,7 +306,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         """Move selected step down in order."""
         selection = self.steps_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a step to move.")
+            self.show_selection_required("step")
             return
 
         item = selection[0]
@@ -314,7 +314,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         step_num = int(values[0])
 
         if step_num >= len(self.steps):
-            messagebox.showinfo("Info", "Step is already at the bottom.")
+            self.show_info("Info", "Step is already at the bottom.")
             return
 
         idx = step_num - 1
@@ -411,9 +411,9 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         # Show results
         if issues:
             result = "Validation Issues Found:\n\n" + "\n".join(f"• {issue}" for issue in issues)
-            messagebox.showwarning("Validation Issues", result)
+            self.show_warning("Validation Issues", result)
         else:
-            messagebox.showinfo("Validation Passed", "Workflow template is valid.")
+            self.show_info("Validation Passed", "Workflow template is valid.")
 
     def validate(self) -> bool:
         """Validate template before saving."""
@@ -422,23 +422,23 @@ class WorkflowTemplateEditorDialog(BaseDialog):
         description = self.description_var.get().strip()
 
         if not name:
-            messagebox.showwarning("Validation", "Template name is required.")
+            self.show_warning("Validation", "Template name is required.")
             return False
 
         if not slug:
-            messagebox.showwarning("Validation", "Slug is required.")
+            self.show_warning("Validation", "Slug is required.")
             return False
 
         if not validate_slug(slug):
-            messagebox.showwarning("Validation", "Slug must be lowercase with hyphens only.")
+            self.show_warning("Validation", "Slug must be lowercase with hyphens only.")
             return False
 
         if not description:
-            messagebox.showwarning("Validation", "Description is required.")
+            self.show_warning("Validation", "Description is required.")
             return False
 
         if not self.steps:
-            messagebox.showwarning("Validation", "At least one step is required.")
+            self.show_warning("Validation", "At least one step is required.")
             return False
 
         # Check for incomplete steps
@@ -448,7 +448,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
                 incomplete_steps.append(idx + 1)
 
         if incomplete_steps:
-            if not messagebox.askyesno(
+            if not self.confirm_action(
                     "Incomplete Steps",
                     f"Steps {', '.join(map(str, incomplete_steps))} are missing input/output configuration.\n\n"
                     "These steps won't work properly in workflows.\n\n"
@@ -495,7 +495,7 @@ class WorkflowTemplateEditorDialog(BaseDialog):
             self.close(result=slug)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save template: {e}")
+            self.show_error("Error", f"Failed to save template: {e}")
 
     def _configure_treeview_tags(self):
         """Configure treeview tags - let theme handle backgrounds."""

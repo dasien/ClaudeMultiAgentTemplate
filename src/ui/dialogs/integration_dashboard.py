@@ -3,7 +3,7 @@ Integration Dashboard - View and manage GitHub/Jira/Confluence sync status.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from typing import Optional
 
 from .base_dialog import BaseDialog
@@ -169,7 +169,7 @@ class IntegrationDashboardDialog(BaseDialog):
             self.stats_labels['failed'].config(text=str(failed), bootstyle="danger")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load integration status: {e}")
+            self.show_error("Error", f"Failed to load integration status: {e}")
 
     def show_context_menu(self, event):
         """Show context menu for integration actions."""
@@ -229,11 +229,11 @@ class IntegrationDashboardDialog(BaseDialog):
             self.queue.sync_task_external(task_id)
             self.load_integration_status()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to sync: {e}")
+            self.show_error("Error", f"Failed to sync: {e}")
 
     def sync_all(self):
         """Sync all unsynced tasks."""
-        if messagebox.askyesno(
+        if self.confirm_action(
                 "Confirm",
                 "Create integration tasks for all unsynced completed tasks?"
         ):
@@ -241,15 +241,15 @@ class IntegrationDashboardDialog(BaseDialog):
                 self.queue.sync_all_external()
                 self.load_integration_status()
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to sync: {e}")
+                self.show_error("Error", f"Failed to sync: {e}")
 
     def open_github_issue(self, issue_num: str):
         """Open GitHub issue in browser."""
-        messagebox.showinfo("GitHub", f"Would open issue {issue_num}\n(URL building requires GitHub config)")
+        self.show_info("GitHub", f"Would open issue {issue_num}\n(URL building requires GitHub config)")
 
     def open_jira_ticket(self, ticket: str):
         """Open Jira ticket in browser."""
-        messagebox.showinfo("Jira", f"Would open ticket {ticket}\n(URL building requires Jira config)")
+        self.show_info("Jira", f"Would open ticket {ticket}\n(URL building requires Jira config)")
 
     def _extract_enhancement(self, source_file: str) -> str:
         """Extract enhancement name from source file."""

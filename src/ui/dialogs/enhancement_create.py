@@ -4,7 +4,7 @@ Supports multiple source types: local files, GitHub issues, and web URLs.
 """
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 from pathlib import Path
 from typing import List
 from .working import WorkingDialog
@@ -266,16 +266,15 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         def add_url():
             url = url_var.get().strip()
             if not url:
-                messagebox.showwarning("Missing URL", "Please enter a GitHub issue URL", parent=dialog)
+                self.show_warning("Missing URL", "Please enter a GitHub issue URL")
                 return
 
             # Validate using WebUtils
             if not WebUtils.is_github_issue_url(url):
-                messagebox.showwarning(
+                self.show_warning(
                     "Invalid URL",
                     "Please enter a valid GitHub issue URL\n"
-                    "Example: https://github.com/owner/repo/issues/123",
-                    parent=dialog
+                    "Example: https://github.com/owner/repo/issues/123"
                 )
                 return
 
@@ -327,13 +326,13 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
         def add_url():
             url = url_var.get().strip()
             if not url:
-                messagebox.showwarning("Missing URL", "Please enter a web page URL", parent=dialog)
+                self.show_warning("Missing URL", "Please enter a web page URL")
                 return
 
             # Validate using WebUtils
             valid, error = WebUtils.validate_url(url)
             if not valid:
-                messagebox.showwarning("Invalid URL", error, parent=dialog)
+                self.show_warning("Invalid URL", error)
                 return
 
             source = EnhancementSource.from_web_url(url)
@@ -470,7 +469,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
                     # Cleanup staging on error
                     if staging_dir.exists():
                         shutil.rmtree(staging_dir, ignore_errors=True)
-                    messagebox.showerror(
+                    self.show_error(
                         "Error",
                         f"Failed to read agent output:\n\n{e}"
                     )
@@ -482,7 +481,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
                 # Cleanup staging on error
                 if staging_dir.exists():
                     shutil.rmtree(staging_dir, ignore_errors=True)
-                messagebox.showerror(
+                self.show_error(
                     "Generation Error",
                     f"Failed to generate enhancement:\n\n{error}"
                 )
@@ -498,7 +497,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
             )
 
         except Exception as e:
-            messagebox.showerror(
+            self.show_error(
                 "Error",
                 f"Failed to prepare enhancement generation:\n\n{e}"
             )
@@ -509,7 +508,7 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
 
     def on_generation_error(self, error: Exception):
         """Handle generation error."""
-        messagebox.showerror("Generation Error", f"Failed to generate enhancement:\n\n{error}")
+        self.show_error("Generation Error", f"Failed to generate enhancement:\n\n{error}")
 
     def build_generation_context(self, title: str, description: str) -> str:
         """Build context for Claude API including all sources."""

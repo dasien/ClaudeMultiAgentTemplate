@@ -4,7 +4,7 @@ Workflow Template Manager Dialog - List, create, edit, and delete workflow templ
 
 import tkinter as tk
 import json
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from .base_dialog import BaseDialog
 from .workflow_template_editor import WorkflowTemplateEditorDialog
 
@@ -34,36 +34,20 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         list_frame = ttk.LabelFrame(main_frame, text="Workflow Templates", padding=10)
         list_frame.pack(fill="both", expand=True, pady=(0, 10))
 
-        # Treeview
-        columns = ('name', 'slug', 'description', 'steps')
-        self.template_tree = ttk.Treeview(
+        # Treeview using BaseDialog helper
+        self.template_tree = self.create_scrolled_treeview(
             list_frame,
-            columns=columns,
-            show='headings',
-            selectmode='browse'
+            columns={
+                'name': ('Template Name', 150),
+                'slug': ('Slug', 150),
+                'description': ('Description', 400),
+                'steps': ('Steps', 50),
+            },
+            sortable=True
         )
-
-        self.template_tree.heading('name', text='Template Name')
-        self.template_tree.heading('slug', text='Slug')
-        self.template_tree.heading('description', text='Description')
-        self.template_tree.heading('steps', text='Steps')
-
-        self.template_tree.column('name', width=150)
-        self.template_tree.column('slug', width=150)
-        self.template_tree.column('description', width=400)
-        self.template_tree.column('steps', width=50)
-
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.template_tree.yview)
-        self.template_tree.configure(yscrollcommand=scrollbar.set)
-
-        self.template_tree.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
 
         # Bind double-click to edit
         self.template_tree.bind('<Double-Button-1>', lambda e: self.edit_template())
-
-        # Make columns sortable
-        self.make_treeview_sortable(self.template_tree)
 
         # Buttons
         self.create_button_frame(main_frame, [
@@ -93,7 +77,7 @@ class WorkflowTemplateManagerDialog(BaseDialog):
                 )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load templates: {e}")
+            self.show_error("Error", f"Failed to load templates: {e}")
 
     def create_template(self):
         """Open dialog to create a new template."""
@@ -109,7 +93,7 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         """Open dialog to edit the selected template."""
         selection = self.template_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a template to edit.")
+            self.show_selection_required("template")
             return
 
         item = selection[0]
@@ -131,7 +115,7 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         """Duplicate the selected template by opening editor with pre-filled data."""
         selection = self.template_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a template to duplicate.")
+            self.show_selection_required("template")
             return
 
         item = selection[0]
@@ -142,7 +126,7 @@ class WorkflowTemplateManagerDialog(BaseDialog):
             # Get the source template
             source = self.queue.get_workflow_template(source_slug)
             if not source:
-                messagebox.showerror("Error", "Template not found.")
+                self.show_error("Error", "Template not found.")
                 return
 
             # Build initial data from source (name will trigger auto-slug)
@@ -164,13 +148,13 @@ class WorkflowTemplateManagerDialog(BaseDialog):
                 self.load_templates()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to duplicate template: {e}")
+            self.show_error("Error", f"Failed to duplicate template: {e}")
 
     def view_steps(self):
         """View steps for selected template."""
         selection = self.template_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a template to view.")
+            self.show_selection_required("template")
             return
 
         item = selection[0]
@@ -210,13 +194,13 @@ class WorkflowTemplateManagerDialog(BaseDialog):
                 ttk.Button(view_window, text="Close", command=view_window.destroy).pack(pady=10)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to view template: {e}")
+            self.show_error("Error", f"Failed to view template: {e}")
 
     def delete_template(self):
         """Delete the selected template."""
         selection = self.template_tree.selection()
         if not selection:
-            messagebox.showwarning("No Selection", "Please select a template to delete.")
+            self.show_selection_required("template")
             return
 
         item = selection[0]
@@ -224,14 +208,11 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         template_name = values[0]
         template_slug = values[1]
 
-        if not messagebox.askyesno(
-                "Confirm Delete",
-                f"Delete workflow template '{template_name}'?"
-        ):
+        if not self.confirm_delete("workflow template", template_name):
             return
 
         try:
             self.queue.delete_workflow_template(template_slug)
             self.load_templates()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to delete: {e}")
+            self.show_error("Error", f"Failed to delete: {e}")

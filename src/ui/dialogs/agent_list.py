@@ -3,7 +3,7 @@ Agent Manager dialog for viewing and managing agents.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from .base_dialog import BaseDialog
 
@@ -31,36 +31,20 @@ class AgentListDialog(BaseDialog):
         list_frame = ttk.LabelFrame(main_frame, text="Agents", padding=10)
         list_frame.pack(fill="both", expand=True, pady=(0, 10))
 
-        # Treeview - Enhanced with skills column
-        columns = ('name', 'file', 'skills_count', 'description')
-        self.agent_tree = ttk.Treeview(
+        # Treeview with scrollbar using BaseDialog helper
+        self.agent_tree = self.create_scrolled_treeview(
             list_frame,
-            columns=columns,
-            show='headings',
-            selectmode='browse'
+            columns={
+                'name': ('Name', 180),
+                'file': ('File', 150),
+                'skills_count': ('Skills', 60),
+                'description': ('Description', 400),
+            },
+            sortable=True
         )
-
-        self.agent_tree.heading('name', text='Name')
-        self.agent_tree.heading('file', text='File')
-        self.agent_tree.heading('skills_count', text='Skills')
-        self.agent_tree.heading('description', text='Description')
-
-        self.agent_tree.column('name', width=180)
-        self.agent_tree.column('file', width=150)
-        self.agent_tree.column('skills_count', width=60)
-        self.agent_tree.column('description', width=400)
-
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.agent_tree.yview)
-        self.agent_tree.configure(yscrollcommand=scrollbar.set)
-
-        self.agent_tree.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
 
         # Bind double-click
         self.agent_tree.bind('<Double-Button-1>', lambda e: self.edit_agent())
-
-        # Make columns sortable
-        self.make_treeview_sortable(self.agent_tree)
 
         # Buttons - Using BaseDialog helper
         self.create_button_frame(main_frame, [
@@ -96,7 +80,7 @@ class AgentListDialog(BaseDialog):
                 )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load agents: {e}")
+            self.show_error("Error", f"Failed to load agents: {e}")
 
     def create_agent(self):
         """Open dialog to create a new agent."""
@@ -111,14 +95,11 @@ class AgentListDialog(BaseDialog):
 
     def edit_agent(self):
         """Open dialog to edit the selected agent."""
-        selection = self.agent_tree.selection()
-        if not selection:
-            messagebox.showwarning("No Selection", "Please select an agent to edit.")
+        agent_file = self.get_selected_tree_field(
+            self.agent_tree, 1, "Please select an agent to edit."
+        )
+        if agent_file is None:
             return
-
-        item = selection[0]
-        values = self.agent_tree.item(item, 'values')
-        agent_file = values[1]
 
         from .agent_details import AgentDetailsDialog
         dialog = AgentDetailsDialog(
@@ -132,13 +113,12 @@ class AgentListDialog(BaseDialog):
 
     def delete_agent(self):
         """Delete the selected agent via CMAT service."""
-        selection = self.agent_tree.selection()
-        if not selection:
-            messagebox.showwarning("No Selection", "Please select an agent to delete.")
+        _, values = self.get_selected_tree_item(
+            self.agent_tree, "Please select an agent to delete."
+        )
+        if values is None:
             return
 
-        item = selection[0]
-        values = self.agent_tree.item(item, 'values')
         agent_name = values[0]
         agent_file = values[1]
 
@@ -146,7 +126,7 @@ class AgentListDialog(BaseDialog):
         workflows_using_agent = self._get_workflows_using_agent(agent_file)
         if workflows_using_agent:
             workflow_list = "\n".join(f"  • {w}" for w in workflows_using_agent)
-            messagebox.showerror(
+            self.show_error(
                 "Cannot Delete",
                 f"Agent '{agent_name}' is used in the following workflow templates:\n\n"
                 f"{workflow_list}\n\n"
@@ -154,7 +134,7 @@ class AgentListDialog(BaseDialog):
             )
             return
 
-        if not messagebox.askyesno(
+        if not self.confirm_action(
                 "Confirm Delete",
                 f"Delete agent '{agent_name}'?\n\n"
                 f"This will remove the agent and its configuration."
@@ -166,7 +146,7 @@ class AgentListDialog(BaseDialog):
             self.load_agents()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to delete: {e}")
+            self.show_error("Error", f"Failed to delete: {e}")
 
     def _get_workflows_using_agent(self, agent_file: str) -> list:
         """Get list of workflow template names that use this agent."""

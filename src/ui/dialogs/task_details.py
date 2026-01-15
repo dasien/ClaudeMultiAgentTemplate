@@ -4,7 +4,7 @@ Shows workflow information from task metadata.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from pathlib import Path
 from typing import Optional
 
@@ -440,12 +440,12 @@ class TaskDetailsDialog(BaseDialog):
             source_path = self.queue.project_root / source_path
 
         if not PathUtils.open_file(source_path):
-            messagebox.showerror("Error", f"File not found: {source_path}")
+            self.show_error("Error", f"File not found: {source_path}")
 
     def open_folder(self, folder_path: Path):
         """Open folder in file browser."""
         if not PathUtils.open_folder(folder_path):
-            messagebox.showerror("Error", f"Folder not found: {folder_path}")
+            self.show_error("Error", f"Folder not found: {folder_path}")
 
     def _open_path(self, path: Path):
         """Open a file or folder depending on what path points to.
@@ -454,7 +454,7 @@ class TaskDetailsDialog(BaseDialog):
         For other files/folders, uses the system default application.
         """
         if not path.exists():
-            messagebox.showerror("Error", f"Path not found: {path}")
+            self.show_error("Error", f"Path not found: {path}")
             return
 
         # For .md files, open in markdown viewer
@@ -464,13 +464,13 @@ class TaskDetailsDialog(BaseDialog):
 
         # For other files/folders, use system default
         if not PathUtils.open_path(path):
-            messagebox.showerror("Error", f"Failed to open: {path}")
+            self.show_error("Error", f"Failed to open: {path}")
 
     def view_log(self):
         """View full task log."""
         log_content = self.queue.get_task_log(self.task.id, self.task.source_file)
         if not log_content:
-            messagebox.showinfo("No Log", "Log file not found")
+            self.show_info("No Log", "Log file not found")
             return
 
         # Create log viewer window

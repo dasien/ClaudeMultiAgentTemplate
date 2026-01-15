@@ -3,7 +3,7 @@ Skill Details Dialog - Create and edit skills.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from .base_dialog import BaseDialog
 from ..utils import to_slug, validate_slug
@@ -186,7 +186,7 @@ Concrete examples of applying this skill.
             skill_data = self.queue.get_skill(self.skill_directory)
 
             if not skill_data:
-                messagebox.showerror("Error", f"Skill '{self.skill_directory}' not found")
+                self.show_error("Error", f"Skill '{self.skill_directory}' not found")
                 self.cancel()
                 return
 
@@ -208,7 +208,7 @@ Concrete examples of applying this skill.
             self.auto_dir_check.config(state='disabled')
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load skill: {e}")
+            self.show_error("Error", f"Failed to load skill: {e}")
             self.cancel()
 
     def validate(self) -> bool:
@@ -220,34 +220,34 @@ Concrete examples of applying this skill.
         content = self.content_text.get('1.0', 'end-1c').strip()
 
         if not name:
-            messagebox.showwarning("Validation", "Name is required.")
+            self.show_warning("Validation", "Name is required.")
             return False
 
         if not directory:
-            messagebox.showwarning("Validation", "Directory is required.")
+            self.show_warning("Validation", "Directory is required.")
             return False
 
         if not validate_slug(directory):
-            messagebox.showwarning("Validation", "Directory must be lowercase with hyphens only.")
+            self.show_warning("Validation", "Directory must be lowercase with hyphens only.")
             return False
 
         if not category:
-            messagebox.showwarning("Validation", "Category is required.")
+            self.show_warning("Validation", "Category is required.")
             return False
 
         if not description:
-            messagebox.showwarning("Validation", "Description is required.")
+            self.show_warning("Validation", "Description is required.")
             return False
 
         if not content:
-            messagebox.showwarning("Validation", "Content is required.")
+            self.show_warning("Validation", "Content is required.")
             return False
 
         # Check for duplicate directory on create
         if self.mode == 'create':
             existing = self.queue.get_skill(directory)
             if existing:
-                messagebox.showwarning("Validation", f"A skill with directory '{directory}' already exists.")
+                self.show_warning("Validation", f"A skill with directory '{directory}' already exists.")
                 return False
 
         return True
@@ -275,4 +275,4 @@ Concrete examples of applying this skill.
             self.close(result=True)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save skill: {e}")
+            self.show_error("Error", f"Failed to save skill: {e}")

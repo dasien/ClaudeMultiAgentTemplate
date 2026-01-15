@@ -10,7 +10,7 @@ Provides interface for:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, scrolledtext
 from typing import Optional
 
 from .base_dialog import BaseDialog
@@ -61,45 +61,25 @@ class LearningsBrowserDialog(BaseDialog):
         # Add learning button
         ttk.Button(filter_frame, text="Add Learning", command=self.show_add_dialog).pack(side=tk.RIGHT)
 
-        # Learnings list with scrollbar
+        # Learnings list with scrollbar using BaseDialog helper
         list_frame = ttk.Frame(top_frame)
         list_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Create treeview
-        columns = ('summary', 'tags', 'confidence', 'source', 'created')
-        self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', selectmode='browse')
-
-        # Column headings
-        self.tree.heading('summary', text='Summary')
-        self.tree.heading('tags', text='Tags')
-        self.tree.heading('confidence', text='Confidence')
-        self.tree.heading('source', text='Source')
-        self.tree.heading('created', text='Created')
-
-        # Column widths
-        self.tree.column('summary', width=300)
-        self.tree.column('tags', width=150)
-        self.tree.column('confidence', width=80)
-        self.tree.column('source', width=120)
-        self.tree.column('created', width=150)
-
-        # Scrollbars
-        vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(list_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
-        # Grid layout
-        self.tree.grid(row=0, column=0, sticky='nsew')
-        vsb.grid(row=0, column=1, sticky='ns')
-        hsb.grid(row=1, column=0, sticky='ew')
-        list_frame.grid_rowconfigure(0, weight=1)
-        list_frame.grid_columnconfigure(0, weight=1)
+        self.tree = self.create_scrolled_treeview(
+            list_frame,
+            columns={
+                'summary': ('Summary', 300),
+                'tags': ('Tags', 150),
+                'confidence': ('Confidence', 80),
+                'source': ('Source', 120),
+                'created': ('Created', 150),
+            },
+            sortable=True,
+            dual_scroll=True
+        )
 
         # Bind selection event
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
-
-        # Make columns sortable
-        self.make_treeview_sortable(self.tree)
 
         # Bottom pane: Details view
         bottom_frame = ttk.LabelFrame(main_paned, text="Learning Details")
@@ -132,7 +112,7 @@ class LearningsBrowserDialog(BaseDialog):
             self.learnings = self.queue.learnings.list_all()
             self.update_tree()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load learnings: {e}")
+            self.show_error("Error", f"Failed to load learnings: {e}")
 
     def apply_filter(self):
         """Apply tag filter to learnings list."""
@@ -146,7 +126,7 @@ class LearningsBrowserDialog(BaseDialog):
             self.learnings = self.queue.learnings.list_by_tags(tags)
             self.update_tree()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to filter learnings: {e}")
+            self.show_error("Error", f"Failed to filter learnings: {e}")
 
     def clear_filter(self):
         """Clear the filter and show all learnings."""
@@ -228,22 +208,22 @@ ID: {learning.id}
     def delete_learning(self):
         """Delete the selected learning."""
         if not self.selected_learning:
-            messagebox.showwarning("No Selection", "Please select a learning to delete.")
+            self.show_selection_required("learning")
             return
 
         # Confirm deletion
-        result = messagebox.askyesno(
+        if not self.confirm_action(
             "Confirm Delete",
             f"Delete learning:\n\n{self.selected_learning.summary}"
-        )
+        ):
+            return
 
-        if result:
-            try:
-                self.queue.learnings.delete(self.selected_learning.id)
-                self.selected_learning = None
-                self.refresh()
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete learning: {e}")
+        try:
+            self.queue.learnings.delete(self.selected_learning.id)
+            self.selected_learning = None
+            self.refresh()
+        except Exception as e:
+            self.show_error("Error", f"Failed to delete learning: {e}")
 
     def show_add_dialog(self):
         """Show dialog to add a new learning."""
@@ -307,7 +287,7 @@ class AddLearningDialog(BaseDialog):
         content = self.content_text.get("1.0", "end-1c").strip()
 
         if not content:
-            messagebox.showwarning("Validation Error", "Please enter learning content.")
+            self.show_warning("Validation Error", "Please enter learning content.")
             self.content_text.focus()
             return
 
@@ -327,4 +307,4 @@ class AddLearningDialog(BaseDialog):
             self.close()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to add learning: {e}")
+            self.show_error("Error", f"Failed to add learning: {e}")
