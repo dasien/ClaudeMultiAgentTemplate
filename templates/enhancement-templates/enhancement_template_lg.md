@@ -21,8 +21,7 @@ As a [type of user], I want [goal] so that [benefit/reason].
 - Why this enhancement is needed now
 
 **Technical Context:**
-- Target platform/environment (e.g., 6502 emulated machine)
-- Memory constraints (RAM/ROM available)
+- Target platform/environment
 - Performance requirements
 - Integration points with existing systems
 
@@ -40,53 +39,66 @@ As a [type of user], I want [goal] so that [benefit/reason].
 
 ### Non-Functional Requirements
 - **Performance:** [Response time, throughput, resource usage]
-- **Memory:** [Budget constraints, optimization needs]
 - **Reliability:** [Error handling, edge cases]
 - **Compatibility:** [Backwards compatibility, platform support]
 
-### Must Have (MVP)
-- [ ] Core feature X
-- [ ] Essential behavior Y
-- [ ] Basic error handling
+### Required Work
+> All items in this section MUST be completed for the enhancement to be considered done.
+> Do not skip any items. Do not treat any items as optional.
 
-### Should Have (if time permits)
-- [ ] Enhancement A
-- [ ] Nice-to-have B
+- [ ] [Specific task 1]
+- [ ] [Specific task 2]
+- [ ] [Specific task 3]
 
-### Won't Have (out of scope)
-- Feature X (reason: complexity/time)
-- Feature Y (reason: not MVP)
+### Out of Scope
+> Explicitly list what this enhancement does NOT include to prevent scope creep.
+> These items should not be worked on as part of this enhancement.
+
+- [Feature X] - Will be addressed in a separate enhancement
+- [Feature Y] - Not needed for this use case
 
 ## Open Questions
-> These need answers before architecture review
+> These need answers before implementation begins.
+> If questions remain unanswered, the agent should ask for clarification.
 
-1. [Question about memory layout / design approach]
+1. [Question about design approach]
 2. [Question about API/interface decisions]
-3. [Question about user requirements]
-4. [Question about testing approach]
 
 ## Constraints & Limitations
 **Technical Constraints:**
-- Maximum memory usage: [X KB]
 - Must not break: [existing features]
 - Must use: [specific APIs/patterns]
-
-**Business/Timeline Constraints:**
-- Deadline: [if applicable]
-- Cannot change: [locked decisions]
+- Must maintain: [backwards compatibility requirements]
 
 ## Success Criteria
-**Definition of Done:**
-- [ ] Core functionality works as described
-- [ ] All acceptance tests pass
-- [ ] Documentation updated
-- [ ] No regressions in existing features
-- [ ] Performance metrics met
 
-**Acceptance Tests:**
+### Definition of Done
+> ALL of these criteria must be met. This is not a checklist of options.
+
+- [ ] All Required Work items completed
+- [ ] All acceptance tests pass
+- [ ] No regressions in existing features
+- [ ] Code imports/compiles without errors
+
+### Acceptance Tests
+> Concrete, verifiable test cases. Each must pass.
+
 1. Given [initial state], when [action], then [expected result]
 2. Given [scenario], when [action], then [expected outcome]
 3. Edge case: [specific test case]
+
+### Verification Commands
+> Commands to run to verify the enhancement is complete.
+
+```bash
+# Example: Verify no messagebox imports remain
+grep -l "from tkinter import.*messagebox" src/ui/dialogs/*.py
+# Expected: Only base_dialog.py
+
+# Example: Verify application launches
+python -c "from src.ui.dialogs import *"
+# Expected: No errors
+```
 
 ## Security & Safety Considerations
 - Data validation requirements
@@ -98,7 +110,6 @@ As a [type of user], I want [goal] so that [benefit/reason].
 - User interaction flow
 - Input/output format
 - Error messages
-- Help/documentation needs
 
 ## Testing Strategy
 **Unit Tests:**
@@ -113,38 +124,46 @@ As a [type of user], I want [goal] so that [benefit/reason].
 1. [Step-by-step test case]
 2. [Another verification scenario]
 
+## Implementation Checklist
+> Specific files and changes required. Be explicit about what needs to change.
+
+### Files to Modify
+| File | Changes Required |
+|------|------------------|
+| `path/to/file1.py` | [Specific changes] |
+| `path/to/file2.py` | [Specific changes] |
+
+### Implementation Pattern
+> If a pattern should be applied repeatedly, document it clearly.
+
+```python
+# BEFORE:
+[old code pattern]
+
+# AFTER:
+[new code pattern]
+```
+
 ## References & Research
 - [Link to relevant documentation]
 - [Similar implementations]
 - [Technical specifications]
-- [Design inspiration]
 
-## Notes for PM Subagent
-> Instructions for how to process this enhancement
+## Notes for Subagents
 
-- If [X] is unclear, ask before proceeding
-- Consider alternative approaches for [Y]
-- Flag if this seems to require [breaking changes]
-
-## Notes for Architect Subagent
-> Key architectural considerations
-
-- Pay special attention to [memory layout / performance]
+### For Architect
+- Pay special attention to [specific concerns]
 - Consider impact on [existing component]
-- Evaluate tradeoffs between [approach A vs B]
+- ALL Required Work items must be included in the implementation plan
 
-## Notes for Implementer Subagent
-> Implementation guidance
+### For Implementer
+- Complete ALL items in Required Work section
+- Follow the Implementation Pattern exactly
+- Do not skip any files listed in Implementation Checklist
+- Run Verification Commands before marking complete
 
-- Reuse existing [utility/pattern] where possible
-- Add tests for [specific edge cases]
-- Update documentation at [location]
-
-## Notes for Testing Subagent
-> Testing and validation guidance
-
-- Focus testing on [critical functionality/edge cases]
-- Validate [performance requirements/memory constraints]
-- Test [hardware integration/timing-critical sections]
-- Verify [backwards compatibility/regression scenarios]
-- Include [manual testing scenarios] for hardware validation
+### For Tester
+- Verify ALL Acceptance Tests pass
+- Run ALL Verification Commands
+- Test ALL files listed in Implementation Checklist
+- Report any items from Required Work that are incomplete

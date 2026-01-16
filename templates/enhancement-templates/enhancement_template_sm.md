@@ -18,15 +18,20 @@ As a [type of user], I want [goal] so that [benefit].
 
 ## Requirements
 
-### Functional Requirements
-- Must: [essential feature]
-- Must: [another requirement]
-- Should: [nice to have if time permits]
+### Required Work
+> ALL items MUST be completed. Do not skip any items.
+
+- [ ] [Specific task 1]
+- [ ] [Specific task 2]
+- [ ] [Specific task 3]
 
 ### Non-Functional Requirements (if applicable)
 - Performance: [response time, resource usage]
 - Compatibility: [backwards compatibility, platform support]
 - Error Handling: [edge cases, failure modes]
+
+### Out of Scope
+- [What this enhancement does NOT include]
 
 ## Technical Approach (if needed)
 
@@ -38,7 +43,7 @@ As a [type of user], I want [goal] so that [benefit].
 
 ## Constraints
 - [Key limitation or requirement]
-- [Timeline or resource constraint]
+- [Technical constraint]
 
 ## Testing Strategy
 
@@ -55,18 +60,27 @@ As a [type of user], I want [goal] so that [benefit].
 2. [Edge case verification]
 
 ## Success Criteria
-- [ ] Works as described
+> ALL criteria must be met for completion.
+
+- [ ] All Required Work items completed
 - [ ] Tests pass
 - [ ] No regressions
 - [ ] [Additional criteria if needed]
 
+## Verification Commands
+```bash
+# [What this verifies]
+[command]
+# Expected: [result]
+```
+
 ## Open Questions (if any)
 1. [Key decision needed]
 
-## Notes for Subagents (optional)
+## Notes for Subagents
 
-**For Architect:** [Specific architectural considerations if needed]
+**For Architect:** ALL Required Work items must be included in implementation plan.
 
-**For Implementer:** [Implementation guidance if needed]
+**For Implementer:** Complete ALL Required Work items. Do not skip any. Run Verification Commands before marking complete.
 
-**For Tester:** [Testing focus areas if needed]
+**For Tester:** Verify ALL tests pass. Report any incomplete Required Work items.

@@ -63,14 +63,18 @@ bug-id: UNIQUE-BUG-ID
 
 ## Fix Requirements
 
-### Must Fix
+### Required Work
+> ALL items MUST be completed. Do not skip any items.
+
 - [ ] Resolve the core issue described above
 - [ ] Ensure no regression in related functionality
 - [ ] Handle edge cases mentioned in reproduction
 
-### Should Fix (if related)
-- [ ] Similar issues in related code
-- [ ] Improve error messages/handling
+### Out of Scope
+> These items should NOT be addressed as part of this bug fix.
+
+- [Related issues that are separate bugs]
+- [Improvements that should be separate enhancements]
 
 ### Constraints
 - **Memory Budget:** [Maximum additional memory if applicable]
@@ -98,27 +102,34 @@ bug-id: UNIQUE-BUG-ID
 - Additional test scenarios: [list any special cases]
 
 ## Success Criteria
+> ALL criteria must be met for completion.
 
 **Definition of Done:**
+- [ ] All Required Work items completed
 - [ ] Bug no longer reproduces following original steps
 - [ ] All new unit tests pass
 - [ ] No regressions detected in related functionality
-- [ ] Code review completed
 - [ ] Manual testing verification complete
 
 **Acceptance Criteria:**
 - Given [original reproduction scenario], when [steps are followed], then [expected behavior occurs]
 - Given [edge case], when [action], then [system handles gracefully]
 
-## Notes for Implementer Subagent
+## Verification Commands
+```bash
+# [Verify the bug no longer reproduces]
+[command]
+# Expected: [result]
 
-- **Investigation Priority:** Start by reproducing the bug exactly as described
-- **Code Areas:** Focus initial investigation on [specific modules/files]
-- **Testing Approach:** Write the failing test first, then implement the fix
-- **Documentation:** Update any relevant docs if behavior changes
+# [Verify no regressions]
+[command]
+# Expected: [result]
+```
 
-## Notes for Tester Subagent
+## Notes for Subagents
 
-- **Verification Steps:** Must test both the original bug scenario AND regression scenarios
-- **Test Environments:** Verify fix works across [list specific environments]
-- **Sign-off Requirements:** Manual testing + automated tests
+**For Architect:** ALL Required Work items must be included in implementation plan.
+
+**For Implementer:** Complete ALL Required Work items. Do not skip any. Start by reproducing the bug exactly as described. Write the failing test first, then implement the fix. Run Verification Commands before marking complete.
+
+**For Tester:** Verify ALL tests pass. Test both the original bug scenario AND regression scenarios. Report any incomplete Required Work items.
