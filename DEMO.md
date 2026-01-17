@@ -58,23 +58,25 @@ cmat
 
 This opens the graphical UI for managing CMAT projects.
 
-### Step 2: Initialize the Demo Project
+<!-- Screenshot: Initial launch state -->
+![CMAT Launch Screen](assets/images/demo-01-launch.png)
+
+### Step 2: Install CMAT to the Demo Project
 
 In the UI:
-1. Click **File > Initialize Project** (or use the keyboard shortcut)
+1. Click **File > Install...** (or Ctrl+I)
 2. Navigate to and select the `demo/` directory
 3. Click **Open/Select**
 
-CMAT will copy the templates to `demo/.claude/` and create `demo/enhancements/`.
+<!-- Screenshot: File menu with Install option -->
+![File Menu - Install](assets/images/demo-02-file-menu-install.png)
 
-### Step 3: Connect to the Demo Project
+CMAT will copy the templates to `demo/.claude/`, create `demo/enhancements/`, and automatically connect to the project.
 
-In the UI:
-1. Click **File > Connect to Project**
-2. Select the `demo/` directory
-3. The UI should show "Connected" status
+<!-- Screenshot: Main window showing Connected status -->
+![Connected Status](assets/images/demo-03-connected.png)
 
-### Step 4: Create the Enhancement
+### Step 3: Create the Enhancement
 
 In the UI:
 1. Click **File > New Enhancement**
@@ -84,9 +86,12 @@ In the UI:
    - **Description**: Add a `power` command that computes exponentiation. `python demo/calculator.py power 2 3` should return `8.0`.
 3. Click **Create**
 
+<!-- Screenshot: Enhancement creation dialog -->
+![Enhancement Creation Dialog](assets/images/demo-04-new-enhancement.png)
+
 This creates `demo/enhancements/add-power-function/add-power-function.md`.
 
-### Step 5: Start the Workflow
+### Step 4: Start the Workflow
 
 In the UI:
 1. Click **Workflows > Launch Workflow**
@@ -94,14 +99,20 @@ In the UI:
 3. Select **add-power-function** enhancement
 4. Click **Start**
 
+<!-- Screenshot: Workflow launcher dialog -->
+![Workflow Launcher](assets/images/demo-05-workflow-launcher.png)
+
 The first task (requirements-analyst) is created and marked as active.
 
-### Step 6: Monitor Progress
+### Step 5: Monitor Progress
 
 The UI shows:
 - **Active Tasks**: Currently running agent
 - **Completed Tasks**: Finished steps
 - **Queue Status**: Overall progress
+
+<!-- Screenshot: Task queue with active task -->
+![Task Queue - Active](assets/images/demo-06-task-active.png)
 
 Each agent will:
 - Read input from the previous step
@@ -109,7 +120,10 @@ Each agent will:
 - Create output in `required_output/` directory
 - Report completion status
 
-### Step 7: Workflow Progression
+<!-- Screenshot: Task details panel -->
+![Task Details](assets/images/demo-07-task-details.png)
+
+### Step 6: Workflow Progression
 
 The workflow progresses automatically through:
 1. `READY_FOR_DEVELOPMENT` → starts architect task
@@ -118,7 +132,10 @@ The workflow progresses automatically through:
 4. `TESTING_COMPLETE` → starts documenter task
 5. `DOCUMENTATION_COMPLETE` → workflow complete
 
-### Step 8: Verify Results
+<!-- Screenshot: Completed workflow with all tasks done -->
+![Workflow Complete](assets/images/demo-08-workflow-complete.png)
+
+### Step 7: Verify Results
 
 After the workflow completes, verify the implementation:
 

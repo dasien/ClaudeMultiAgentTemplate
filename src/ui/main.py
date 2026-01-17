@@ -310,28 +310,23 @@ class MainView:
         left_frame = ttk.Frame(self.paned)
         self.paned.add(left_frame, weight=0)
 
-        # Status listbox with scrollbar
-        status_label = ttk.Label(left_frame, text="Status", font=('Arial', 10, 'bold'))
-        status_label.pack(pady=(0, 5))
-
+        # Status list (5 fixed items, no scrollbar needed)
         status_list_frame = ttk.Frame(left_frame)
         status_list_frame.pack(fill="both", expand=True)
 
         # Use ttk.Treeview instead of tk.Listbox for auto-theming
         self.status_listbox = ttk.Treeview(
             status_list_frame,
-            show='tree',  # Show only tree column, no headers
+            show='tree headings',  # Show tree column with header
             selectmode='browse',
-            height=10
+            height=5  # Only 5 status items
         )
-        status_scrollbar = ttk.Scrollbar(status_list_frame, orient="vertical", command=self.status_listbox.yview)
-        self.status_listbox.configure(yscrollcommand=status_scrollbar.set)
 
-        # Configure the tree column width
+        # Configure the tree column with heading
         self.status_listbox.column('#0', width=150, minwidth=100)
+        self.status_listbox.heading('#0', text='Status')
 
-        self.status_listbox.pack(side="left", fill="both", expand=True)
-        status_scrollbar.pack(side="right", fill="y")
+        self.status_listbox.pack(fill="both", expand=True)
 
         # Bind status selection (Treeview uses different event)
         self.status_listbox.bind('<<TreeviewSelect>>', self.on_status_select)
@@ -490,6 +485,31 @@ class MainView:
         style = ttk.Style()
         style.configure('Connection.TFrame', background='#F0F0F0')
         style.configure('Connection.TLabel', background='#F0F0F0')
+
+        # Treeview heading style - use primary theme color for better visibility
+        primary_color = self.root.style.colors.primary
+        # Use a slightly darker shade for separator visibility
+        try:
+            # Darken the primary color for borders
+            r = int(primary_color[1:3], 16)
+            g = int(primary_color[3:5], 16)
+            b = int(primary_color[5:7], 16)
+            darker = f'#{max(0,r-40):02x}{max(0,g-40):02x}{max(0,b-40):02x}'
+        except (ValueError, IndexError):
+            darker = primary_color
+
+        style.configure(
+            'Treeview.Heading',
+            background=primary_color,
+            foreground='white',
+            relief= 'raised',
+            borderwidth=1
+        )
+        style.map(
+            'Treeview.Heading',
+            background=[('active', darker)],
+            relief=[('pressed', 'sunken')]
+        )
 
         # Task row styles - only configure special highlighting, let theme handle normal rows
         self.task_tree.tag_configure('task')  # No background - use theme default
@@ -757,6 +777,21 @@ class MainView:
         # Restore selection if task still exists
         if selected_task_id and selected_task_id in task_id_to_item:
             self.task_tree.selection_set(task_id_to_item[selected_task_id])
+
+        # Reapply current sort if user has selected one
+        self._apply_current_sort()
+
+    def _apply_current_sort(self):
+        """Apply current sort without toggling direction."""
+        if not self.sort_column:
+            return
+
+        items = [(self.task_tree.set(item, self.sort_column), item)
+                 for item in self.task_tree.get_children('')]
+        items.sort(reverse=self.sort_reverse)
+
+        for index, (val, item) in enumerate(items):
+            self.task_tree.move(item, '', index)
 
     def format_runtime(self, seconds):
         """Format runtime using TimeUtils."""

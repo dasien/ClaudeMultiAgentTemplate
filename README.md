@@ -4,6 +4,8 @@ A workflow-based multi-agent development system with a graphical UI. CMAT provid
 
 **Version**: 10.3.0
 
+![CMAT Main Window](assets/images/main-window-hero.png)
+
 ---
 
 ## What Is This?
@@ -46,6 +48,11 @@ CMAT is a multi-agent system that breaks down software development into speciali
 - **Automated Workflows** - Template-driven intelligent task chaining
 - **Task Queue System** - Organize and track work
 - **Skills System** - Domain expertise in reusable modules
+- **Multiple Theme Support** - Light and dark themes with live preview
+
+| Light Theme | Dark Theme |
+|-------------|------------|
+| ![Light Theme](assets/images/main-window-overview.png) | ![Dark Theme](assets/images/main-window-overview-dark.png) |
 
 ### Intelligence & Tracking
 - **Learnings System** - RAG-based memory that improves over time
@@ -92,8 +99,9 @@ python3 -m venv .venv
 source .venv/bin/activate           # Linux/macOS
 .\.venv\Scripts\Activate.ps1        # Windows PowerShell
 
-# Install in development mode with all dependencies
-pip install -e ".[dev]"
+# Install in editable mode
+pip install -e .                    # Core only (just to run CMAT)
+pip install -e ".[dev]"             # With dev tools (pytest, black, mypy, ruff)
 ```
 
 **Note**: Always activate the virtual environment before running CMAT:
@@ -105,12 +113,6 @@ cmat
 
 **IDE Setup**: If using PyCharm, VS Code, or another IDE, configure the Python interpreter to use `.venv/bin/python` in the project directory.
 
-### Option 2: Install Package
-
-```bash
-pip install cmat
-```
-
 ---
 
 ## Quick Start
@@ -121,12 +123,14 @@ pip install cmat
 cmat
 ```
 
-### 2. Initialize a Project
+**For a hands-on tutorial, it is recommended you follow [DEMO.md](DEMO.md) before starting on your own use.**
+
+### 2. Install CMAT to a Project
 
 In the UI:
-1. **File > Initialize Project**
+1. **File > Install...** (or Ctrl+I)
 2. Select your project directory
-3. CMAT copies templates to `your-project/.claude/`
+3. CMAT copies templates to `your-project/.claude/` and connects to it
 
 ### 3. Create an Enhancement
 
@@ -142,8 +146,6 @@ In the UI:
 2. Select the enhancement
 3. Click **Start Workflow**
 4. Agents execute automatically
-
-For a hands-on tutorial, see **[DEMO.md](DEMO.md)**.
 
 ---
 
@@ -292,7 +294,7 @@ status: READY_FOR_TESTING
 ### Running Tests
 
 ```bash
-# Install dev dependencies
+# Install with dev dependencies (includes pytest, black, mypy, ruff)
 pip install -e ".[dev]"
 
 # Run all tests
