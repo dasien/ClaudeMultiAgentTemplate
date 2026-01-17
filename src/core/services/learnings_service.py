@@ -13,10 +13,10 @@ Uses the "Full Claude" approach:
 import json
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from core.models.learning import Learning
+from core.services.base import JSONFileServiceMixin
 from core.utils import get_timestamp, log_operation, log_error, find_project_root
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class RetrievalContext:
     tags: Optional[list[str]] = None
 
 
-class LearningsService:
+class LearningsService(JSONFileServiceMixin):
     """
     Manages the RAG/learnings system for CMAT.
 
@@ -42,6 +42,8 @@ class LearningsService:
 
     Storage: Simple JSON file at .claude/data/learnings.json
     """
+
+    COLLECTION_KEY = "learnings"
 
     # Extraction prompt template
     EXTRACTION_PROMPT = """Analyze this agent output and extract any learnings that would help future tasks.
@@ -114,51 +116,33 @@ JSON response:"""
         self,
         data_dir: Optional[str] = None,
     ):
-        # Resolve path relative to project root, not cwd
-        if data_dir is None:
-            project_root = find_project_root()
-            if project_root:
-                self.learnings_file = project_root / ".claude/data/learnings.json"
-            else:
-                self.learnings_file = Path(".claude/data/learnings.json")
-        else:
-            self.learnings_file = Path(data_dir) / "learnings.json"
+        self._init_data_path(data_dir, "learnings.json")
+        self._ensure_file_exists()
 
-        self._ensure_storage_exists()
-
-    def _ensure_storage_exists(self) -> None:
-        """Ensure the storage directory and file exist."""
-        self.learnings_file.parent.mkdir(parents=True, exist_ok=True)
-
-        if not self.learnings_file.exists():
-            self._write_learnings({})
+    def _get_default_data(self) -> dict:
+        """Return default data for a new learnings.json file."""
+        return {
+            "version": "1.0.0",
+            "last_updated": get_timestamp(),
+            "count": 0,
+            self.COLLECTION_KEY: [],
+        }
 
     def _read_learnings(self) -> dict[str, Learning]:
         """Read all learnings from storage."""
-        if not self.learnings_file.exists():
-            return {}
-
-        with open(self.learnings_file, 'r') as f:
-            data = json.load(f)
-
-        learnings = {}
-        for learning_data in data.get("learnings", []):
-            learning = Learning.from_dict(learning_data)
-            learnings[learning.id] = learning
-
-        return learnings
+        return self._read_collection(Learning, self.COLLECTION_KEY, "id")
 
     def _write_learnings(self, learnings: dict[str, Learning]) -> None:
         """Write all learnings to storage."""
-        data = {
-            "version": "1.0.0",
-            "last_updated": get_timestamp(),
-            "count": len(learnings),
-            "learnings": [l.to_dict() for l in learnings.values()],
-        }
-
-        with open(self.learnings_file, 'w') as f:
-            json.dump(data, f, indent=2)
+        self._write_collection(
+            learnings,
+            self.COLLECTION_KEY,
+            {
+                "version": "1.0.0",
+                "last_updated": get_timestamp(),
+                "count": len(learnings),
+            },
+        )
 
     # =========================================================================
     # Storage Operations

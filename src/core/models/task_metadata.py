@@ -5,6 +5,7 @@ Stores integration links, workflow context, execution details, and cost informat
 associated with a task.
 """
 
+import json
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -99,3 +100,12 @@ class TaskMetadata:
             learnings_retrieved=data.get("learnings_retrieved", []),
             learnings_created=data.get("learnings_created", []),
         )
+
+    def to_json(self) -> str:
+        """Convert metadata to JSON string."""
+        return json.dumps(self.to_dict(), indent=2)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "TaskMetadata":
+        """Create metadata from JSON string."""
+        return cls.from_dict(json.loads(json_str))

@@ -5,6 +5,7 @@ These services provide the business logic for CMAT operations,
 managing tasks, agents, skills, and workflows.
 """
 
+from .base import JSONFileServiceMixin
 from .queue_service import QueueService
 from .agent_service import AgentService
 from .skills_service import SkillsService
@@ -15,6 +16,7 @@ from .model_service import ModelService
 from .tools_service import ToolsService
 
 __all__ = [
+    "JSONFileServiceMixin",
     "QueueService",
     "AgentService",
     "SkillsService",

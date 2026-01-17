@@ -59,6 +59,15 @@ class ModelPricing:
             per_tokens=data.get("per_tokens", 1000000),
         )
 
+    def to_json(self) -> str:
+        """Convert pricing to JSON string."""
+        return json.dumps(self.to_dict(), indent=2)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "ModelPricing":
+        """Create pricing from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
 
 @dataclass
 class ClaudeModel:

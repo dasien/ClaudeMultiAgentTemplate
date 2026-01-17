@@ -5,21 +5,21 @@ This service handles CRUD operations for tool definitions in tools.json,
 which represent the Claude Code tools available to agents.
 """
 
-import json
-from pathlib import Path
 from typing import Optional
 
 from core.models.tool import Tool
-from core.utils import find_project_root
+from core.services.base import JSONFileServiceMixin
 
 
-class ToolsService:
+class ToolsService(JSONFileServiceMixin):
     """
     Service for managing Claude Code tool definitions.
 
     Provides CRUD operations for tools.json, which defines the tools
     that can be assigned to agents in their configuration.
     """
+
+    COLLECTION_KEY = "claude_code_tools"
 
     def __init__(self, data_dir: Optional[str] = None):
         """
@@ -29,80 +29,55 @@ class ToolsService:
             data_dir: Path to data directory containing tools.json.
                      If None, uses default location via find_project_root().
         """
-        if data_dir is None:
-            project_root = find_project_root()
-            if project_root:
-                self._data_dir = project_root / ".claude/data"
-            else:
-                self._data_dir = Path(".claude/data")
-        else:
-            self._data_dir = Path(data_dir)
-
-        self._tools_file = self._data_dir / "tools.json"
-
-    def _ensure_file_exists(self) -> None:
-        """Ensure tools.json exists with default content."""
-        if not self._tools_file.exists():
-            self._data_dir.mkdir(parents=True, exist_ok=True)
-            default_data = {
-                "claude_code_tools": [
-                    {
-                        "name": "Read",
-                        "display_name": "Read Files",
-                        "description": "Read file contents from filesystem",
-                    },
-                    {
-                        "name": "Write",
-                        "display_name": "Write Files",
-                        "description": "Create or overwrite files",
-                    },
-                    {
-                        "name": "Edit",
-                        "display_name": "Edit Files",
-                        "description": "Make targeted edits to existing files",
-                    },
-                    {
-                        "name": "Glob",
-                        "display_name": "Pattern Match Files",
-                        "description": "Find files matching patterns (e.g., '**/*.js')",
-                    },
-                    {
-                        "name": "Grep",
-                        "display_name": "Search File Contents",
-                        "description": "Search for text patterns within files",
-                    },
-                    {
-                        "name": "Bash",
-                        "display_name": "Execute Shell Commands",
-                        "description": "Execute shell commands and scripts",
-                    },
-                    {
-                        "name": "WebSearch",
-                        "display_name": "Web Search",
-                        "description": "Search the web for current information",
-                    },
-                    {
-                        "name": "WebFetch",
-                        "display_name": "Fetch Web Page",
-                        "description": "Retrieve full content from URLs",
-                    },
-                ]
-            }
-            with open(self._tools_file, "w") as f:
-                json.dump(default_data, f, indent=2)
-
-    def _load(self) -> dict:
-        """Load tools.json."""
+        self._init_data_path(data_dir, "tools.json")
         self._ensure_file_exists()
 
-        with open(self._tools_file) as f:
-            return json.load(f)
-
-    def _save(self, data: dict) -> None:
-        """Save data to tools.json."""
-        self._data_dir.mkdir(parents=True, exist_ok=True)
-        with open(self._tools_file, "w") as f:
-            json.dump(data, f, indent=2)
+    def _get_default_data(self) -> dict:
+        """Return default data for a new tools.json file."""
+        return {
+            self.COLLECTION_KEY: [
+                {
+                    "name": "Read",
+                    "display_name": "Read Files",
+                    "description": "Read file contents from filesystem",
+                },
+                {
+                    "name": "Write",
+                    "display_name": "Write Files",
+                    "description": "Create or overwrite files",
+                },
+                {
+                    "name": "Edit",
+                    "display_name": "Edit Files",
+                    "description": "Make targeted edits to existing files",
+                },
+                {
+                    "name": "Glob",
+                    "display_name": "Pattern Match Files",
+                    "description": "Find files matching patterns (e.g., '**/*.js')",
+                },
+                {
+                    "name": "Grep",
+                    "display_name": "Search File Contents",
+                    "description": "Search for text patterns within files",
+                },
+                {
+                    "name": "Bash",
+                    "display_name": "Execute Shell Commands",
+                    "description": "Execute shell commands and scripts",
+                },
+                {
+                    "name": "WebSearch",
+                    "display_name": "Web Search",
+                    "description": "Search the web for current information",
+                },
+                {
+                    "name": "WebFetch",
+                    "display_name": "Fetch Web Page",
+                    "description": "Retrieve full content from URLs",
+                },
+            ]
+        }
 
     # =========================================================================
     # CRUD Operations
@@ -115,11 +90,7 @@ class ToolsService:
         Returns:
             List of Tool objects
         """
-        data = self._load()
-        tools = []
-        for tool_data in data.get("claude_code_tools", []):
-            tools.append(Tool.from_dict(tool_data))
-        return tools
+        return list(self._read_collection(Tool, self.COLLECTION_KEY, "name").values())
 
     def get(self, name: str) -> Optional[Tool]:
         """
@@ -131,11 +102,7 @@ class ToolsService:
         Returns:
             Tool if found, None otherwise
         """
-        data = self._load()
-        for tool_data in data.get("claude_code_tools", []):
-            if tool_data.get("name") == name:
-                return Tool.from_dict(tool_data)
-        return None
+        return self._read_collection(Tool, self.COLLECTION_KEY, "name").get(name)
 
     def add(self, tool: Tool) -> str:
         """
@@ -150,18 +117,13 @@ class ToolsService:
         Raises:
             ValueError: If tool with same name already exists
         """
-        data = self._load()
+        tools = self._read_collection(Tool, self.COLLECTION_KEY, "name")
 
-        # Check for existing tool with same name
-        for existing in data.get("claude_code_tools", []):
-            if existing.get("name") == tool.name:
-                raise ValueError(f"Tool already exists: {tool.name}")
+        if tool.name in tools:
+            raise ValueError(f"Tool already exists: {tool.name}")
 
-        if "claude_code_tools" not in data:
-            data["claude_code_tools"] = []
-
-        data["claude_code_tools"].append(tool.to_dict())
-        self._save(data)
+        tools[tool.name] = tool
+        self._write_collection(tools, self.COLLECTION_KEY)
 
         return tool.name
 
@@ -175,16 +137,15 @@ class ToolsService:
         Returns:
             True if updated, False if tool not found
         """
-        data = self._load()
-        tools_list = data.get("claude_code_tools", [])
+        tools = self._read_collection(Tool, self.COLLECTION_KEY, "name")
 
-        for i, existing in enumerate(tools_list):
-            if existing.get("name") == tool.name:
-                tools_list[i] = tool.to_dict()
-                self._save(data)
-                return True
+        if tool.name not in tools:
+            return False
 
-        return False
+        tools[tool.name] = tool
+        self._write_collection(tools, self.COLLECTION_KEY)
+
+        return True
 
     def delete(self, name: str) -> bool:
         """
@@ -196,16 +157,15 @@ class ToolsService:
         Returns:
             True if deleted, False if not found
         """
-        data = self._load()
-        tools_list = data.get("claude_code_tools", [])
+        tools = self._read_collection(Tool, self.COLLECTION_KEY, "name")
 
-        for i, existing in enumerate(tools_list):
-            if existing.get("name") == name:
-                tools_list.pop(i)
-                self._save(data)
-                return True
+        if name not in tools:
+            return False
 
-        return False
+        del tools[name]
+        self._write_collection(tools, self.COLLECTION_KEY)
+
+        return True
 
     # =========================================================================
     # Query Operations
