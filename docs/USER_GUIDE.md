@@ -61,7 +61,7 @@ For AI-powered features, you'll need:
 
 ## Main Window Overview
 
-<img src="assets/docs_img_task_list.png" width="80%" alt="Main Task List">
+<img src="../assets/images/ug-task-list.png" width="80%" alt="Main Task List">
 
 ### Header Bar
 
@@ -237,7 +237,7 @@ A **task** represents work assigned to an agent. Each task:
 **Shortcut**: `Ctrl+N`
 **Alternative**: Right-click in empty space → Create Task...
 
-<img src="assets/docs_img_task_create.png" width="80%" alt="Task Create Dialog">
+<img src="../assets/images/ug-task-create.png" width="80%" alt="Task Create Dialog">
 
 #### Task Creation Dialog
 
@@ -449,19 +449,19 @@ Expected Statuses:  READY_FOR_IMPLEMENTATION
 - **📄 View Full Log** - Opens complete task execution log
 - **📁 Open Output Folder** - Opens directory with task outputs
 
-<img src="assets/docs_img_task_details_general.png" width="80%" alt="Task Details - General Tab">
+<img src="../assets/images/ug-task-details-general.png" width="80%" alt="Task Details - General Tab">
 
 #### Prompt Tab
 
 Displays the complete prompt that was sent to Claude, extracted from the task log file.
 
-<img src="assets/docs_img_task_details_prompt.png" width="80%" alt="Task Details - Prompt Tab">
+<img src="../assets/images/ug-task-details-prompt.png" width="80%" alt="Task Details - Prompt Tab">
 
 #### Log Viewer
 
 View the full task execution log with search capability.
 
-<img src="assets/docs_img_task_details_log.png" width="80%" alt="Task Details - Log Viewer">
+<img src="../assets/images/ug-task-details-log.png" width="80%" alt="Task Details - Log Viewer">
 
 ---
 
@@ -507,7 +507,7 @@ The Agent Manager shows all agents in a table:
 
 Click **Create New Agent** in Agent Manager.
 
-<img src="assets/docs_img_edit_agent.png" width="80%" alt="Edit Agent Dialog">
+<img src="../assets/images/ug-edit-agent.png" width="80%" alt="Edit Agent Dialog">
 
 The Agent Details dialog has **three tabs** 
 
@@ -660,7 +660,7 @@ The Workflow Template Manager shows all available templates:
 
 Click **Create New Template** in Template Manager.
 
-<img src="assets/docs_img_workflow_edit.png" width="80%" alt="Edit Workflow Template">
+<img src="../assets/images/ug-workflow-edit.png" width="80%" alt="Edit Workflow Template">
 
 #### Template Basic Info
 
@@ -819,7 +819,7 @@ Click **Save Template**
 
 The Workflow Starter provides a quick, validated way to start multi-agent workflows.
 
-<img src="assets/docs_img_workflow_start.png" width="80%" alt="Start Workflow Dialog">
+<img src="../assets/images/ug-workflow-start.png" width="80%" alt="Start Workflow Dialog">
 
 #### Workflow Starter Interface
 
@@ -946,7 +946,7 @@ Enhancements serve as the primary input for your multi-agent workflows.
 
 **Requirements**: Claude API key must be configured.
 
-<img src="assets/docs_img_create_enhancement.png" width="80%" alt="Create Enhancement Dialog">
+<img src="../assets/images/ug-create-enhancement.png" width="80%" alt="Create Enhancement Dialog">
 
 #### Enhancement Generator Dialog
 
@@ -1784,7 +1784,7 @@ Create workflows tailored to your development process:
 ### Resources
 
 1. **This User Guide** - Comprehensive usage instructions
-2. **[README.md](README.md)** - Project overview and quick start
+2. **[README.md](../README.md)** - Project overview and quick start
 3. **[SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md)** - Technical reference
 4. **Operations Log** (`Ctrl+L`) - Debugging tool
 
