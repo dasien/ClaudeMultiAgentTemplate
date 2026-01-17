@@ -71,48 +71,34 @@ In the UI:
 <!-- Screenshot: File menu with Install option -->
 ![File Menu - Install](assets/images/demo-02-file-menu-install.png)
 
-CMAT will copy the templates to `demo/.claude/`, create `demo/enhancements/`, and automatically connect to the project.
+CMAT will setup the agent, skills, and other parts of the system to `demo/.claude/` and automatically connect to the project.
 
 <!-- Screenshot: Main window showing Connected status -->
 ![Connected Status](assets/images/demo-03-connected.png)
 
-### Step 3: Create the Enhancement
+### Step 3: Start the Workflow
 
-In the UI:
-1. Click **File > New Enhancement**
-2. Fill in the details:
-   - **Name**: `add-power-function`
-   - **Title**: Add Power Function to Calculator
-   - **Description**: Add a `power` command that computes exponentiation. `python demo/calculator.py power 2 3` should return `8.0`.
-3. Click **Create**
-
-<!-- Screenshot: Enhancement creation dialog -->
-![Enhancement Creation Dialog](assets/images/demo-04-new-enhancement.png)
-
-This creates `demo/enhancements/add-power-function/add-power-function.md`.
-
-### Step 4: Start the Workflow
+The demo includes pre-created enhancements at `demo/enhancements`.
 
 In the UI:
 1. Click **Workflows > Launch Workflow**
 2. Select **new-feature-development** workflow
-3. Select **add-power-function** enhancement
+3. Navigate to the **add-power-function** enhancement .md file and select it
 4. Click **Start**
 
 <!-- Screenshot: Workflow launcher dialog -->
-![Workflow Launcher](assets/images/demo-05-workflow-launcher.png)
+![Workflow Launcher](assets/images/demo-04-workflow-launcher.png)
 
 The first task (requirements-analyst) is created and marked as active.
 
-### Step 5: Monitor Progress
+### Step 4: Monitor Progress
 
 The UI shows:
 - **Active Tasks**: Currently running agent
 - **Completed Tasks**: Finished steps
-- **Queue Status**: Overall progress
 
 <!-- Screenshot: Task queue with active task -->
-![Task Queue - Active](assets/images/demo-06-task-active.png)
+![Task Queue - Active](assets/images/demo-05-task-active.png)
 
 Each agent will:
 - Read input from the previous step
@@ -121,9 +107,9 @@ Each agent will:
 - Report completion status
 
 <!-- Screenshot: Task details panel -->
-![Task Details](assets/images/demo-07-task-details.png)
+![Task Details](assets/images/demo-06-task-details.png)
 
-### Step 6: Workflow Progression
+### Step 5: Workflow Progression
 
 The workflow progresses automatically through:
 1. `READY_FOR_DEVELOPMENT` → starts architect task
@@ -133,9 +119,9 @@ The workflow progresses automatically through:
 5. `DOCUMENTATION_COMPLETE` → workflow complete
 
 <!-- Screenshot: Completed workflow with all tasks done -->
-![Workflow Complete](assets/images/demo-08-workflow-complete.png)
+![Workflow Complete](assets/images/demo-07-workflow-complete.png)
 
-### Step 7: Verify Results
+### Step 6: Verify Results
 
 After the workflow completes, verify the implementation:
 
