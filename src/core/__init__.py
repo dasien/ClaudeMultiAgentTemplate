@@ -4,7 +4,13 @@ CMAT - Claude Multi-Agent Template
 A Python framework for orchestrating multi-agent workflows using Claude.
 """
 
-__version__ = "10.4.0"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("cmat")
+except PackageNotFoundError:
+    # Package not installed (development mode without pip install -e)
+    __version__ = "0.0.0-dev"
 
 from .cmat import CMAT
 from .utils import (

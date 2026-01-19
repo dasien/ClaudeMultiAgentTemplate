@@ -70,10 +70,11 @@ Halt: `BLOCKED`, `NEEDS_CLARIFICATION`, `TESTS_FAILED`, `BUILD_FAILED`
 
 ## Version Tracking
 
-**Version must be updated in 3 places:**
-1. `pyproject.toml` - `version = "X.Y.Z"`
-2. `src/core/__init__.py` - `__version__ = "X.Y.Z"`
-3. `README.md` - `**Version**: X.Y.Z`
+**Version must be updated in 2 places:**
+1. `pyproject.toml` - `version = "X.Y.Z"` (source of truth)
+2. `README.md` - `**Version**: X.Y.Z` (documentation)
+
+Code reads version from `pyproject.toml` via `importlib.metadata`. After changing the version, run `pip install -e .` to update the installed package metadata.
 
 ## Code Style
 

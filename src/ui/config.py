@@ -4,14 +4,15 @@ Configuration settings for the CMAT system.
 
 from typing import Dict, List
 
+from core import __version__
+
 
 class Config:
     """Application configuration."""
 
     # Application info
     APP_NAME = "Claude Multi-Agent Manager"
-    VERSION = "10.4.0"
-
+    VERSION = __version__
     # Auto-refresh settings for main task view
     AUTO_REFRESH_INTERVAL = 3  # seconds
     AUTO_REFRESH_ENABLED_DEFAULT = True
