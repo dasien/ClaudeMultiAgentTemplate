@@ -157,6 +157,28 @@ Choose a completion status if your work is successful and ready for the next pha
 - ✅ Follows project conventions
 - ✅ Ready for testing phase
 
+## Verification Requirements
+
+**CRITICAL**: Before reporting completion, you MUST verify your changes were actually saved:
+
+1. **Read back modified files** - After editing a file, read it again to confirm your changes are present
+2. **Verify new files exist** - After creating files, confirm they exist and contain the expected content
+3. **Run verification commands** - If the enhancement spec includes verification commands, run them and confirm they pass
+4. **Report actual state, not intended state** - Your completion status must reflect what actually happened, not what you tried to do
+
+**If verification fails:**
+- Do NOT report a completion status like `READY_FOR_TESTING`
+- Instead, report `BLOCKED: Changes did not persist - [details]`
+- Include which files failed verification
+
+**Example verification:**
+```
+After editing src/core/services/my_service.py to add MyClass:
+1. Read the file back
+2. Confirm "class MyClass" appears in the content
+3. Only then report completion
+```
+
 ## Scope Boundaries
 
 ### ✅ DO:

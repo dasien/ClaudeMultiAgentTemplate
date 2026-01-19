@@ -60,12 +60,38 @@ class ModelPricing:
         )
 
     def to_json(self) -> str:
-        """Convert pricing to JSON string."""
+        """
+        Convert to JSON string.
+
+        Returns:
+            JSON string representation with 2-space indentation
+
+        Example:
+            >>> pricing = ModelPricing(input=3.0, output=15.0,
+            ...                        cache_write=3.75, cache_read=0.3)
+            >>> json_str = pricing.to_json()
+            >>> isinstance(json_str, str)
+            True
+        """
         return json.dumps(self.to_dict(), indent=2)
 
     @classmethod
     def from_json(cls, json_str: str) -> "ModelPricing":
-        """Create pricing from JSON string."""
+        """
+        Create ModelPricing from JSON string.
+
+        Args:
+            json_str: JSON string representation
+
+        Returns:
+            ModelPricing instance
+
+        Example:
+            >>> json_str = '{"input": 3.0, "output": 15.0, "cache_write": 3.75, "cache_read": 0.3}'
+            >>> pricing = ModelPricing.from_json(json_str)
+            >>> pricing.input
+            3.0
+        """
         return cls.from_dict(json.loads(json_str))
 
 

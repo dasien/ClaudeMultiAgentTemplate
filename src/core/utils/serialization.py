@@ -2,55 +2,70 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
-T = TypeVar('T', bound=Enum)
+T = TypeVar("T", bound=Enum)
 
 
-def datetime_to_iso(dt: Optional[datetime]) -> Optional[str]:
+def datetime_to_iso(dt: datetime | None) -> str | None:
     """
-    Convert datetime to ISO format string with Z suffix.
+    Convert datetime to ISO 8601 string with Z suffix.
 
     Args:
-        dt: Datetime object or None
+        dt: datetime object to convert, or None
 
     Returns:
-        ISO format string with Z suffix, or None if input is None
+        ISO 8601 string with trailing "Z", or None if input is None
 
-    Example:
-        >>> datetime_to_iso(datetime(2024, 1, 15, 12, 0, 0))
-        '2024-01-15T12:00:00Z'
+    Examples:
+        >>> from datetime import datetime, timezone
+        >>> datetime_to_iso(datetime(2025, 1, 17, 12, 0, 0, tzinfo=timezone.utc))
+        '2025-01-17T12:00:00+00:00Z'
+
+        >>> datetime_to_iso(None)
+        None
+
+    Notes:
+        - Always appends "Z" if not already present
+        - Preserves existing timezone information in isoformat
+        - Consistent with existing model behavior
     """
     if dt is None:
         return None
-    # Ensure consistent Z suffix for UTC
     iso_str = dt.isoformat()
     return iso_str if iso_str.endswith("Z") else iso_str + "Z"
 
 
-def iso_to_datetime(iso_str: Optional[str]) -> Optional[datetime]:
+def iso_to_datetime(iso_str: str | None) -> datetime | None:
     """
-    Convert ISO format string to datetime, handling Z suffix.
+    Convert ISO 8601 string to datetime, handling Z suffix.
 
     Args:
-        iso_str: ISO format string (with or without Z suffix) or None
+        iso_str: ISO 8601 formatted string, or None
 
     Returns:
-        datetime object or None if input is None
+        datetime object, or None if input is None
 
-    Example:
-        >>> iso_to_datetime('2024-01-15T12:00:00Z')
-        datetime(2024, 1, 15, 12, 0, 0)
+    Examples:
+        >>> iso_to_datetime('2025-01-17T12:00:00Z')
+        datetime.datetime(2025, 1, 17, 12, 0, 0)
+
+        >>> iso_to_datetime(None)
+        None
+
+    Notes:
+        - Strips trailing "Z" before parsing (fromisoformat doesn't handle it)
+        - Preserves timezone info if present
+        - Matches existing model deserialization behavior
     """
     if iso_str is None:
         return None
-    # Strip Z suffix for fromisoformat compatibility
     return datetime.fromisoformat(iso_str.rstrip("Z"))
 
 
 def enum_to_value(obj: Enum) -> Any:
     """
-    Convert enum to its value.
+    Extract value from enum instance.
 
     Args:
         obj: Enum instance
@@ -58,9 +73,17 @@ def enum_to_value(obj: Enum) -> Any:
     Returns:
         The enum's value
 
-    Example:
-        >>> enum_to_value(TaskStatus.ACTIVE)
-        'active'
+    Examples:
+        >>> from enum import Enum
+        >>> class Status(Enum):
+        ...     PENDING = "pending"
+        >>> enum_to_value(Status.PENDING)
+        'pending'
+
+    Notes:
+        - Generic function works with any Enum subclass
+        - Simply extracts .value attribute
+        - Used in to_dict() methods
     """
     return obj.value
 
@@ -74,10 +97,18 @@ def value_to_enum(enum_class: type[T], value: Any) -> T:
         value: The value to convert
 
     Returns:
-        Enum instance
+        Enum instance of the specified class
 
-    Example:
-        >>> value_to_enum(TaskStatus, 'active')
-        TaskStatus.ACTIVE
+    Examples:
+        >>> from enum import Enum
+        >>> class Status(Enum):
+        ...     PENDING = "pending"
+        >>> value_to_enum(Status, "pending")
+        <Status.PENDING: 'pending'>
+
+    Notes:
+        - Type-safe with generic TypeVar
+        - Raises ValueError if value not in enum
+        - Used in from_dict() methods
     """
     return enum_class(value)

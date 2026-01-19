@@ -11,13 +11,12 @@ import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 # Configure module logger
 logger = logging.getLogger("cmat")
 
 # Module-level configured project root - set by CMAT.__init__()
-_configured_project_root: Optional[Path] = None
+_configured_project_root: Path | None = None
 
 
 def set_project_root(path: Path) -> None:
@@ -32,7 +31,7 @@ def set_project_root(path: Path) -> None:
     _configured_project_root = path
 
 
-def get_configured_project_root() -> Optional[Path]:
+def get_configured_project_root() -> Path | None:
     """Get the configured project root, if set."""
     return _configured_project_root
 
@@ -47,7 +46,7 @@ def get_datetime_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
+def find_project_root(start_path: Path | None = None) -> Path | None:
     """
     Find the project root by locating the .claude directory.
 
@@ -76,7 +75,7 @@ def find_project_root(start_path: Optional[Path] = None) -> Optional[Path]:
     return None
 
 
-def ensure_directories(base_path: Optional[Path] = None) -> None:
+def ensure_directories(base_path: Path | None = None) -> None:
     """
     Ensure all required CMAT directories exist.
 
@@ -96,7 +95,7 @@ def ensure_directories(base_path: Optional[Path] = None) -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
 
-def log_operation(operation: str, details: str, logs_dir: Optional[Path] = None) -> None:
+def log_operation(operation: str, details: str, logs_dir: Path | None = None) -> None:
     """
     Log an operation to the queue operations log file.
 
@@ -124,13 +123,13 @@ def log_operation(operation: str, details: str, logs_dir: Optional[Path] = None)
     logger.debug(f"{operation}: {details}")
 
 
-def log_error(message: str, logs_dir: Optional[Path] = None) -> None:
+def log_error(message: str, logs_dir: Path | None = None) -> None:
     """Log an error message."""
     logger.error(message)
     log_operation("ERROR", message, logs_dir)
 
 
-def log_info(message: str, logs_dir: Optional[Path] = None) -> None:
+def log_info(message: str, logs_dir: Path | None = None) -> None:
     """Log an info message."""
     logger.info(message)
     log_operation("INFO", message, logs_dir)
@@ -160,7 +159,11 @@ def check_dependencies() -> dict:
 
     # Check claude
     claude_version = _get_command_version("claude", ["--version"], r"[\d.]+")
-    deps["claude"] = {"found": claude_version is not None, "version": claude_version, "required": True}
+    deps["claude"] = {
+        "found": claude_version is not None,
+        "version": claude_version,
+        "required": True,
+    }
     if not claude_version:
         all_satisfied = False
 
@@ -170,27 +173,20 @@ def check_dependencies() -> dict:
 
     # Check python
     import sys
+
     python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     deps["python"] = {"found": True, "version": python_version, "required": True}
 
-    return {
-        "satisfied": all_satisfied,
-        "dependencies": deps
-    }
+    return {"satisfied": all_satisfied, "dependencies": deps}
 
 
-def _get_command_version(command: str, args: list, pattern: str) -> Optional[str]:
+def _get_command_version(command: str, args: list, pattern: str) -> str | None:
     """Get version string from a command, or None if not found."""
     if not shutil.which(command):
         return None
 
     try:
-        result = subprocess.run(
-            [command] + args,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run([command] + args, capture_output=True, text=True, timeout=5)
         output = result.stdout + result.stderr
         match = re.search(pattern, output)
         return match.group(0) if match else "unknown"
@@ -198,7 +194,7 @@ def _get_command_version(command: str, args: list, pattern: str) -> Optional[str
         return "unknown"
 
 
-def extract_enhancement_name(source_file: str, task_id: Optional[str] = None) -> str:
+def extract_enhancement_name(source_file: str, task_id: str | None = None) -> str:
     """
     Extract enhancement name from a source file path.
 
@@ -242,7 +238,7 @@ def extract_enhancement_title(source_file: str) -> str:
 
     try:
         content = path.read_text()
-    except (IOError, OSError):
+    except OSError:
         return "Not part of an Enhancement"
 
     # Patterns to match (with or without markdown header)
@@ -281,10 +277,7 @@ def needs_integration(status: str) -> bool:
     return any(s in status for s in integration_statuses)
 
 
-def configure_logging(
-        level: int = logging.INFO,
-        log_file: Optional[Path] = None
-) -> None:
+def configure_logging(level: int = logging.INFO, log_file: Path | None = None) -> None:
     """
     Configure CMAT logging.
 
@@ -299,7 +292,5 @@ def configure_logging(
         handlers.append(logging.FileHandler(log_file))
 
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=handlers
+        level=level, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=handlers
     )

@@ -172,6 +172,29 @@ Choose a completion status if your work is successful and ready for the next pha
 - ✅ Performance is acceptable
 - ✅ No regressions in existing functionality
 
+## Pre-Testing Verification
+
+**CRITICAL**: Before running tests, you MUST verify the implementer's changes actually exist:
+
+1. **Read the modified files** - Don't assume changes were made; verify by reading the files
+2. **Check for claimed modifications** - If implementer claimed to add a method or class, confirm it exists in the file
+3. **Verify inheritance/imports** - If implementer claimed to change class inheritance, read the class definition and confirm
+4. **Run basic smoke tests** - Confirm the code compiles/imports before running the full test suite
+
+**If verification fails:**
+- Do NOT run tests on unchanged code and report success
+- Instead, report `BLOCKED: Implementer's claimed changes not found - [details]`
+- List which files or changes are missing
+
+**Example verification:**
+```
+If implementer claimed to refactor MyService to inherit from BaseMixin:
+1. Read src/core/services/my_service.py
+2. Find the class definition line
+3. Confirm it shows "class MyService(BaseMixin):" not "class MyService:"
+4. Only proceed with testing if verification passes
+```
+
 ## Scope Boundaries
 
 ### ✅ DO:

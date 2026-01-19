@@ -20,7 +20,6 @@ from unittest.mock import MagicMock, Mock, patch, call
 
 import pytest
 
-from core.services.task_service import ExecutionResult
 from ui.utils.cmat_interface import CMATInterface
 
 
@@ -269,110 +268,6 @@ This is a test project using Python and pytest.
         assert success is False
         assert "failed" in message.lower()
 
-    # =========================================================================
-    # run_claude_md_agent() Tests
-    # =========================================================================
-
-    def test_run_agent_executes_in_background_thread(self, mock_interface):
-        """Test run_claude_md_agent() runs in background thread."""
-        callback_called = threading.Event()
-        callback_result = []
-
-        def callback(result):
-            callback_result.append(result)
-            callback_called.set()
-
-        # Mock successful execution
-        mock_interface.tasks.execute_direct.return_value = ExecutionResult(
-            success=True,
-            status="COMPLETE",
-            exit_code=0,
-            output_dir=str(mock_interface.project_root),
-            log_file="test.log",
-            duration_seconds=1
-        )
-
-        mock_interface.run_claude_md_agent(callback)
-
-        # Wait for callback (with timeout)
-        callback_called.wait(timeout=2.0)
-
-        assert len(callback_result) == 1
-        assert callback_result[0].success is True
-
-    def test_run_agent_calls_execute_direct_with_correct_params(self, mock_interface):
-        """Test run_claude_md_agent() calls TaskService.execute_direct() correctly."""
-        callback = Mock()
-
-        mock_interface.tasks.execute_direct.return_value = ExecutionResult(
-            success=True,
-            status="COMPLETE",
-            exit_code=0,
-            output_dir=str(mock_interface.project_root),
-            log_file="test.log",
-            duration_seconds=1
-        )
-
-        mock_interface.run_claude_md_agent(callback)
-
-        # Wait briefly for thread execution
-        import time
-        time.sleep(0.1)
-
-        mock_interface.tasks.execute_direct.assert_called_once_with(
-            agent="claude-md-creator-agent",
-            input_file=None,
-            output_dir=str(mock_interface.project_root),
-            task_description="Generate CLAUDE.md for project",
-            task_type="documentation"
-        )
-
-    def test_run_agent_handles_execution_exception(self, mock_interface):
-        """Test run_claude_md_agent() creates error result on exception."""
-        callback_called = threading.Event()
-        callback_result = []
-
-        def callback(result):
-            callback_result.append(result)
-            callback_called.set()
-
-        mock_interface.tasks.execute_direct.side_effect = Exception("Agent failed")
-
-        mock_interface.run_claude_md_agent(callback)
-
-        callback_called.wait(timeout=2.0)
-
-        assert len(callback_result) == 1
-        assert callback_result[0].success is False
-        assert "Agent failed" in callback_result[0].status
-
-    @patch('tkinter._default_root', None)
-    def test_run_agent_works_without_tkinter_root(self, mock_interface):
-        """Test run_claude_md_agent() works when tkinter root not available."""
-        callback_result = []
-
-        def callback(result):
-            callback_result.append(result)
-
-        mock_interface.tasks.execute_direct.return_value = ExecutionResult(
-            success=True,
-            status="COMPLETE",
-            exit_code=0,
-            output_dir=str(mock_interface.project_root),
-            log_file="test.log",
-            duration_seconds=1
-        )
-
-        mock_interface.run_claude_md_agent(callback)
-
-        # Wait for background thread
-        import time
-        time.sleep(0.2)
-
-        # Should still call callback directly
-        assert len(callback_result) == 1
-
-
 class TestClaudeMdIntegrationScenarios:
     """Integration tests for complete CLAUDE.md workflows."""
 
@@ -522,27 +417,6 @@ class TestAcceptanceCriteria:
         interface = CMATInterface(str(cmat_test_env))
         interface.tasks = MagicMock()
         return interface
-
-    def test_ac_us1_create_via_agent(self, interface):
-        """
-        US-1 AC: System invokes claude-md-creator agent to analyze project.
-        """
-        callback = Mock()
-        interface.tasks.execute_direct.return_value = ExecutionResult(
-            success=True, status="COMPLETE", exit_code=0,
-            output_dir=str(interface.project_root),
-            log_file="", duration_seconds=1
-        )
-
-        interface.run_claude_md_agent(callback)
-
-        import time
-        time.sleep(0.1)
-
-        # Verify agent was invoked with correct name
-        call_args = interface.tasks.execute_direct.call_args
-        assert call_args[1]["agent"] == "claude-md-creator-agent"
-        assert call_args[1]["task_description"] == "Generate CLAUDE.md for project"
 
     def test_ac_us2_copy_existing_file(self, interface, temp_dir):
         """

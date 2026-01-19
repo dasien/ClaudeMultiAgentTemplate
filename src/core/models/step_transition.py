@@ -67,7 +67,7 @@ class StepTransition:
     @classmethod
     def from_json(cls, name: str, json_str: str) -> "StepTransition":
         """
-        Create transition from JSON string.
+        Create StepTransition from JSON string.
 
         Args:
             name: The status name (key for this transition)
@@ -75,5 +75,13 @@ class StepTransition:
 
         Returns:
             StepTransition instance
+
+        Example:
+            >>> json_str = '{"next_step": "implement", "auto_chain": true}'
+            >>> transition = StepTransition.from_json("READY", json_str)
+            >>> transition.name
+            'READY'
+            >>> transition.next_step
+            'implement'
         """
         return cls.from_dict(name, json.loads(json_str))

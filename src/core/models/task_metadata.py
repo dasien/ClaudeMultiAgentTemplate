@@ -5,8 +5,8 @@ Stores integration links, workflow context, execution details, and cost informat
 associated with a task.
 """
 
-import json
 from dataclasses import dataclass, field
+import json
 from typing import Optional
 
 
@@ -102,10 +102,35 @@ class TaskMetadata:
         )
 
     def to_json(self) -> str:
-        """Convert metadata to JSON string."""
+        """
+        Convert to JSON string.
+
+        Returns:
+            JSON string representation with 2-space indentation
+
+        Example:
+            >>> metadata = TaskMetadata(github_issue="ISSUE-123")
+            >>> json_str = metadata.to_json()
+            >>> isinstance(json_str, str)
+            True
+        """
         return json.dumps(self.to_dict(), indent=2)
 
     @classmethod
     def from_json(cls, json_str: str) -> "TaskMetadata":
-        """Create metadata from JSON string."""
+        """
+        Create TaskMetadata from JSON string.
+
+        Args:
+            json_str: JSON string representation
+
+        Returns:
+            TaskMetadata instance
+
+        Example:
+            >>> json_str = '{"github_issue": "ISSUE-123"}'
+            >>> metadata = TaskMetadata.from_json(json_str)
+            >>> metadata.github_issue
+            'ISSUE-123'
+        """
         return cls.from_dict(json.loads(json_str))

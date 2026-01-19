@@ -39,7 +39,7 @@ class ModelService(JSONFileServiceMixin):
         self._ensure_file_exists()
 
     def _get_default_data(self) -> dict:
-        """Return default data for a new models.json file."""
+        """Get default models data structure."""
         return {
             self.COLLECTION_KEY: {
                 "claude-sonnet-4.5": {
@@ -75,9 +75,8 @@ class ModelService(JSONFileServiceMixin):
         Returns:
             List of ClaudeModel objects
         """
-        return list(
-            self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY).values()
-        )
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        return list(collection.values())
 
     def get(self, model_id: str) -> Optional[ClaudeModel]:
         """
@@ -89,9 +88,8 @@ class ModelService(JSONFileServiceMixin):
         Returns:
             ClaudeModel if found, None otherwise
         """
-        return self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY).get(
-            model_id
-        )
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        return collection.get(model_id)
 
     def get_by_pattern(self, model_string: str) -> Optional[ClaudeModel]:
         """
@@ -151,23 +149,20 @@ class ModelService(JSONFileServiceMixin):
         Raises:
             ValueError: If model with same ID already exists
         """
-        models = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model.id in models:
+        if model.id in collection:
             raise ValueError(f"Model already exists: {model.id}")
 
-        models[model.id] = model
+        collection[model.id] = model
 
         # Preserve extra fields
-        data = self._read_json()
-        self._write_keyed_collection(
-            models,
-            self.COLLECTION_KEY,
-            {
-                "default_model": data.get("default_model", "claude-sonnet-4.5"),
-                "metadata": data.get("metadata", {}),
-            },
-        )
+        extra_fields = {
+            "default_model": data.get("default_model", ""),
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return model.id
 
@@ -181,23 +176,20 @@ class ModelService(JSONFileServiceMixin):
         Returns:
             True if updated, False if model not found
         """
-        models = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model.id not in models:
+        if model.id not in collection:
             return False
 
-        models[model.id] = model
+        collection[model.id] = model
 
         # Preserve extra fields
-        data = self._read_json()
-        self._write_keyed_collection(
-            models,
-            self.COLLECTION_KEY,
-            {
-                "default_model": data.get("default_model", "claude-sonnet-4.5"),
-                "metadata": data.get("metadata", {}),
-            },
-        )
+        extra_fields = {
+            "default_model": data.get("default_model", ""),
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return True
 
@@ -211,28 +203,26 @@ class ModelService(JSONFileServiceMixin):
         Returns:
             True if deleted, False if not found
         """
-        models = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model_id not in models:
+        if model_id not in collection:
             return False
 
-        del models[model_id]
+        del collection[model_id]
 
-        # Update default if we deleted the default model
-        data = self._read_json()
-        default_model = data.get("default_model", "claude-sonnet-4.5")
+        # If we deleted the default model, update to first remaining or empty
+        default_model = data.get("default_model", "")
         if default_model == model_id:
-            remaining = list(models.keys())
+            remaining = list(collection.keys())
             default_model = remaining[0] if remaining else ""
 
-        self._write_keyed_collection(
-            models,
-            self.COLLECTION_KEY,
-            {
-                "default_model": default_model,
-                "metadata": data.get("metadata", {}),
-            },
-        )
+        # Preserve extra fields
+        extra_fields = {
+            "default_model": default_model,
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return True
 
@@ -246,20 +236,18 @@ class ModelService(JSONFileServiceMixin):
         Returns:
             True if set, False if model not found
         """
-        models = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model_id not in models:
+        if model_id not in collection:
             return False
 
-        data = self._read_json()
-        self._write_keyed_collection(
-            models,
-            self.COLLECTION_KEY,
-            {
-                "default_model": model_id,
-                "metadata": data.get("metadata", {}),
-            },
-        )
+        # Update default_model field
+        extra_fields = {
+            "default_model": model_id,
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return True
 
@@ -319,9 +307,7 @@ class ModelService(JSONFileServiceMixin):
                         result["cache_creation_tokens"] += usage.get(
                             "cache_creation_input_tokens", 0
                         )
-                        result["cache_read_tokens"] += usage.get(
-                            "cache_read_input_tokens", 0
-                        )
+                        result["cache_read_tokens"] += usage.get("cache_read_input_tokens", 0)
 
                     # Capture model from first message that has it
                     if result["model"] is None:

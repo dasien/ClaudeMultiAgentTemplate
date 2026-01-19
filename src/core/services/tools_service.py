@@ -33,7 +33,7 @@ class ToolsService(JSONFileServiceMixin):
         self._ensure_file_exists()
 
     def _get_default_data(self) -> dict:
-        """Return default data for a new tools.json file."""
+        """Get default tools data structure."""
         return {
             self.COLLECTION_KEY: [
                 {
@@ -90,7 +90,8 @@ class ToolsService(JSONFileServiceMixin):
         Returns:
             List of Tool objects
         """
-        return list(self._read_collection(Tool, self.COLLECTION_KEY, "name").values())
+        collection = self._read_collection(Tool, self.COLLECTION_KEY, "name")
+        return list(collection.values())
 
     def get(self, name: str) -> Optional[Tool]:
         """
@@ -102,7 +103,8 @@ class ToolsService(JSONFileServiceMixin):
         Returns:
             Tool if found, None otherwise
         """
-        return self._read_collection(Tool, self.COLLECTION_KEY, "name").get(name)
+        collection = self._read_collection(Tool, self.COLLECTION_KEY, "name")
+        return collection.get(name)
 
     def add(self, tool: Tool) -> str:
         """
@@ -117,13 +119,14 @@ class ToolsService(JSONFileServiceMixin):
         Raises:
             ValueError: If tool with same name already exists
         """
-        tools = self._read_collection(Tool, self.COLLECTION_KEY, "name")
+        collection = self._read_collection(Tool, self.COLLECTION_KEY, "name")
 
-        if tool.name in tools:
+        # Check for existing tool with same name
+        if tool.name in collection:
             raise ValueError(f"Tool already exists: {tool.name}")
 
-        tools[tool.name] = tool
-        self._write_collection(tools, self.COLLECTION_KEY)
+        collection[tool.name] = tool
+        self._write_collection(collection, self.COLLECTION_KEY)
 
         return tool.name
 
@@ -137,13 +140,13 @@ class ToolsService(JSONFileServiceMixin):
         Returns:
             True if updated, False if tool not found
         """
-        tools = self._read_collection(Tool, self.COLLECTION_KEY, "name")
+        collection = self._read_collection(Tool, self.COLLECTION_KEY, "name")
 
-        if tool.name not in tools:
+        if tool.name not in collection:
             return False
 
-        tools[tool.name] = tool
-        self._write_collection(tools, self.COLLECTION_KEY)
+        collection[tool.name] = tool
+        self._write_collection(collection, self.COLLECTION_KEY)
 
         return True
 
@@ -157,13 +160,13 @@ class ToolsService(JSONFileServiceMixin):
         Returns:
             True if deleted, False if not found
         """
-        tools = self._read_collection(Tool, self.COLLECTION_KEY, "name")
+        collection = self._read_collection(Tool, self.COLLECTION_KEY, "name")
 
-        if name not in tools:
+        if name not in collection:
             return False
 
-        del tools[name]
-        self._write_collection(tools, self.COLLECTION_KEY)
+        del collection[name]
+        self._write_collection(collection, self.COLLECTION_KEY)
 
         return True
 

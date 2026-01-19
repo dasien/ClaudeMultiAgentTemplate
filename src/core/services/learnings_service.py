@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 @dataclass
 class RetrievalContext:
     """Context for learning retrieval."""
+
     agent_name: str
     task_type: str
     task_description: str
@@ -120,7 +121,7 @@ JSON response:"""
         self._ensure_file_exists()
 
     def _get_default_data(self) -> dict:
-        """Return default data for a new learnings.json file."""
+        """Get default learnings data structure."""
         return {
             "version": "1.0.0",
             "last_updated": get_timestamp(),
@@ -128,21 +129,13 @@ JSON response:"""
             self.COLLECTION_KEY: [],
         }
 
-    def _read_learnings(self) -> dict[str, Learning]:
-        """Read all learnings from storage."""
-        return self._read_collection(Learning, self.COLLECTION_KEY, "id")
-
-    def _write_learnings(self, learnings: dict[str, Learning]) -> None:
-        """Write all learnings to storage."""
-        self._write_collection(
-            learnings,
-            self.COLLECTION_KEY,
-            {
-                "version": "1.0.0",
-                "last_updated": get_timestamp(),
-                "count": len(learnings),
-            },
-        )
+    def _get_metadata_fields(self, learnings_count: int) -> dict:
+        """Build metadata fields for writes."""
+        return {
+            "version": "1.0.0",
+            "last_updated": get_timestamp(),
+            "count": learnings_count,
+        }
 
     # =========================================================================
     # Storage Operations
@@ -154,46 +147,51 @@ JSON response:"""
 
         Returns the learning ID.
         """
-        learnings = self._read_learnings()
-        learnings[learning.id] = learning
-        self._write_learnings(learnings)
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        collection[learning.id] = learning
+        extra_fields = self._get_metadata_fields(len(collection))
+        self._write_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         log_operation("LEARNING_STORED", f"ID: {learning.id}, Summary: {learning.summary[:50]}...")
         return learning.id
 
     def get(self, learning_id: str) -> Optional[Learning]:
         """Get a learning by ID."""
-        return self._read_learnings().get(learning_id)
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return collection.get(learning_id)
 
     def delete(self, learning_id: str) -> bool:
         """Delete a learning by ID."""
-        learnings = self._read_learnings()
-        if learning_id not in learnings:
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        if learning_id not in collection:
             return False
 
-        del learnings[learning_id]
-        self._write_learnings(learnings)
+        del collection[learning_id]
+        extra_fields = self._get_metadata_fields(len(collection))
+        self._write_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         log_operation("LEARNING_DELETED", f"ID: {learning_id}")
         return True
 
     def list_all(self) -> list[Learning]:
         """List all learnings."""
-        return list(self._read_learnings().values())
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return list(collection.values())
 
     def list_by_tags(self, tags: list[str]) -> list[Learning]:
         """List learnings matching any of the given tags."""
-        learnings = self._read_learnings()
-        return [l for l in learnings.values() if l.matches_tags(tags)]
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return [l for l in collection.values() if l.matches_tags(tags)]
 
     def list_by_source(self, source_type: str) -> list[Learning]:
         """List learnings from a specific source type."""
-        learnings = self._read_learnings()
-        return [l for l in learnings.values() if l.source_type == source_type]
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return [l for l in collection.values() if l.source_type == source_type]
 
     def count(self) -> int:
         """Get the total number of learnings."""
-        return len(self._read_learnings())
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return len(collection)
 
     # =========================================================================
     # Extraction (Claude-powered)
@@ -251,7 +249,7 @@ JSON response:"""
 
             log_operation(
                 "LEARNINGS_EXTRACTED",
-                f"Extracted {len(learnings)} learnings from {agent_name} output"
+                f"Extracted {len(learnings)} learnings from {agent_name} output",
             )
             return learnings
 
@@ -308,10 +306,12 @@ JSON response:"""
             return candidates
 
         # Format learnings for Claude
-        learnings_list = "\n".join([
-            f"- ID: {l.id}\n  Summary: {l.summary}\n  Tags: {', '.join(l.tags)}\n  Applies to: {', '.join(l.applies_to)}\n  Confidence: {l.confidence:.0%}"
-            for l in candidates
-        ])
+        learnings_list = "\n".join(
+            [
+                f"- ID: {l.id}\n  Summary: {l.summary}\n  Tags: {', '.join(l.tags)}\n  Applies to: {', '.join(l.applies_to)}\n  Confidence: {l.confidence:.0%}"
+                for l in candidates
+            ]
+        )
 
         prompt = self.RETRIEVAL_PROMPT.format(
             agent_name=context.agent_name,
@@ -345,7 +345,7 @@ JSON response:"""
 
             log_operation(
                 "LEARNINGS_RETRIEVED",
-                f"Retrieved {len(selected)} learnings for {context.agent_name}"
+                f"Retrieved {len(selected)} learnings for {context.agent_name}",
             )
             return selected
 
@@ -412,7 +412,8 @@ They represent past decisions that may or may not apply to the current context.
             result = subprocess.run(
                 [
                     "claude",
-                    "--model", "claude-3-haiku-20240307",
+                    "--model",
+                    "claude-3-haiku-20240307",
                     "--print",  # Output to stdout instead of interactive
                     prompt,
                 ],

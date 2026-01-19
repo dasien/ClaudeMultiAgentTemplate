@@ -14,6 +14,7 @@ from .task_service import TaskService
 from .learnings_service import LearningsService, RetrievalContext
 from .model_service import ModelService
 from .tools_service import ToolsService
+from .base import JSONFileServiceMixin
 
 __all__ = [
     "JSONFileServiceMixin",
@@ -26,4 +27,5 @@ __all__ = [
     "RetrievalContext",
     "ModelService",
     "ToolsService",
+    "JSONFileServiceMixin",
 ]
