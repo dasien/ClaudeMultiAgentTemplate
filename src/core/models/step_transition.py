@@ -63,3 +63,25 @@ class StepTransition:
     def to_json(self) -> str:
         """Serialize to JSON string."""
         return json.dumps({self.name: self.to_dict()}, indent=2)
+
+    @classmethod
+    def from_json(cls, name: str, json_str: str) -> "StepTransition":
+        """
+        Create StepTransition from JSON string.
+
+        Args:
+            name: The status name (key for this transition)
+            json_str: JSON string representation
+
+        Returns:
+            StepTransition instance
+
+        Example:
+            >>> json_str = '{"next_step": "implement", "auto_chain": true}'
+            >>> transition = StepTransition.from_json("READY", json_str)
+            >>> transition.name
+            'READY'
+            >>> transition.next_step
+            'implement'
+        """
+        return cls.from_dict(name, json.loads(json_str))

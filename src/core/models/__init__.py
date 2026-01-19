@@ -16,6 +16,7 @@ from .tool import Tool
 from .claude_model import ClaudeModel, ModelPricing
 from .enhancement import Enhancement
 from .learning import Learning
+from .protocols import Serializable
 
 __all__ = [
     "Task",
@@ -32,4 +33,5 @@ __all__ = [
     "ModelPricing",
     "Enhancement",
     "Learning",
+    "Serializable",
 ]

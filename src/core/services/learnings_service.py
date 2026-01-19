@@ -13,10 +13,10 @@ Uses the "Full Claude" approach:
 import json
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from core.models.learning import Learning
+from core.services.base import JSONFileServiceMixin
 from core.utils import get_timestamp, log_operation, log_error, find_project_root
 
 if TYPE_CHECKING:
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 @dataclass
 class RetrievalContext:
     """Context for learning retrieval."""
+
     agent_name: str
     task_type: str
     task_description: str
@@ -33,7 +34,7 @@ class RetrievalContext:
     tags: Optional[list[str]] = None
 
 
-class LearningsService:
+class LearningsService(JSONFileServiceMixin):
     """
     Manages the RAG/learnings system for CMAT.
 
@@ -42,6 +43,8 @@ class LearningsService:
 
     Storage: Simple JSON file at .claude/data/learnings.json
     """
+
+    COLLECTION_KEY = "learnings"
 
     # Extraction prompt template
     EXTRACTION_PROMPT = """Analyze this agent output and extract any learnings that would help future tasks.
@@ -114,51 +117,25 @@ JSON response:"""
         self,
         data_dir: Optional[str] = None,
     ):
-        # Resolve path relative to project root, not cwd
-        if data_dir is None:
-            project_root = find_project_root()
-            if project_root:
-                self.learnings_file = project_root / ".claude/data/learnings.json"
-            else:
-                self.learnings_file = Path(".claude/data/learnings.json")
-        else:
-            self.learnings_file = Path(data_dir) / "learnings.json"
+        self._init_data_path(data_dir, "learnings.json")
+        self._ensure_file_exists()
 
-        self._ensure_storage_exists()
-
-    def _ensure_storage_exists(self) -> None:
-        """Ensure the storage directory and file exist."""
-        self.learnings_file.parent.mkdir(parents=True, exist_ok=True)
-
-        if not self.learnings_file.exists():
-            self._write_learnings({})
-
-    def _read_learnings(self) -> dict[str, Learning]:
-        """Read all learnings from storage."""
-        if not self.learnings_file.exists():
-            return {}
-
-        with open(self.learnings_file, 'r') as f:
-            data = json.load(f)
-
-        learnings = {}
-        for learning_data in data.get("learnings", []):
-            learning = Learning.from_dict(learning_data)
-            learnings[learning.id] = learning
-
-        return learnings
-
-    def _write_learnings(self, learnings: dict[str, Learning]) -> None:
-        """Write all learnings to storage."""
-        data = {
+    def _get_default_data(self) -> dict:
+        """Get default learnings data structure."""
+        return {
             "version": "1.0.0",
             "last_updated": get_timestamp(),
-            "count": len(learnings),
-            "learnings": [l.to_dict() for l in learnings.values()],
+            "count": 0,
+            self.COLLECTION_KEY: [],
         }
 
-        with open(self.learnings_file, 'w') as f:
-            json.dump(data, f, indent=2)
+    def _get_metadata_fields(self, learnings_count: int) -> dict:
+        """Build metadata fields for writes."""
+        return {
+            "version": "1.0.0",
+            "last_updated": get_timestamp(),
+            "count": learnings_count,
+        }
 
     # =========================================================================
     # Storage Operations
@@ -170,46 +147,51 @@ JSON response:"""
 
         Returns the learning ID.
         """
-        learnings = self._read_learnings()
-        learnings[learning.id] = learning
-        self._write_learnings(learnings)
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        collection[learning.id] = learning
+        extra_fields = self._get_metadata_fields(len(collection))
+        self._write_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         log_operation("LEARNING_STORED", f"ID: {learning.id}, Summary: {learning.summary[:50]}...")
         return learning.id
 
     def get(self, learning_id: str) -> Optional[Learning]:
         """Get a learning by ID."""
-        return self._read_learnings().get(learning_id)
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return collection.get(learning_id)
 
     def delete(self, learning_id: str) -> bool:
         """Delete a learning by ID."""
-        learnings = self._read_learnings()
-        if learning_id not in learnings:
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        if learning_id not in collection:
             return False
 
-        del learnings[learning_id]
-        self._write_learnings(learnings)
+        del collection[learning_id]
+        extra_fields = self._get_metadata_fields(len(collection))
+        self._write_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         log_operation("LEARNING_DELETED", f"ID: {learning_id}")
         return True
 
     def list_all(self) -> list[Learning]:
         """List all learnings."""
-        return list(self._read_learnings().values())
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return list(collection.values())
 
     def list_by_tags(self, tags: list[str]) -> list[Learning]:
         """List learnings matching any of the given tags."""
-        learnings = self._read_learnings()
-        return [l for l in learnings.values() if l.matches_tags(tags)]
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return [l for l in collection.values() if l.matches_tags(tags)]
 
     def list_by_source(self, source_type: str) -> list[Learning]:
         """List learnings from a specific source type."""
-        learnings = self._read_learnings()
-        return [l for l in learnings.values() if l.source_type == source_type]
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return [l for l in collection.values() if l.source_type == source_type]
 
     def count(self) -> int:
         """Get the total number of learnings."""
-        return len(self._read_learnings())
+        collection = self._read_collection(Learning, self.COLLECTION_KEY, "id")
+        return len(collection)
 
     # =========================================================================
     # Extraction (Claude-powered)
@@ -267,7 +249,7 @@ JSON response:"""
 
             log_operation(
                 "LEARNINGS_EXTRACTED",
-                f"Extracted {len(learnings)} learnings from {agent_name} output"
+                f"Extracted {len(learnings)} learnings from {agent_name} output",
             )
             return learnings
 
@@ -324,10 +306,12 @@ JSON response:"""
             return candidates
 
         # Format learnings for Claude
-        learnings_list = "\n".join([
-            f"- ID: {l.id}\n  Summary: {l.summary}\n  Tags: {', '.join(l.tags)}\n  Applies to: {', '.join(l.applies_to)}\n  Confidence: {l.confidence:.0%}"
-            for l in candidates
-        ])
+        learnings_list = "\n".join(
+            [
+                f"- ID: {l.id}\n  Summary: {l.summary}\n  Tags: {', '.join(l.tags)}\n  Applies to: {', '.join(l.applies_to)}\n  Confidence: {l.confidence:.0%}"
+                for l in candidates
+            ]
+        )
 
         prompt = self.RETRIEVAL_PROMPT.format(
             agent_name=context.agent_name,
@@ -361,7 +345,7 @@ JSON response:"""
 
             log_operation(
                 "LEARNINGS_RETRIEVED",
-                f"Retrieved {len(selected)} learnings for {context.agent_name}"
+                f"Retrieved {len(selected)} learnings for {context.agent_name}",
             )
             return selected
 
@@ -428,7 +412,8 @@ They represent past decisions that may or may not apply to the current context.
             result = subprocess.run(
                 [
                     "claude",
-                    "--model", "claude-3-haiku-20240307",
+                    "--model",
+                    "claude-3-haiku-20240307",
                     "--print",  # Output to stdout instead of interactive
                     prompt,
                 ],

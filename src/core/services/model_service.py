@@ -14,16 +14,18 @@ from pathlib import Path
 from typing import Optional
 
 from core.models.claude_model import ClaudeModel, ModelPricing
-from core.utils import find_project_root
+from core.services.base import JSONFileServiceMixin
 
 
-class ModelService:
+class ModelService(JSONFileServiceMixin):
     """
     Service for managing Claude models and calculating costs.
 
     Provides CRUD operations for model definitions and cost extraction
     from Claude transcripts.
     """
+
+    COLLECTION_KEY = "models"
 
     def __init__(self, data_dir: Optional[str] = None):
         """
@@ -33,59 +35,34 @@ class ModelService:
             data_dir: Path to data directory containing models.json.
                      If None, uses default location via find_project_root().
         """
-        if data_dir is None:
-            project_root = find_project_root()
-            if project_root:
-                self._data_dir = project_root / ".claude/data"
-            else:
-                self._data_dir = Path(".claude/data")
-        else:
-            self._data_dir = Path(data_dir)
-
-        self._models_file = self._data_dir / "models.json"
-
-    def _ensure_file_exists(self) -> None:
-        """Ensure models.json exists with default content."""
-        if not self._models_file.exists():
-            self._data_dir.mkdir(parents=True, exist_ok=True)
-            default_data = {
-                "models": {
-                    "claude-sonnet-4.5": {
-                        "pattern": "*sonnet-4-5*|*sonnet-4*",
-                        "name": "Claude Sonnet 4.5",
-                        "description": "Balanced model for most tasks",
-                        "max_tokens": 200000,
-                        "pricing": {
-                            "input": 3.00,
-                            "output": 15.00,
-                            "cache_write": 3.75,
-                            "cache_read": 0.30,
-                            "currency": "USD",
-                            "per_tokens": 1000000,
-                        },
-                    }
-                },
-                "default_model": "claude-sonnet-4.5",
-                "metadata": {
-                    "last_updated": "",
-                    "pricing_source": "https://www.anthropic.com/pricing",
-                },
-            }
-            with open(self._models_file, "w") as f:
-                json.dump(default_data, f, indent=2)
-
-    def _load(self) -> dict:
-        """Load models.json."""
+        self._init_data_path(data_dir, "models.json")
         self._ensure_file_exists()
 
-        with open(self._models_file) as f:
-            return json.load(f)
-
-    def _save(self, data: dict) -> None:
-        """Save data to models.json."""
-        self._data_dir.mkdir(parents=True, exist_ok=True)
-        with open(self._models_file, "w") as f:
-            json.dump(data, f, indent=2)
+    def _get_default_data(self) -> dict:
+        """Get default models data structure."""
+        return {
+            self.COLLECTION_KEY: {
+                "claude-sonnet-4.5": {
+                    "pattern": "*sonnet-4-5*|*sonnet-4*",
+                    "name": "Claude Sonnet 4.5",
+                    "description": "Balanced model for most tasks",
+                    "max_tokens": 200000,
+                    "pricing": {
+                        "input": 3.00,
+                        "output": 15.00,
+                        "cache_write": 3.75,
+                        "cache_read": 0.30,
+                        "currency": "USD",
+                        "per_tokens": 1000000,
+                    },
+                }
+            },
+            "default_model": "claude-sonnet-4.5",
+            "metadata": {
+                "last_updated": "",
+                "pricing_source": "https://www.anthropic.com/pricing",
+            },
+        }
 
     # =========================================================================
     # CRUD Operations
@@ -98,11 +75,8 @@ class ModelService:
         Returns:
             List of ClaudeModel objects
         """
-        data = self._load()
-        models = []
-        for model_id, model_data in data.get("models", {}).items():
-            models.append(ClaudeModel.from_dict(model_id, model_data))
-        return models
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        return list(collection.values())
 
     def get(self, model_id: str) -> Optional[ClaudeModel]:
         """
@@ -114,11 +88,8 @@ class ModelService:
         Returns:
             ClaudeModel if found, None otherwise
         """
-        data = self._load()
-        model_data = data.get("models", {}).get(model_id)
-        if model_data:
-            return ClaudeModel.from_dict(model_id, model_data)
-        return None
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
+        return collection.get(model_id)
 
     def get_by_pattern(self, model_string: str) -> Optional[ClaudeModel]:
         """
@@ -143,7 +114,7 @@ class ModelService:
         Returns:
             Default ClaudeModel (falls back to Sonnet 4.5 if not configured)
         """
-        data = self._load()
+        data = self._read_json()
         default_id = data.get("default_model", "claude-sonnet-4.5")
         model = self.get(default_id)
 
@@ -178,16 +149,20 @@ class ModelService:
         Raises:
             ValueError: If model with same ID already exists
         """
-        data = self._load()
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model.id in data.get("models", {}):
+        if model.id in collection:
             raise ValueError(f"Model already exists: {model.id}")
 
-        if "models" not in data:
-            data["models"] = {}
+        collection[model.id] = model
 
-        data["models"][model.id] = model.to_dict()
-        self._save(data)
+        # Preserve extra fields
+        extra_fields = {
+            "default_model": data.get("default_model", ""),
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return model.id
 
@@ -201,13 +176,20 @@ class ModelService:
         Returns:
             True if updated, False if model not found
         """
-        data = self._load()
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model.id not in data.get("models", {}):
+        if model.id not in collection:
             return False
 
-        data["models"][model.id] = model.to_dict()
-        self._save(data)
+        collection[model.id] = model
+
+        # Preserve extra fields
+        extra_fields = {
+            "default_model": data.get("default_model", ""),
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return True
 
@@ -221,19 +203,26 @@ class ModelService:
         Returns:
             True if deleted, False if not found
         """
-        data = self._load()
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model_id not in data.get("models", {}):
+        if model_id not in collection:
             return False
 
-        del data["models"][model_id]
+        del collection[model_id]
 
-        # If we deleted the default model, clear the default
-        if data.get("default_model") == model_id:
-            remaining = list(data.get("models", {}).keys())
-            data["default_model"] = remaining[0] if remaining else ""
+        # If we deleted the default model, update to first remaining or empty
+        default_model = data.get("default_model", "")
+        if default_model == model_id:
+            remaining = list(collection.keys())
+            default_model = remaining[0] if remaining else ""
 
-        self._save(data)
+        # Preserve extra fields
+        extra_fields = {
+            "default_model": default_model,
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return True
 
@@ -247,13 +236,18 @@ class ModelService:
         Returns:
             True if set, False if model not found
         """
-        data = self._load()
+        data = self._read_json()
+        collection = self._read_keyed_collection(ClaudeModel, self.COLLECTION_KEY)
 
-        if model_id not in data.get("models", {}):
+        if model_id not in collection:
             return False
 
-        data["default_model"] = model_id
-        self._save(data)
+        # Update default_model field
+        extra_fields = {
+            "default_model": model_id,
+            "metadata": data.get("metadata", {}),
+        }
+        self._write_keyed_collection(collection, self.COLLECTION_KEY, extra_fields)
 
         return True
 
@@ -313,9 +307,7 @@ class ModelService:
                         result["cache_creation_tokens"] += usage.get(
                             "cache_creation_input_tokens", 0
                         )
-                        result["cache_read_tokens"] += usage.get(
-                            "cache_read_input_tokens", 0
-                        )
+                        result["cache_read_tokens"] += usage.get("cache_read_input_tokens", 0)
 
                     # Capture model from first message that has it
                     if result["model"] is None:
