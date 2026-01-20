@@ -100,8 +100,8 @@
           "required_output": "documentation_summary.md",
           "on_status": {
             "DOCUMENTATION_COMPLETE": {
-              "next_step": null,
-              "auto_chain": false
+              "next_step": "retrospective",
+              "auto_chain": true
             },
             "BLOCKED": {
               "next_step": null,
@@ -112,6 +112,22 @@
               "next_step": null,
               "auto_chain": false,
               "description": "Need more information to complete documentation"
+            }
+          }
+        },
+        {
+          "agent": "retrospective",
+          "input": "enhancements/{enhancement_name}/",
+          "required_output": "learnings_actions.json",
+          "on_status": {
+            "RETROSPECTIVE_COMPLETE": {
+              "next_step": null,
+              "auto_chain": false
+            },
+            "BLOCKED": {
+              "next_step": null,
+              "auto_chain": false,
+              "description": "Cannot proceed without external input or decision"
             }
           }
         }

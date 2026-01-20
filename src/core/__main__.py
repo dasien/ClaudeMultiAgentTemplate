@@ -74,7 +74,6 @@ def print_learning(learning: Learning, verbose: bool = False) -> None:
     print(f"  Tags: {', '.join(learning.tags) if learning.tags else '(none)'}")
     print(f"  Applies to: {', '.join(learning.applies_to) if learning.applies_to else '(any)'}")
     print(f"  Source: {learning.source_type}")
-    print(f"  Confidence: {learning.confidence:.0%}")
     print(f"  Created: {learning.created}")
     if verbose:
         print(f"  Content:\n    {learning.content}")

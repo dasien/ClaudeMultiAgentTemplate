@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "last_updated": "2025-12-26T17:30:55Z",
-  "count": 45,
+  "migrated_to_vector": false,
   "learnings": [
     {
       "id": "learn_1766411525_54071",
@@ -18,7 +18,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766411457_55160",
-      "confidence": 0.8,
       "created": "2025-12-22T13:52:05Z"
     },
     {
@@ -34,7 +33,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766411457_55160",
-      "confidence": 0.7,
       "created": "2025-12-22T13:52:05Z"
     },
     {
@@ -51,7 +49,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766411457_55160",
-      "confidence": 0.8,
       "created": "2025-12-22T13:52:05Z"
     },
     {
@@ -69,7 +66,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414550_52021",
-      "confidence": 0.9,
       "created": "2025-12-22T14:43:39Z"
     },
     {
@@ -86,7 +82,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414550_52021",
-      "confidence": 0.8,
       "created": "2025-12-22T14:43:39Z"
     },
     {
@@ -104,7 +99,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414550_52021",
-      "confidence": 0.9,
       "created": "2025-12-22T14:43:39Z"
     },
     {
@@ -122,7 +116,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414619_59276",
-      "confidence": 0.9,
       "created": "2025-12-22T14:45:11Z"
     },
     {
@@ -139,7 +132,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414619_59276",
-      "confidence": 0.8,
       "created": "2025-12-22T14:45:11Z"
     },
     {
@@ -156,7 +148,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414619_59276",
-      "confidence": 0.7,
       "created": "2025-12-22T14:45:11Z"
     },
     {
@@ -174,7 +165,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414711_17770",
-      "confidence": 0.8,
       "created": "2025-12-22T14:48:02Z"
     },
     {
@@ -191,7 +181,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414711_17770",
-      "confidence": 0.9,
       "created": "2025-12-22T14:48:02Z"
     },
     {
@@ -208,7 +197,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414711_17770",
-      "confidence": 0.8,
       "created": "2025-12-22T14:48:02Z"
     },
     {
@@ -226,7 +214,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414882_87785",
-      "confidence": 0.8,
       "created": "2025-12-22T14:50:24Z"
     },
     {
@@ -243,7 +230,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414882_87785",
-      "confidence": 0.7,
       "created": "2025-12-22T14:50:24Z"
     },
     {
@@ -261,7 +247,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766414882_87785",
-      "confidence": 0.9,
       "created": "2025-12-22T14:50:24Z"
     },
     {
@@ -278,7 +263,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766415024_70453",
-      "confidence": 0.8,
       "created": "2025-12-22T14:51:46Z"
     },
     {
@@ -295,7 +279,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766415024_70453",
-      "confidence": 0.9,
       "created": "2025-12-22T14:51:46Z"
     },
     {
@@ -312,7 +295,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766415024_70453",
-      "confidence": 0.8,
       "created": "2025-12-22T14:51:46Z"
     },
     {
@@ -330,7 +312,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593092_79633",
-      "confidence": 0.8,
       "created": "2025-12-24T16:19:26Z"
     },
     {
@@ -347,7 +328,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593092_79633",
-      "confidence": 0.7,
       "created": "2025-12-24T16:19:26Z"
     },
     {
@@ -364,7 +344,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593092_79633",
-      "confidence": 0.9,
       "created": "2025-12-24T16:19:26Z"
     },
     {
@@ -382,7 +361,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593166_99805",
-      "confidence": 0.8,
       "created": "2025-12-24T16:21:01Z"
     },
     {
@@ -400,7 +378,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593166_99805",
-      "confidence": 0.9,
       "created": "2025-12-24T16:21:01Z"
     },
     {
@@ -417,7 +394,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593166_99805",
-      "confidence": 0.8,
       "created": "2025-12-24T16:21:01Z"
     },
     {
@@ -435,7 +411,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593261_81500",
-      "confidence": 0.9,
       "created": "2025-12-24T16:23:38Z"
     },
     {
@@ -453,7 +428,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593261_81500",
-      "confidence": 0.8,
       "created": "2025-12-24T16:23:38Z"
     },
     {
@@ -470,7 +444,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593261_81500",
-      "confidence": 0.7,
       "created": "2025-12-24T16:23:38Z"
     },
     {
@@ -487,7 +460,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593418_27752",
-      "confidence": 0.9,
       "created": "2025-12-24T16:26:17Z"
     },
     {
@@ -506,7 +478,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593418_27752",
-      "confidence": 0.8,
       "created": "2025-12-24T16:26:17Z"
     },
     {
@@ -523,7 +494,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593418_27752",
-      "confidence": 0.9,
       "created": "2025-12-24T16:26:17Z"
     },
     {
@@ -541,7 +511,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593577_50905",
-      "confidence": 0.9,
       "created": "2025-12-24T16:27:39Z"
     },
     {
@@ -558,7 +527,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593577_50905",
-      "confidence": 0.8,
       "created": "2025-12-24T16:27:39Z"
     },
     {
@@ -576,7 +544,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766593577_50905",
-      "confidence": 0.8,
       "created": "2025-12-24T16:27:39Z"
     },
     {
@@ -595,7 +562,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769821_65151",
-      "confidence": 0.8,
       "created": "2025-12-26T17:24:55Z"
     },
     {
@@ -612,7 +578,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769821_65151",
-      "confidence": 0.9,
       "created": "2025-12-26T17:24:55Z"
     },
     {
@@ -629,7 +594,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769821_65151",
-      "confidence": 0.8,
       "created": "2025-12-26T17:24:55Z"
     },
     {
@@ -647,7 +611,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769895_55917",
-      "confidence": 0.9,
       "created": "2025-12-26T17:26:36Z"
     },
     {
@@ -664,7 +627,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769895_55917",
-      "confidence": 0.8,
       "created": "2025-12-26T17:26:36Z"
     },
     {
@@ -682,7 +644,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769895_55917",
-      "confidence": 0.8,
       "created": "2025-12-26T17:26:36Z"
     },
     {
@@ -700,7 +661,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769996_95282",
-      "confidence": 0.9,
       "created": "2025-12-26T17:29:13Z"
     },
     {
@@ -717,7 +677,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769996_95282",
-      "confidence": 0.8,
       "created": "2025-12-26T17:29:13Z"
     },
     {
@@ -734,7 +693,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766769996_95282",
-      "confidence": 0.9,
       "created": "2025-12-26T17:29:13Z"
     },
     {
@@ -751,7 +709,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766770153_16566",
-      "confidence": 0.8,
       "created": "2025-12-26T17:30:55Z"
     },
     {
@@ -768,7 +725,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766770153_16566",
-      "confidence": 0.7,
       "created": "2025-12-26T17:30:55Z"
     },
     {
@@ -785,7 +741,6 @@
       ],
       "source_type": "agent_output",
       "source_task_id": "task_1766770153_16566",
-      "confidence": 0.8,
       "created": "2025-12-26T17:30:55Z"
     }
   ]

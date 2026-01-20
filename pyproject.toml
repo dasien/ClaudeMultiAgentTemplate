@@ -1,6 +1,6 @@
 [project]
 name = "cmat"
-version = "10.4.0"
+version = "10.5.0"
 description = "Claude Multi-Agent Template - Workflow-based multi-agent development system"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,8 @@ dependencies = [
     "pyyaml>=6.0",
     "pillow>=10.0.0",
     "ttkbootstrap>=1.10.0",
+    "chromadb>=0.4.0",
+    "sentence-transformers>=3.0.0",
 ]
 
 [project.optional-dependencies]

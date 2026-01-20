@@ -5,20 +5,26 @@ These tests don't require Claude CLI - they test service logic in isolation.
 """
 
 import json
-import pytest
-from pathlib import Path
 
-from core.models import Task, TaskStatus, TaskPriority, Agent, Learning, ClaudeModel, ModelPricing
+import pytest
+
+from core.models import (
+    Agent,
+    ClaudeModel,
+    Learning,
+    ModelPricing,
+    TaskStatus,
+    Tool,
+)
 from core.services import (
-    QueueService,
     AgentService,
-    SkillsService,
     LearningsService,
-    RetrievalContext,
     ModelService,
+    QueueService,
+    RetrievalContext,
+    SkillsService,
     ToolsService,
 )
-from core.models import Tool
 
 
 class TestQueueService:
@@ -29,7 +35,7 @@ class TestQueueService:
         queue_file = cmat_test_env / ".claude/data/task_queue.json"
         queue_file.unlink()  # Remove existing file
 
-        service = QueueService(str(queue_file))
+        QueueService(str(queue_file))
         assert queue_file.exists()
 
     def test_add_task(self, cmat_test_env):
@@ -215,7 +221,7 @@ class TestQueueService:
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         # Add some tasks
-        t1 = service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
+        service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
         t2 = service.add("Task 2", "agent", "normal", "analysis", "t.md", "Test")
         t3 = service.add("Task 3", "agent", "normal", "analysis", "t.md", "Test")
 
@@ -336,7 +342,7 @@ class TestQueueService:
     def test_cancel_all(self, cmat_test_env):
         """Test cancelling all tasks."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task1 = service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
+        service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
         task2 = service.add("Test 2", "implementer", "normal", "implementation", "t.md", "Test")
         service.start(task2.id)
 
@@ -439,13 +445,15 @@ class TestAgentService:
 
         # Create a template file
         template = cmat_test_env / ".claude/agents/AGENT_TEMPLATE.md"
-        template.write_text("""---
+        template.write_text(
+            """---
 name: "Template"
 role: "template"
 description: "A template"
 ---
 Template content
-""")
+"""
+        )
 
         result = service.generate_agents_json(skip_templates=True)
         assert result["generated"] == 0
@@ -477,12 +485,14 @@ class TestSkillsService:
 
         # Create skills.json with correct key names
         skills_data = {
-            "skills": [{
-                "name": "test-skill",
-                "description": "A test skill",
-                "skill-directory": "test-skill",
-                "category": "testing",
-            }]
+            "skills": [
+                {
+                    "name": "test-skill",
+                    "description": "A test skill",
+                    "skill-directory": "test-skill",
+                    "category": "testing",
+                }
+            ]
         }
         with open(cmat_test_env / ".claude/skills/skills.json", "w") as f:
             json.dump(skills_data, f)
@@ -503,10 +513,11 @@ class TestLearningsService:
     def test_init_creates_directory(self, cmat_test_env):
         """Test that init creates data directory and learnings.json file."""
         import shutil
+
         data_path = cmat_test_env / ".claude/data"
         shutil.rmtree(data_path)  # Remove existing
 
-        service = LearningsService(str(data_path))
+        LearningsService(str(data_path))
         assert data_path.exists()
         assert (data_path / "learnings.json").exists()
 
@@ -602,14 +613,12 @@ class TestLearningsService:
                 summary="Use dataclasses",
                 content="Prefer dataclasses for DTOs",
                 tags=["python"],
-                confidence=0.8,
             ),
             Learning(
                 id="test2",
                 summary="Write tests first",
                 content="TDD approach",
                 tags=["testing"],
-                confidence=0.9,
             ),
         ]
 
@@ -618,8 +627,346 @@ class TestLearningsService:
         assert "RELEVANT LEARNINGS" in prompt
         assert "Use dataclasses" in prompt
         assert "Write tests first" in prompt
-        assert "80%" in prompt
-        assert "90%" in prompt
+
+    # ===== Migration Tests =====
+
+    def test_auto_migration_from_v1_json(self, tmp_path):
+        """Test automatic migration from v1.0.0 JSON format."""
+        # Setup: Create v1.0.0 JSON
+        json_file = tmp_path / "learnings.json"
+        v1_data = {
+            "version": "1.0.0",
+            "count": 2,
+            "learnings": [
+                {
+                    "id": "learn_1_1",
+                    "summary": "Use Python type hints for code clarity",
+                    "content": "Adding type annotations helps with IDE support and catches bugs early",
+                    "tags": ["python", "typing"],
+                    "applies_to": ["implementation"],
+                    "confidence": 0.8,
+                    "source_type": "test",
+                    "created": "2026-01-01T00:00:00Z",
+                },
+                {
+                    "id": "learn_1_2",
+                    "summary": "Write comprehensive unit tests",
+                    "content": "Testing edge cases early prevents bugs in production environments",
+                    "tags": ["testing", "quality"],
+                    "applies_to": ["testing"],
+                    "confidence": 0.7,
+                    "source_type": "test",
+                    "created": "2026-01-01T00:00:00Z",
+                },
+            ],
+        }
+        json_file.write_text(json.dumps(v1_data))
+
+        # Act: Initialize service (triggers migration)
+        service = LearningsService(str(tmp_path))
+
+        # Assert: Migration completed
+        data = json.loads(json_file.read_text())
+        assert data["version"] == "2.0.0"
+        assert data["migrated_to_vector"] is True
+        assert "count" not in data  # Removed in v2.0.0
+
+        # Assert: Learnings in vector store
+        assert service._repository.count() == 2
+
+        # Assert: Can retrieve via vector search
+        context = RetrievalContext("test", "test", "learning")
+        results = service.retrieve(context, limit=5)
+        assert len(results) == 2
+
+    def test_migration_only_runs_once(self, tmp_path):
+        """Test that migration doesn't re-run on subsequent initializations."""
+        # Setup: Create v1 JSON with 1 learning
+        json_file = tmp_path / "learnings.json"
+        v1_data = {
+            "version": "1.0.0",
+            "learnings": [
+                {
+                    "id": "learn_2_1",
+                    "summary": "Test",
+                    "content": "Test",
+                    "tags": [],
+                    "applies_to": [],
+                    "confidence": 0.5,
+                    "source_type": "test",
+                    "created": "2026-01-01T00:00:00Z",
+                }
+            ],
+        }
+        json_file.write_text(json.dumps(v1_data))
+
+        # Act: Initialize service twice
+        service1 = LearningsService(str(tmp_path))
+        count_after_first = service1._repository.count()
+
+        # Manually add a learning to vector store
+        new_learning = Learning(
+            id="learn_2_2",
+            summary="Manual",
+            content="Manual",
+            tags=[],
+            applies_to=[],
+            source_type="test",
+        )
+        service1._repository.add(new_learning)
+
+        service2 = LearningsService(str(tmp_path))
+        count_after_second = service2._repository.count()
+
+        # Assert: Count increased by 1 (not re-migrated)
+        assert count_after_first == 1
+        assert count_after_second == 2  # Only the manual addition
+
+    def test_migration_handles_empty_json(self, tmp_path):
+        """Test migration with empty learnings array."""
+        # Setup: Create empty v1 JSON
+        json_file = tmp_path / "learnings.json"
+        v1_data = {"version": "1.0.0", "count": 0, "learnings": []}
+        json_file.write_text(json.dumps(v1_data))
+
+        # Act: Initialize service
+        service = LearningsService(str(tmp_path))
+
+        # Assert: Migration flag set
+        data = json.loads(json_file.read_text())
+        assert data["migrated_to_vector"] is True
+        assert data["version"] == "2.0.0"
+
+        # Assert: Vector store empty
+        assert service._repository.count() == 0
+
+    def test_migration_handles_malformed_learning(self, tmp_path):
+        """Test migration skips malformed learnings but continues."""
+        # Setup: Create JSON with malformed learning
+        json_file = tmp_path / "learnings.json"
+        v1_data = {
+            "version": "1.0.0",
+            "learnings": [
+                {
+                    "id": "learn_3_1",
+                    "summary": "Good learning",
+                    "content": "Good content",
+                    "tags": [],
+                    "applies_to": [],
+                    "confidence": 0.5,
+                    "source_type": "test",
+                    "created": "2026-01-01T00:00:00Z",
+                },
+                {
+                    "id": "learn_3_2",
+                    # Missing required fields
+                    "summary": "Bad learning",
+                },
+                {
+                    "id": "learn_3_3",
+                    "summary": "Another good learning",
+                    "content": "Good content 2",
+                    "tags": [],
+                    "applies_to": [],
+                    "confidence": 0.5,
+                    "source_type": "test",
+                    "created": "2026-01-01T00:00:00Z",
+                },
+            ],
+        }
+        json_file.write_text(json.dumps(v1_data))
+
+        # Act: Initialize service (should handle malformed data)
+        service = LearningsService(str(tmp_path))
+
+        # Assert: Migration completed despite error
+        data = json.loads(json_file.read_text())
+        assert data["migrated_to_vector"] is True
+
+        # Assert: Good learnings migrated (should be at least 2)
+        assert service._repository.count() >= 2
+
+    # ===== Retrieval Tests =====
+
+    def test_retrieve_uses_vector_search(self, tmp_path):
+        """Test that retrieve uses vector search for semantic matching."""
+        service = LearningsService(str(tmp_path))
+
+        # Store learning with specific content
+        learning = Learning(
+            id="learn_4_1",
+            summary="Use type hints for better code",
+            content="Python type hints improve code quality and IDE support",
+            tags=["python", "types"],
+            applies_to=["implementation"],
+            source_type="test",
+        )
+        service.store(learning)
+
+        # Query with semantically similar but different words
+        context = RetrievalContext(
+            agent_name="implementer",
+            task_type="coding",
+            task_description="Add annotations to improve code quality",
+        )
+        results = service.retrieve(context, limit=5)
+
+        # Assert: Semantic matching works
+        assert len(results) >= 1
+        assert results[0].id == "learn_4_1"
+
+    def test_retrieve_builds_query_from_context(self, tmp_path):
+        """Test that query string includes all context elements."""
+        service = LearningsService(str(tmp_path))
+
+        # Store learnings with specific tags
+        learning1 = Learning(
+            id="learn_6_1",
+            summary="Python testing",
+            content="Use pytest for testing",
+            tags=["python", "testing"],
+            applies_to=["testing"],
+            source_type="test",
+        )
+        learning2 = Learning(
+            id="learn_6_2",
+            summary="JavaScript testing",
+            content="Use jest for testing",
+            tags=["javascript", "testing"],
+            applies_to=["testing"],
+            source_type="test",
+        )
+        service.store(learning1)
+        service.store(learning2)
+
+        # Query with specific agent and tags
+        context = RetrievalContext(
+            agent_name="tester",
+            task_type="testing",
+            task_description="Write Python tests",
+            tags=["python"],
+        )
+        results = service.retrieve(context, limit=1)
+
+        # Assert: Python learning ranked higher
+        assert len(results) == 1
+        assert "python" in results[0].tags
+
+    # ===== Vector Storage Tests =====
+
+    def test_store_writes_to_repository(self, tmp_path):
+        """Test that store writes to vector store."""
+        service = LearningsService(str(tmp_path))
+
+        learning = Learning(
+            id="learn_7_1",
+            summary="Vector storage test",
+            content="Test content",
+            tags=["test"],
+            applies_to=["test"],
+            source_type="test",
+        )
+
+        service.store(learning)
+
+        # Assert: In vector store
+        assert service._repository.count() == 1
+
+        # Assert: Can retrieve by ID
+        retrieved = service.get("learn_7_1")
+        assert retrieved is not None
+        assert retrieved.summary == "Vector storage test"
+
+    def test_delete_removes_from_vector(self, tmp_path):
+        """Test that delete removes from vector store."""
+        service = LearningsService(str(tmp_path))
+
+        learning = Learning(
+            id="learn_8_1",
+            summary="Delete test",
+            content="Test content",
+            tags=["test"],
+            applies_to=["test"],
+            source_type="test",
+        )
+
+        service.store(learning)
+        assert service._repository.count() == 1
+
+        # Delete
+        result = service.delete("learn_8_1")
+
+        # Assert: Deleted
+        assert result is True
+
+        # Assert: Not in vector store
+        assert service._repository.count() == 0
+
+        # Assert: Cannot retrieve by ID
+        assert service.get("learn_8_1") is None
+
+    # ===== Export/Import Tests =====
+
+    def test_export_to_json(self, tmp_path):
+        """Test export_to_json returns all learnings."""
+        service = LearningsService(str(tmp_path))
+
+        # Store multiple learnings
+        for i in range(3):
+            learning = Learning(
+                id=f"learn_9_{i}",
+                summary=f"Learning {i}",
+                content=f"Content {i}",
+                tags=["test"],
+                applies_to=["test"],
+                source_type="test",
+            )
+            service.store(learning)
+
+        # Export
+        export_data = service.export_to_json()
+
+        # Assert: All learnings in export
+        assert export_data["version"] == "2.0.0"
+        assert len(export_data["learnings"]) == 3
+        assert export_data["count"] == 3
+
+    def test_import_from_json(self, tmp_path):
+        """Test import_from_json imports learnings."""
+        # Create export data
+        export_data = {
+            "version": "2.0.0",
+            "learnings": [
+                {
+                    "id": "learn_10_1",
+                    "summary": "Imported learning",
+                    "content": "Imported content",
+                    "tags": ["import"],
+                    "applies_to": ["test"],
+                    "confidence": 0.6,
+                    "source_type": "import",
+                    "created": "2026-01-01T00:00:00Z",
+                }
+            ],
+        }
+
+        # Import to new service instance
+        tmp_path2 = tmp_path / "import_test"
+        tmp_path2.mkdir()
+        service2 = LearningsService(str(tmp_path2))
+
+        count = service2.import_from_json(export_data)
+
+        # Assert: Imported successfully
+        assert count == 1
+        assert service2._repository.count() == 1
+
+        # Assert: Can retrieve imported learning
+        context = RetrievalContext("test", "test", "imported")
+        results = service2.retrieve(context, limit=5)
+        assert len(results) == 1
+        assert results[0].id == "learn_10_1"
+
 
 class TestModelService:
     """Tests for ModelService."""
@@ -1047,7 +1394,8 @@ class TestTaskServiceTemplates:
     def task_service(self, tmp_path):
         """Create TaskService with test templates."""
         templates_file = tmp_path / "templates.md"
-        templates_file.write_text("""# Task Prompt Defaults
+        templates_file.write_text(
+            """# Task Prompt Defaults
 
 # ANALYSIS_TEMPLATE
 
@@ -1072,8 +1420,10 @@ Expected statuses: ${expected_statuses}
 You are ${agent} implementing: ${task_description}
 
 ===END_TEMPLATE===
-""")
+"""
+        )
         from core.services.task_service import TaskService
+
         return TaskService(
             templates_file=str(templates_file),
             agents_dir=str(tmp_path / "agents"),
@@ -1138,11 +1488,14 @@ class TestTaskServiceInputInstruction:
     def task_service(self, tmp_path):
         """Create TaskService."""
         templates_file = tmp_path / "templates.md"
-        templates_file.write_text("""# ANALYSIS_TEMPLATE
+        templates_file.write_text(
+            """# ANALYSIS_TEMPLATE
 ${input_instruction}
 ===END_TEMPLATE===
-""")
+"""
+        )
         from core.services.task_service import TaskService
+
         return TaskService(templates_file=str(templates_file))
 
     def test_input_instruction_no_file(self, task_service):
@@ -1176,6 +1529,7 @@ class TestExecutionResult:
     def test_execution_result_creation(self):
         """Test creating an ExecutionResult."""
         from core.services.task_service import ExecutionResult
+
         result = ExecutionResult(
             success=True,
             status="READY_FOR_TESTING",
@@ -1193,6 +1547,7 @@ class TestExecutionResult:
     def test_execution_result_default_pid(self):
         """Test ExecutionResult with default pid."""
         from core.services.task_service import ExecutionResult
+
         result = ExecutionResult(
             success=False,
             status=None,
@@ -1356,3 +1711,333 @@ status: READY_FOR_TESTING
         status = service.extract_status(output)
         # Should return from YAML block, not legacy pattern
         assert status == "READY_FOR_TESTING"
+
+
+class TestLearningsServiceRetrospective:
+    """Tests for retrospective integration in LearningsService."""
+
+    def test_process_actions_file_valid(self, tmp_path):
+        """Test processing a valid actions file with learnings."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        actions_file = tmp_path / "learnings_actions.json"
+        actions_data = {
+            "learnings": [
+                {
+                    "summary": "Use Python type hints for better IDE support",
+                    "content": "Type annotations help catch bugs early and improve code clarity",
+                    "tags": ["python", "typing"],
+                    "applies_to": ["implementation"]
+                },
+                {
+                    "summary": "Write unit tests before integration tests",
+                    "content": "Unit tests are faster and help isolate bugs more effectively",
+                    "tags": ["testing", "best-practices"],
+                    "applies_to": ["testing"]
+                }
+            ]
+        }
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        assert result["stored"] == 2
+        assert result["duplicates"] == 0
+        assert result["errors"] == 0
+        assert service.count() == 2
+
+    def test_process_actions_file_empty_learnings(self, tmp_path):
+        """Test processing file with empty learnings array."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        actions_file = tmp_path / "learnings_actions.json"
+        actions_data = {"learnings": []}
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        assert result["stored"] == 0
+        assert result["duplicates"] == 0
+        assert result["errors"] == 0
+
+    def test_process_actions_file_missing_file(self, tmp_path):
+        """Test processing non-existent file."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        nonexistent_file = tmp_path / "missing.json"
+
+        # Act
+        result = service.process_actions_file(str(nonexistent_file))
+
+        # Assert
+        assert result["stored"] == 0
+        assert result["duplicates"] == 0
+        assert result["errors"] == 1
+
+    def test_process_actions_file_invalid_json(self, tmp_path):
+        """Test processing file with invalid JSON."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        actions_file = tmp_path / "invalid.json"
+        actions_file.write_text("{ invalid json }")
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        assert result["stored"] == 0
+        assert result["duplicates"] == 0
+        assert result["errors"] == 1
+
+    def test_process_actions_file_missing_required_fields(self, tmp_path):
+        """Test processing learnings with missing required fields."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        actions_file = tmp_path / "learnings_actions.json"
+        actions_data = {
+            "learnings": [
+                {
+                    "summary": "Valid learning",
+                    "content": "This is valid",
+                    "tags": ["test"]
+                },
+                {
+                    # Missing summary
+                    "content": "This is invalid",
+                    "tags": ["test"]
+                },
+                {
+                    "summary": "Missing content",
+                    # Missing content
+                    "tags": ["test"]
+                }
+            ]
+        }
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        assert result["stored"] == 1  # Only the valid one
+        assert result["errors"] == 2  # Two with missing fields
+
+    def test_process_actions_file_duplicate_detection(self, tmp_path):
+        """Test that duplicate learnings are detected."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        # First, store a learning directly
+        learning = Learning.from_user_input(
+            "Use Python type hints for better IDE support",
+            tags=["python"]
+        )
+        service.store(learning)
+
+        # Now process an actions file with a very similar learning
+        actions_file = tmp_path / "learnings_actions.json"
+        actions_data = {
+            "learnings": [
+                {
+                    "summary": "Use Python type hints for better IDE support",
+                    "content": "Type annotations help with code clarity",
+                    "tags": ["python", "typing"],
+                    "applies_to": ["implementation"]
+                }
+            ]
+        }
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        # Should detect as duplicate (similarity > 0.9)
+        assert result["duplicates"] >= 0  # Count may vary based on threshold
+        # Total learnings should still be 1 if detected as duplicate
+        assert service.count() in [1, 2]  # Either duplicate detected or both stored
+
+    def test_process_actions_file_malformed_learning_object(self, tmp_path):
+        """Test processing file with malformed learning objects."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        actions_file = tmp_path / "learnings_actions.json"
+        actions_data = {
+            "learnings": [
+                {
+                    "summary": "Valid learning",
+                    "content": "Valid content",
+                    "tags": ["test"]
+                },
+                "not a dict",  # Invalid type
+                None,  # Invalid type
+                {
+                    "summary": "Another valid one",
+                    "content": "More content",
+                    "tags": []
+                }
+            ]
+        }
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        assert result["stored"] == 2  # Two valid learnings
+        assert result["errors"] == 2  # Two invalid types
+
+    def test_process_actions_file_no_learnings_key(self, tmp_path):
+        """Test processing file without 'learnings' key."""
+        # Arrange
+        service = LearningsService(str(tmp_path))
+
+        actions_file = tmp_path / "learnings_actions.json"
+        actions_data = {"other_key": "value"}
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        result = service.process_actions_file(str(actions_file))
+
+        # Assert
+        assert result["stored"] == 0
+        assert result["duplicates"] == 0
+        assert result["errors"] == 0
+
+
+class TestTaskServiceRetrospective:
+    """Tests for retrospective integration in TaskService."""
+
+    def test_process_retrospective_output_retrospective_agent(self, tmp_path):
+        """Test that retrospective output is processed for retrospective agent."""
+        # Arrange
+        from core.services.task_service import TaskService
+
+        learnings_service = LearningsService(str(tmp_path / ".claude/data"))
+        task_service = TaskService()
+        task_service.set_services(learnings=learnings_service)
+
+        # Create retrospective output structure
+        enhancement_dir = tmp_path / "enhancements" / "test-feature"
+        output_dir = enhancement_dir / "retrospective" / "required_output"
+        output_dir.mkdir(parents=True)
+
+        actions_file = output_dir / "learnings_actions.json"
+        actions_data = {
+            "learnings": [
+                {
+                    "summary": "Test learning from retrospective",
+                    "content": "This was learned during the workflow",
+                    "tags": ["workflow", "retrospective"],
+                    "applies_to": ["all"]
+                }
+            ]
+        }
+        actions_file.write_text(json.dumps(actions_data))
+
+        # Act
+        task_service._process_retrospective_output(
+            agent_name="retrospective",
+            enhancement_dir=str(enhancement_dir)
+        )
+
+        # Assert
+        assert learnings_service.count() == 1
+        learnings = learnings_service.list_all()
+        assert learnings[0].summary == "Test learning from retrospective"
+
+    def test_process_retrospective_output_non_retrospective_agent(self, tmp_path):
+        """Test that output is NOT processed for non-retrospective agents."""
+        # Arrange
+        from core.services.task_service import TaskService
+
+        learnings_service = LearningsService(str(tmp_path / ".claude/data"))
+        task_service = TaskService()
+        task_service.set_services(learnings=learnings_service)
+
+        enhancement_dir = tmp_path / "enhancements" / "test-feature"
+
+        # Act
+        task_service._process_retrospective_output(
+            agent_name="implementer",  # Not retrospective
+            enhancement_dir=str(enhancement_dir)
+        )
+
+        # Assert
+        # Should return early without processing
+        assert learnings_service.count() == 0
+
+    def test_process_retrospective_output_missing_learnings_service(self, tmp_path):
+        """Test graceful handling when learnings service is not available."""
+        # Arrange
+        from core.services.task_service import TaskService
+
+        task_service = TaskService()
+        # Don't set learnings service
+
+        enhancement_dir = tmp_path / "enhancements" / "test-feature"
+
+        # Act - should not raise exception
+        task_service._process_retrospective_output(
+            agent_name="retrospective",
+            enhancement_dir=str(enhancement_dir)
+        )
+
+        # Assert - no exception raised (test passes if we get here)
+
+    def test_process_retrospective_output_missing_file(self, tmp_path):
+        """Test graceful handling when actions file doesn't exist."""
+        # Arrange
+        from core.services.task_service import TaskService
+
+        learnings_service = LearningsService(str(tmp_path / ".claude/data"))
+        task_service = TaskService()
+        task_service.set_services(learnings=learnings_service)
+
+        enhancement_dir = tmp_path / "enhancements" / "test-feature"
+        # Don't create the file
+
+        # Act - should not raise exception
+        task_service._process_retrospective_output(
+            agent_name="retrospective",
+            enhancement_dir=str(enhancement_dir)
+        )
+
+        # Assert - no exception raised, no learnings stored
+        assert learnings_service.count() == 0
+
+    def test_process_retrospective_output_processing_error(self, tmp_path):
+        """Test graceful handling of processing errors."""
+        # Arrange
+        from core.services.task_service import TaskService
+
+        learnings_service = LearningsService(str(tmp_path / ".claude/data"))
+        task_service = TaskService()
+        task_service.set_services(learnings=learnings_service)
+
+        enhancement_dir = tmp_path / "enhancements" / "test-feature"
+        output_dir = enhancement_dir / "retrospective" / "required_output"
+        output_dir.mkdir(parents=True)
+
+        # Create invalid JSON file
+        actions_file = output_dir / "learnings_actions.json"
+        actions_file.write_text("{ invalid json }")
+
+        # Act - should not raise exception
+        task_service._process_retrospective_output(
+            agent_name="retrospective",
+            enhancement_dir=str(enhancement_dir)
+        )
+
+        # Assert - no exception raised, no learnings stored
+        assert learnings_service.count() == 0

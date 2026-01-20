@@ -51,7 +51,6 @@ class ConnectDialog(BaseDialog):
         # Validation items (updated for Python CMAT v8.2+)
         self.validation_items = {
             'project_root': ttk.Label(self.validation_frame, text="○ Project root directory"),
-            'cmat_package': ttk.Label(self.validation_frame, text="○ CMAT Python package (.claude/cmat/__init__.py)"),
             'queue_file': ttk.Label(self.validation_frame, text="○ Task queue (.claude/data/task_queue.json)"),
             'skills': ttk.Label(self.validation_frame, text="○ Skills system (.claude/skills/skills.json)"),
             'agents': ttk.Label(self.validation_frame, text="○ Agents (.claude/agents/agents.json)"),
@@ -109,7 +108,6 @@ class ConnectDialog(BaseDialog):
         # Validation checks (updated for Python CMAT v8.2+)
         checks = {
             'project_root': project_root.exists() and project_root.is_dir(),
-            'cmat_package': (project_root / ".claude/cmat/__init__.py").exists(),
             'queue_file': (
                 (project_root / ".claude/data/task_queue.json").exists() or
                 (project_root / ".claude/queues/task_queue.json").exists()  # Fallback to old location

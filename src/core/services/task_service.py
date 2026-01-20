@@ -340,14 +340,11 @@ class TaskService:
             model=model,
         )
 
-        # Extract learnings from successful output
-        if result["exit_code"] == 0 and result.get("output") and self._learnings_service:
-            self._extract_and_store_learnings(
-                output=result["output"],
+        # Process retrospective output if this is the retrospective agent
+        if result["exit_code"] == 0:
+            self._process_retrospective_output(
                 agent_name=agent.agent_file,
-                task_type=task.task_type,
-                task_description=task.description,
-                task_id=task.id,
+                enhancement_dir=enhancement_dir,
             )
 
         return ExecutionResult(
@@ -592,40 +589,70 @@ class TaskService:
         # Fallback to task ID
         return task.id
 
-    def _extract_and_store_learnings(
+    def _process_retrospective_output(
         self,
-        output: str,
         agent_name: str,
-        task_type: str,
-        task_description: str,
-        task_id: str,
+        enhancement_dir: str,
     ) -> None:
         """
-        Extract learnings from agent output and store them.
+        Process retrospective agent output and store learnings.
 
-        Called automatically after successful task execution.
+        Called automatically after task completion if the agent is "retrospective".
+        Constructs the path to learnings_actions.json, processes it via
+        LearningsService, and logs the results. All errors are caught to prevent
+        learnings processing from breaking task execution.
+
+        Args:
+            agent_name: Name of the agent that just completed. Only processes if
+                this is "retrospective".
+            enhancement_dir: Path to the enhancement directory (e.g.,
+                "enhancements/my-feature"). Used to locate retrospective output.
+
+        Returns:
+            None. All errors are logged but not raised.
+
+        Integration:
+            This method is called from TaskService.execute() after successful
+            task completion. It has no effect on task completion status.
+
+        Error Handling:
+            - Missing learnings service: Logs error, returns early
+            - Missing output file: Logs error, returns early
+            - Processing errors: Caught, logged, execution continues
         """
+        from pathlib import Path
+
+        # Only process retrospective agent
+        if agent_name != "retrospective":
+            return
+
+        # Check if learnings service is available
         if not self._learnings_service:
+            log_error("LearningsService not available for retrospective processing")
+            return
+
+        # Construct path to learnings_actions.json
+        actions_file = (
+            Path(enhancement_dir) / "retrospective" / "required_output" / "learnings_actions.json"
+        )
+
+        if not actions_file.exists():
+            log_error(f"Retrospective output file not found: {actions_file}")
             return
 
         try:
-            learnings = self._learnings_service.extract_from_output(
-                agent_output=output,
-                agent_name=agent_name,
-                task_type=task_type,
-                task_description=task_description,
-                task_id=task_id,
+            # Process the actions file
+            result = self._learnings_service.process_actions_file(str(actions_file))
+
+            # Log summary
+            log_operation(
+                "RETROSPECTIVE_PROCESSED",
+                f"Enhancement: {Path(enhancement_dir).name}, "
+                f"Stored: {result['stored']}, "
+                f"Duplicates: {result['duplicates']}, "
+                f"Errors: {result['errors']}",
             )
 
-            # Store each extracted learning
-            for learning in learnings:
-                self._learnings_service.store(learning)
-
-            if learnings:
-                log_operation(
-                    "LEARNINGS_STORED",
-                    f"Stored {len(learnings)} learnings from task {task_id}"
-                )
         except Exception as e:
-            # Don't fail task if learning extraction fails
-            log_error(f"Failed to extract learnings from task {task_id}: {e}")
+            # Don't let learnings processing failures break the task
+            log_error(f"Failed to process retrospective output: {e}")

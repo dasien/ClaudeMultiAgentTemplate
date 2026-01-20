@@ -189,6 +189,8 @@ echo ""
 echo "Checking required packages..."
 python3 -c "import yaml; print('  pyyaml: OK')"
 python3 -c "from PIL import Image; print('  pillow: OK')"
+python3 -c "import chromadb; print('  chromadb: OK')"
+python3 -c "from sentence_transformers import SentenceTransformer; print('  sentence-transformers: OK')"
 
 if python3 -c "import tkinter" 2>/dev/null; then
     echo "  tkinter: OK"

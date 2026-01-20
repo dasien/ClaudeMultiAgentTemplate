@@ -136,6 +136,15 @@
       "validations": {"metadata_required": true}
     },
     {
+      "name": "Retrospective",
+      "agent-file": "retrospective",
+      "role": "knowledge_curation",
+      "tools": ["Read", "Glob", "Grep"],
+      "skills": ["technical-writing"],
+      "description": "Extracts learnings from workflow outputs and produces structured output for the learnings database",
+      "validations": {"metadata_required": true}
+    },
+    {
       "name": "Security Auditor",
       "agent-file": "security-auditor",
       "role": "security_analysis",

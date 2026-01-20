@@ -28,7 +28,6 @@ class Learning:
     applies_to: list[str] = field(default_factory=list)  # Contexts: implementation, analysis, review
     source_type: str = "user_feedback"       # "agent_output", "user_feedback", "code_pattern"
     source_task_id: Optional[str] = None     # Task that generated this learning
-    confidence: float = 0.5                  # 0.0-1.0, how universal vs project-specific
     created: str = field(default_factory=get_timestamp)  # ISO timestamp
 
     @classmethod
@@ -63,7 +62,6 @@ class Learning:
             tags=tags or [],
             applies_to=["general"],
             source_type="user_feedback",
-            confidence=0.8,  # User-provided learnings are typically high confidence
         )
 
     @classmethod
@@ -72,7 +70,7 @@ class Learning:
         Create a Learning from Claude's extraction response.
 
         Args:
-            extraction: Dict with keys: summary, tags, applies_to, confidence, content
+            extraction: Dict with keys: summary, tags, applies_to, content
             source_task_id: ID of the task that generated this learning
 
         Returns:
@@ -86,7 +84,6 @@ class Learning:
             applies_to=extraction.get("applies_to", []),
             source_type="agent_output",
             source_task_id=source_task_id,
-            confidence=extraction.get("confidence", 0.5),
         )
 
     def to_dict(self) -> dict:
@@ -99,7 +96,6 @@ class Learning:
             "applies_to": self.applies_to,
             "source_type": self.source_type,
             "source_task_id": self.source_task_id,
-            "confidence": self.confidence,
             "created": self.created,
         }
 
@@ -114,7 +110,6 @@ class Learning:
             applies_to=data.get("applies_to", []),
             source_type=data.get("source_type", "user_feedback"),
             source_task_id=data.get("source_task_id"),
-            confidence=data.get("confidence", 0.5),
             created=data.get("created", get_timestamp()),
         )
 
@@ -143,7 +138,6 @@ class Learning:
         """Format this learning for inclusion in a prompt."""
         return f"""**Learning**: {self.summary}
 Tags: {', '.join(self.tags) if self.tags else 'general'}
-Confidence: {self.confidence:.0%}
 
 {self.content}
 """

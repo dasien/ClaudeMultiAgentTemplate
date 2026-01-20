@@ -231,6 +231,5 @@ def sample_learning_data() -> dict:
         "applies_to": ["implementation"],
         "source_type": "user_feedback",
         "source_task_id": None,
-        "confidence": 0.8,
         "created": "2025-01-01T00:00:00Z",
     }

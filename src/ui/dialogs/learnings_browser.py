@@ -70,7 +70,6 @@ class LearningsBrowserDialog(BaseDialog):
             columns={
                 'summary': ('Summary', 300),
                 'tags': ('Tags', 150),
-                'confidence': ('Confidence', 80),
                 'source': ('Source', 120),
                 'created': ('Created', 150),
             },
@@ -146,12 +145,11 @@ class LearningsBrowserDialog(BaseDialog):
             tags = ", ".join(learning.tags[:3])  # Show first 3 tags
             if len(learning.tags) > 3:
                 tags += "..."
-            confidence = f"{learning.confidence:.0%}"
             source = learning.source_type
             created = learning.created.split('T')[0] if 'T' in learning.created else learning.created[:10]
 
             self.tree.insert('', tk.END, iid=learning.id, values=(
-                summary, tags, confidence, source, created
+                summary, tags, source, created
             ))
 
         # Update status
@@ -192,8 +190,6 @@ Applies To: {', '.join(learning.applies_to) if learning.applies_to else 'General
 
 Source: {learning.source_type}
 {f'Source Task: {learning.source_task_id}' if learning.source_task_id else ''}
-
-Confidence: {learning.confidence:.0%}
 
 Created: {learning.created}
 

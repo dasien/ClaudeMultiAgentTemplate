@@ -293,7 +293,6 @@ class TestLearning:
         assert learning.id == "learn_1234567890_12345"
         assert learning.summary == "Test learning summary"
         assert "testing" in learning.tags
-        assert learning.confidence == 0.8
 
     def test_from_user_input(self):
         """Test creating learning from user input."""
@@ -304,7 +303,6 @@ class TestLearning:
         assert learning.id.startswith("learn_")
         assert "dataclasses" in learning.summary
         assert learning.source_type == "user_feedback"
-        assert learning.confidence == 0.8
         assert "python" in learning.tags
 
     def test_from_user_input_long_content(self):
@@ -357,12 +355,10 @@ class TestLearning:
             summary="Use dataclasses",
             content="Prefer dataclasses for simple DTOs.",
             tags=["python"],
-            confidence=0.7,
         )
         formatted = learning.formatted_for_prompt()
         assert "Use dataclasses" in formatted
         assert "python" in formatted
-        assert "70%" in formatted
         assert "Prefer dataclasses" in formatted
 
     def test_to_dict_roundtrip(self, sample_learning_data):
@@ -373,7 +369,6 @@ class TestLearning:
         assert restored.id == learning.id
         assert restored.summary == learning.summary
         assert restored.tags == learning.tags
-        assert restored.confidence == learning.confidence
 
     def test_json_serialization(self, sample_learning_data):
         """Test JSON serialization."""

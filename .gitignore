@@ -53,21 +53,13 @@ env/
 tasks.txt
 *.bak
 *.tmp
-.claude/settings.local.json
 
-# Agent logs
-.claude/logs/*.log
+# Root .claude directory (local CMAT installation, not source)
+# templates/.claude/ IS tracked as it's the template for new projects
+/.claude/
+
+# Agent logs in enhancements
 enhancements/*/logs/
-
-# Queue system (keep structure, ignore logs)
-.claude/logs/queue_operations.log
-.claude/status/workflow_state.json
-
-# Keep template files
-!.claude/queues/task_queue.json
-!.claude/queues/workflow_templates.json
-!.claude/status/.gitkeep
-!.claude/logs/.gitkeep
 
 # Temp space for enhancement creation.
 enhancements/.staging

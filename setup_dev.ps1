@@ -110,6 +110,8 @@ Write-Host ""
 Write-Host "Checking required packages..." -ForegroundColor Yellow
 python -c "import yaml; print('  pyyaml: OK')"
 python -c "from PIL import Image; print('  pillow: OK')"
+python -c "import chromadb; print('  chromadb: OK')"
+python -c "from sentence_transformers import SentenceTransformer; print('  sentence-transformers: OK')"
 
 $tkinterFinalCheck = python -c "import tkinter" 2>&1
 if ($LASTEXITCODE -eq 0) {
