@@ -20,7 +20,7 @@
         "keyboard-navigation",
         "web-ui-design"
       ],
-      "agent-file": "accessibility-specialist.md"
+      "agent-file": "accessibility-specialist"
     },
     {
       "name": "agent-architect",
@@ -38,7 +38,7 @@
         "architecture-patterns",
         "technical-writing"
       ],
-      "agent-file": "agent-architect.md"
+      "agent-file": "agent-architect"
     },
     {
       "name": "api-integration-specialist",
@@ -59,7 +59,7 @@
         "rate-limiting",
         "error-handling"
       ],
-      "agent-file": "api-integration-specialist.md"
+      "agent-file": "api-integration-specialist"
     },
     {
       "name": "architect",
@@ -83,7 +83,7 @@
         "desktop-ui-design",
         "web-ui-design"
       ],
-      "agent-file": "architect.md"
+      "agent-file": "architect"
     },
     {
       "name": "atlassian-integration-coordinator",
@@ -92,7 +92,7 @@
       "description": "Use when synchronizing workflow state with Jira or Confluence - creating tickets, updating status, or publishing documentation",
       "tools": [],
       "skills": [],
-      "agent-file": "atlassian-integration-coordinator.md"
+      "agent-file": "atlassian-integration-coordinator"
     },
     {
       "name": "code-reviewer",
@@ -110,7 +110,7 @@
         "architecture-patterns",
         "code-refactoring"
       ],
-      "agent-file": "code-reviewer.md"
+      "agent-file": "code-reviewer"
     },
     {
       "name": "data-engineer",
@@ -131,7 +131,7 @@
         "data-quality",
         "sql-development"
       ],
-      "agent-file": "data-engineer.md"
+      "agent-file": "data-engineer"
     },
     {
       "name": "devops-engineer",
@@ -154,7 +154,7 @@
         "logging-strategies",
         "metrics-monitoring"
       ],
-      "agent-file": "devops-engineer.md"
+      "agent-file": "devops-engineer"
     },
     {
       "name": "documenter",
@@ -174,7 +174,7 @@
         "technical-writing",
         "api-documentation"
       ],
-      "agent-file": "documenter.md"
+      "agent-file": "documenter"
     },
     {
       "name": "github-integration-coordinator",
@@ -183,7 +183,7 @@
       "description": "Use when synchronizing workflow state with GitHub - creating issues, pull requests, or managing labels",
       "tools": [],
       "skills": [],
-      "agent-file": "github-integration-coordinator.md"
+      "agent-file": "github-integration-coordinator"
     },
     {
       "name": "implementer",
@@ -206,7 +206,7 @@
         "sql-development",
         "logging-strategies"
       ],
-      "agent-file": "implementer.md"
+      "agent-file": "implementer"
     },
     {
       "name": "performance-engineer",
@@ -228,7 +228,7 @@
         "load-testing",
         "metrics-monitoring"
       ],
-      "agent-file": "performance-engineer.md"
+      "agent-file": "performance-engineer"
     },
     {
       "name": "product-analyst",
@@ -247,7 +247,7 @@
         "requirements-elicitation",
         "work-breakdown"
       ],
-      "agent-file": "product-analyst.md"
+      "agent-file": "product-analyst"
     },
     {
       "name": "refactoring-specialist",
@@ -268,7 +268,7 @@
         "design-patterns",
         "tech-debt-assessment"
       ],
-      "agent-file": "refactoring-specialist.md"
+      "agent-file": "refactoring-specialist"
     },
     {
       "name": "requirements-analyst",
@@ -289,7 +289,7 @@
         "bug-triage",
         "work-breakdown"
       ],
-      "agent-file": "requirements-analyst.md"
+      "agent-file": "requirements-analyst"
     },
     {
       "name": "retrospective",
@@ -304,7 +304,7 @@
       "skills": [
         "technical-writing"
       ],
-      "agent-file": "retrospective.md"
+      "agent-file": "retrospective"
     },
     {
       "name": "security-auditor",
@@ -324,7 +324,7 @@
         "threat-modeling",
         "vulnerability-scanning"
       ],
-      "agent-file": "security-auditor.md"
+      "agent-file": "security-auditor"
     },
     {
       "name": "tester",
@@ -346,7 +346,7 @@
         "test-coverage",
         "bug-triage"
       ],
-      "agent-file": "tester.md"
+      "agent-file": "tester"
     }
   ]
 }

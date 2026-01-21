@@ -46,7 +46,7 @@ class Agent:
         """Convert to dictionary for JSON serialization."""
         return {
             "name": self.name,
-            "display_name": self.display_name,
+            "display-name": self.display_name,
             "agent-file": self.agent_file,
             "role": self.role,
             "tools": self.tools,
@@ -60,10 +60,10 @@ class Agent:
         """Create Agent from dictionary (e.g., loaded from JSON)."""
         return cls(
             name=data["name"],
-            agent_file=data["agent-file"],
+            agent_file=data.get("agent-file", ""),
             role=data["role"],
             description=data["description"],
-            display_name=data.get("display_name", ""),
+            display_name=data.get("display-name", ""),
             tools=data.get("tools", []),
             skills=data.get("skills", []),
             validations=data.get("validations", {}),
