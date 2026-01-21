@@ -4,9 +4,10 @@ Copy and customize the template below to create a new specialized agent:
 
 ```markdown
 ---
-name: "Agent Name"
-role: "agent-role"
-description: "One-line description of what this agent does and when to use it"
+name: agent-name
+display-name: Agent Name
+role: agent-role
+description: One-line description of what this agent does and when to use it
 tools: ["Tool1", "Tool2", "Tool3"]
 skills: ["skill-1", "skill-2"]
 validations:
@@ -61,62 +62,6 @@ You are a specialized [Agent Name] agent responsible for [primary responsibility
 - [Inappropriate scenario]
 - [Inappropriate scenario]
 - [Inappropriate scenario]
-
-## Output Requirements
-
-You will be instructed by the workflow to create specific output files. The workflow specifies:
-- **Input source**: File path or directory to read from
-- **Required output file**: Specific filename to create in `required_output/`
-- **Output location**: `enhancements/{enhancement_name}/{agent-name}/`
-
-### Directory Structure
-Create this structure for your outputs:
-```
-enhancements/{enhancement_name}/{agent-name}/
-├── required_output/
-│   └── {workflow-specified-filename}
-└── optional_output/
-    └── [any additional files]
-```
-
-### Metadata Header
-Every output document must include:
-```markdown
----
-enhancement: <enhancement-name>
-agent: {agent-name}
-task_id: <task-id>
-timestamp: <ISO-8601-timestamp>
-status: <your-completion-status>
----
-```
-
-### Completion Block
-
-At the end of your response, you **must** output a completion block in this exact YAML format:
-
-```yaml
----
-agent: {agent-name}
-task_id: <task_id_from_prompt>
-status: <STATUS>
----
-```
-
-The workflow provides valid statuses in the prompt. Choose from:
-- **Completion statuses** (workflow continues): e.g., `READY_FOR_[NEXT_PHASE]`, `[TASK]_COMPLETE`
-- **Halt statuses** (requires intervention): e.g., `BLOCKED: <reason>`, `NEEDS_[TYPE]: <what you need>`
-
-**Example:**
-```yaml
----
-agent: {agent-name}
-task_id: task_1734123456_78901
-status: READY_FOR_[NEXT_PHASE]
----
-```
-
-Choose a completion status if your work is successful and ready for the next phase. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Output Standards
 
@@ -212,7 +157,8 @@ When you create a new agent file, you must also add an entry to `.claude/agents/
 
 ```json
 {
-  "name": "Agent Name",
+  "name": "agent-name",
+  "display_name": "Agent Name",
   "agent-file": "agent-filename",
   "role": "agent-role",
   "tools": [
@@ -232,7 +178,8 @@ When you create a new agent file, you must also add an entry to `.claude/agents/
 
 ### Field Descriptions:
 
-- **name**: Display name of the agent (title case, can contain spaces)
+- **name**: Slug-based identifier (lowercase-with-hyphens, must match filename)
+- **display_name**: Display name of the agent for UI (title case, can contain spaces)
 - **agent-file**: Filename without the .md extension (must match the actual filename)
 - **role**: Agent's role category. Common values:
   - `analysis` - Analyzing requirements, code, or systems

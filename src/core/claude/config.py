@@ -32,6 +32,9 @@ class ClaudeClientConfig:
     working_dir: Optional[str] = None
     resume_session: Optional[str] = None
     continue_session: bool = False
+    environment: dict[str, str] = field(default_factory=dict)  # Additional env vars
+    print_mode: bool = True  # --print flag for non-interactive mode
+    input_text: Optional[str] = None  # Input to send via stdin (for /init, etc.)
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -49,6 +52,9 @@ class ClaudeClientConfig:
             "working_dir": self.working_dir,
             "resume_session": self.resume_session,
             "continue_session": self.continue_session,
+            "environment": self.environment,
+            "print_mode": self.print_mode,
+            "input_text": self.input_text,
         }
 
     @classmethod
@@ -72,4 +78,7 @@ class ClaudeClientConfig:
             working_dir=data.get("working_dir"),
             resume_session=data.get("resume_session"),
             continue_session=data.get("continue_session", False),
+            environment=data.get("environment", {}),
+            print_mode=data.get("print_mode", True),
+            input_text=data.get("input_text"),
         )

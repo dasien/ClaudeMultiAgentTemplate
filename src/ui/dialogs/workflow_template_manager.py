@@ -160,38 +160,38 @@ class WorkflowTemplateManagerDialog(BaseDialog):
         item = selection[0]
         values = self.template_tree.item(item, 'values')
         template_name = values[0]
+        template_slug = values[1]
 
         try:
-            # Get template details
-            import subprocess
-            result = subprocess.run(
-                [str(self.queue.script_path), "workflow", "show", template_name],
-                cwd=str(self.queue.project_root),
-                capture_output=True,
-                text=True
-            )
+            # Get template via service layer
+            template = self.queue.get_workflow_template(template_slug)
+            if not template:
+                self.show_error("Error", f"Template not found: {template_slug}")
+                return
 
-            if result.returncode == 0:
-                # Create view window
-                view_window = tk.Toplevel(self.dialog)
-                view_window.title(f"Template: {template_name}")
-                view_window.geometry("600x400")
-                view_window.transient(self.dialog)
+            # Format template as JSON for display
+            template_json = json.dumps({template_slug: template.to_dict()}, indent=2)
 
-                text_frame = ttk.Frame(view_window, padding=10)
-                text_frame.pack(fill="both", expand=True)
+            # Create view window
+            view_window = tk.Toplevel(self.dialog)
+            view_window.title(f"Template: {template_name}")
+            view_window.geometry("600x400")
+            view_window.transient(self.dialog)
 
-                text_widget = tk.Text(text_frame, wrap="word", font=('Courier', 9))
-                scroll = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
-                text_widget.configure(yscrollcommand=scroll.set)
+            text_frame = ttk.Frame(view_window, padding=10)
+            text_frame.pack(fill="both", expand=True)
 
-                text_widget.pack(side="left", fill="both", expand=True)
-                scroll.pack(side="right", fill="y")
+            text_widget = tk.Text(text_frame, wrap="word", font=('Courier', 9))
+            scroll = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scroll.set)
 
-                text_widget.insert('1.0', result.stdout)
-                text_widget.config(state=tk.DISABLED)
+            text_widget.pack(side="left", fill="both", expand=True)
+            scroll.pack(side="right", fill="y")
 
-                ttk.Button(view_window, text="Close", command=view_window.destroy).pack(pady=10)
+            text_widget.insert('1.0', template_json)
+            text_widget.config(state=tk.DISABLED)
+
+            ttk.Button(view_window, text="Close", command=view_window.destroy).pack(pady=10)
 
         except Exception as e:
             self.show_error("Error", f"Failed to view template: {e}")

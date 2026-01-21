@@ -7,8 +7,6 @@ This is the execution engine that bridges queue management and Claude.
 
 import os
 import re
-import subprocess
-import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +14,8 @@ from typing import Optional
 
 from core.models.task import Task
 from core.models.agent import Agent
+from core.claude.client import ClaudeClient
+from core.claude.config import ClaudeClientConfig
 from core.utils import get_timestamp, log_operation, log_error
 
 
@@ -427,6 +427,118 @@ class TaskService:
             duration_seconds=result["duration"],
         )
 
+    def _resolve_model(self, model: Optional[str]) -> Optional[str]:
+        """
+        Resolve model name to API ID.
+
+        Args:
+            model: Model name or ID (may be None)
+
+        Returns:
+            API model ID string, or None if no model configured
+        """
+        if model and self._model_service:
+            # Look up the model to get its api_id
+            model_obj = self._model_service.get(model)
+            if model_obj:
+                return model_obj.api_id
+            # If not found by ID, it might already be an API ID - use as-is
+            return model
+        elif self._model_service:
+            # Use CMAT default model if none specified
+            default = self._model_service.get_default()
+            if default:
+                return default.api_id
+        return None
+
+    def _build_environment(
+        self,
+        task_id: str,
+        log_file: Path,
+        agent_name: str,
+        enhancement_name: str,
+    ) -> dict[str, str]:
+        """
+        Build environment variables for Claude execution.
+
+        Args:
+            task_id: Task identifier
+            log_file: Path to log file
+            agent_name: Agent name
+            enhancement_name: Enhancement name
+
+        Returns:
+            Dictionary of environment variables (not merged with os.environ)
+        """
+        env = {
+            "CMAT_CURRENT_TASK_ID": task_id,
+            "CMAT_CURRENT_LOG_FILE": str(log_file),
+            "CMAT_AGENT": agent_name,
+            "CMAT_ENHANCEMENT": enhancement_name,
+        }
+
+        # Set CMAT_ROOT so hooks can find the CMAT package
+        # Go from src/core/services/ up to the root containing src/
+        cmat_root = Path(__file__).resolve().parent.parent.parent.parent
+        if (cmat_root / "src" / "core").exists():
+            env["CMAT_ROOT"] = str(cmat_root)
+
+        # Enable hook debugging if CMAT_HOOK_DEBUG is set in parent environment
+        if os.environ.get("CMAT_HOOK_DEBUG"):
+            env["CMAT_HOOK_DEBUG"] = os.environ["CMAT_HOOK_DEBUG"]
+
+        return env
+
+    def _write_log_header(
+        self,
+        log_file: Path,
+        task_id: str,
+        agent_name: str,
+        enhancement_name: str,
+        model: Optional[str],
+        prompt: str,
+    ) -> None:
+        """Write execution header to log file."""
+        with open(log_file, "w") as f:
+            f.write("=== Starting Agent Execution ===\n")
+            f.write(f"Start Time: {get_timestamp()}\n")
+            f.write(f"Agent: {agent_name}\n")
+            f.write(f"Task ID: {task_id}\n")
+            f.write(f"Enhancement: {enhancement_name}\n")
+            if model:
+                f.write(f"Model: {model}\n")
+            f.write("\n")
+            f.write("=" * 70 + "\n")
+            f.write("PROMPT SENT TO AGENT\n")
+            f.write("=" * 70 + "\n\n")
+            f.write(prompt)
+            f.write("\n\n")
+            f.write("=" * 70 + "\n")
+            f.write("END OF PROMPT\n")
+            f.write("=" * 70 + "\n\n")
+
+    def _write_log_footer(
+        self,
+        log_file: Path,
+        output: str,
+        exit_code: int,
+        duration: int,
+        status: Optional[str],
+    ) -> None:
+        """Write execution footer to log file."""
+        with open(log_file, "a") as f:
+            f.write("=" * 70 + "\n")
+            f.write("AGENT OUTPUT\n")
+            f.write("=" * 70 + "\n\n")
+            f.write(output or "(no output)")
+            f.write("\n\n")
+            f.write("=== Agent Execution Complete ===\n")
+            f.write(f"End Time: {get_timestamp()}\n")
+            f.write(f"Duration: {duration}s\n")
+            f.write(f"Exit Code: {exit_code}\n")
+            if status:
+                f.write(f"Exit Status: {status}\n")
+
     def _execute_claude(
         self,
         prompt: str,
@@ -449,129 +561,44 @@ class TaskService:
 
         Returns dict with exit_code, status, duration, and optionally pid.
         """
-        start_time = time.time()
-        start_timestamp = get_timestamp()
-
         # Resolve model to API ID
-        api_model_id = None
-        if model and self._model_service:
-            # Look up the model to get its api_id
-            model_obj = self._model_service.get(model)
-            if model_obj:
-                api_model_id = model_obj.api_id
-            else:
-                # If not found by ID, it might already be an API ID - use as-is
-                api_model_id = model
-        elif self._model_service:
-            # Use CMAT default model if none specified
-            default = self._model_service.get_default()
-            if default:
-                api_model_id = default.api_id
+        api_model_id = self._resolve_model(model)
 
-        # Write execution header to log
-        with open(log_file, "w") as f:
-            f.write("=== Starting Agent Execution ===\n")
-            f.write(f"Start Time: {start_timestamp}\n")
-            f.write(f"Agent: {agent_name}\n")
-            f.write(f"Task ID: {task_id}\n")
-            f.write(f"Enhancement: {enhancement_name}\n")
-            if api_model_id:
-                f.write(f"Model: {api_model_id}\n")
-            f.write("\n")
-            f.write("=" * 70 + "\n")
-            f.write("PROMPT SENT TO AGENT\n")
-            f.write("=" * 70 + "\n\n")
-            f.write(prompt)
-            f.write("\n\n")
-            f.write("=" * 70 + "\n")
-            f.write("END OF PROMPT\n")
-            f.write("=" * 70 + "\n\n")
+        # Write log header
+        self._write_log_header(log_file, task_id, agent_name, enhancement_name, api_model_id, prompt)
 
-        # Set environment variables for cost tracking hooks
-        env = os.environ.copy()
-        env["CMAT_CURRENT_TASK_ID"] = task_id
-        env["CMAT_CURRENT_LOG_FILE"] = str(log_file)
-        env["CMAT_AGENT"] = agent_name
-        env["CMAT_ENHANCEMENT"] = enhancement_name
+        # Build environment variables for cost tracking hooks
+        env = self._build_environment(task_id, log_file, agent_name, enhancement_name)
 
-        # Set CMAT_ROOT so hooks can find the CMAT package
-        # Go from src/core/services/ up to the root containing src/
-        cmat_root = Path(__file__).resolve().parent.parent.parent.parent
-        if (cmat_root / "src" / "core").exists():
-            env["CMAT_ROOT"] = str(cmat_root)
+        # Build config and execute via ClaudeClient
+        config = ClaudeClientConfig(
+            model=api_model_id,
+            permission_mode="bypassPermissions",
+            working_dir=str(self.project_root),
+            environment=env,
+        )
 
-        # Enable hook debugging if CMAT_HOOK_DEBUG is set in parent environment
-        if os.environ.get("CMAT_HOOK_DEBUG"):
-            env["CMAT_HOOK_DEBUG"] = os.environ["CMAT_HOOK_DEBUG"]
+        client = ClaudeClient()
+        response = client.run(prompt, config)
 
-        # Build command
-        cmd = ["claude", "--permission-mode", "bypassPermissions"]
-        if api_model_id:
-            cmd.extend(["--model", api_model_id])
-        cmd.append(prompt)
-
-        # Execute Claude with bypass permissions
-        # cwd must be project root so Claude finds the correct .claude directory
-        try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                stdin=subprocess.DEVNULL,  # Prevent stdin blocking in daemon threads
-                env=env,
-                text=True,
-                cwd=str(self.project_root),
-            )
-
-            pid = process.pid
-
-            # Store PID if queue service available
-            if self._queue_service:
-                self._queue_service.update_single_metadata(task_id, "process_pid", str(pid))
-
-            # Wait for completion and capture output
-            output, _ = process.communicate()
-            exit_code = process.returncode
-
-        except FileNotFoundError:
-            output = "Error: claude CLI not found"
-            exit_code = 127
-            pid = None
-        except Exception as e:
-            output = f"Error executing claude: {e}"
-            exit_code = 1
-            pid = None
-
-        end_time = time.time()
-        duration = int(end_time - start_time)
-
-        # Write output and completion to log
-        with open(log_file, "a") as f:
-            f.write("=" * 70 + "\n")
-            f.write("AGENT OUTPUT\n")
-            f.write("=" * 70 + "\n\n")
-            f.write(output or "(no output)")
-            f.write("\n\n")
-            f.write("=== Agent Execution Complete ===\n")
-            f.write(f"End Time: {get_timestamp()}\n")
-            f.write(f"Duration: {duration}s\n")
-            f.write(f"Exit Code: {exit_code}\n")
+        # Store PID if queue service available
+        if response.pid and self._queue_service:
+            self._queue_service.update_single_metadata(task_id, "process_pid", str(response.pid))
 
         # Extract status from output
-        status = self.extract_status(output or "")
+        status = self.extract_status(response.output or "")
 
-        if status:
-            with open(log_file, "a") as f:
-                f.write(f"Exit Status: {status}\n")
+        # Write log footer
+        self._write_log_footer(log_file, response.output, response.exit_code, response.duration_seconds, status)
 
         log_operation("TASK_EXECUTED", f"Task: {task_id}, Agent: {agent_name}, Status: {status}")
 
         return {
-            "exit_code": exit_code,
+            "exit_code": response.exit_code,
             "status": status,
-            "duration": duration,
-            "pid": pid,
-            "output": output,
+            "duration": response.duration_seconds,
+            "pid": response.pid,
+            "output": response.output,
         }
 
     def _extract_enhancement_name(self, task: Task) -> str:

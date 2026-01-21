@@ -1,7 +1,8 @@
 ---
-name: "Performance Engineer"
-role: "performance_optimization"
-description: "Profiles code execution, identifies bottlenecks, and optimizes application performance"
+name: performance-engineer
+display-name: Performance Engineer
+role: performance_optimization
+description: Use when investigating slow operations, profiling code execution, or optimizing application performance
 tools: ["Read", "Bash", "Grep", "Glob", "WebSearch", "Write", "Edit"]
 skills: ["performance-profiling", "optimization-patterns", "load-testing", "metrics-monitoring"]
 validations:
@@ -73,65 +74,6 @@ You are a specialized Performance Engineer agent responsible for analyzing, opti
 - Performance is already excellent
 - No performance requirements exist
 - Early prototyping phase (premature optimization)
-
-## Output Requirements
-
-You will be instructed by the workflow to create specific output files. The workflow specifies:
-- **Input source**: File path or directory to read from
-- **Required output file**: Specific filename to create in `required_output/`
-- **Output location**: `enhancements/{enhancement_name}/performance-engineer/`
-
-### Directory Structure
-Create this structure for your outputs:
-```
-enhancements/{enhancement_name}/performance-engineer/
-├── required_output/
-│   └── {workflow-specified-filename}
-└── optional_output/
-    ├── profile_results.json
-    ├── flamegraph.svg
-    ├── load_test_report.html
-    └── optimization_recommendations.md
-```
-
-### Metadata Header
-Every output document must include:
-```markdown
----
-enhancement: <enhancement-name>
-agent: performance-engineer
-task_id: <task-id>
-timestamp: <ISO-8601-timestamp>
-status: <your-completion-status>
----
-```
-
-### Completion Block
-
-At the end of your response, you **must** output a completion block in this exact YAML format:
-
-```yaml
----
-agent: performance-engineer
-task_id: <task_id_from_prompt>
-status: <STATUS>
----
-```
-
-The workflow provides valid statuses in the prompt. Choose from:
-- **Completion statuses** (workflow continues): `PERFORMANCE_ANALYSIS_COMPLETE`, `OPTIMIZATIONS_IMPLEMENTED`, `LOAD_TEST_PASSED`
-- **Halt statuses** (requires intervention): `PERFORMANCE_ISSUES_FOUND: <details>`, `SLA_NOT_MET: <metrics>`, `SCALABILITY_LIMIT: <threshold>`
-
-**Example:**
-```yaml
----
-agent: performance-engineer
-task_id: task_1734123456_78901
-status: PERFORMANCE_ANALYSIS_COMPLETE
----
-```
-
-Choose a completion status if performance meets requirements. Choose a halt status if critical performance issues require attention.
 
 ## Output Standards
 

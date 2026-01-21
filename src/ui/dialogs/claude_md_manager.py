@@ -3,11 +3,14 @@ CLAUDE.md Management Dialog - Manage project CLAUDE.md file.
 """
 
 import re
-import subprocess
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 from pathlib import Path
+
+from core.claude.client import ClaudeClient
+from core.claude.config import ClaudeClientConfig
+
 from .base_dialog import BaseDialog
 from .working import WorkingDialog
 
@@ -210,28 +213,22 @@ class ClaudeMdManagerDialog(BaseDialog):
             project_path = str(self.queue.project_root)
 
             try:
-                # Use subprocess with prompt via stdin
-                # Command equivalent: claude -p "/init" --allowedTools "Write"
-                result = subprocess.run(
-                    ["claude", "--print", "--allowedTools", "Write"],
-                    input="/init",
-                    capture_output=True,
-                    text=True,
+                # Use ClaudeClient to run /init command
+                config = ClaudeClientConfig(
+                    allowed_tools=["Write"],
+                    working_dir=project_path,
                     timeout=300,
-                    cwd=project_path,
+                    input_text="/init",
                 )
 
-                if result.returncode == 0:
+                client = ClaudeClient()
+                response = client.run("", config)
+
+                if response.success:
                     self.dialog.after(0, self._on_init_success)
                 else:
-                    error = result.stderr or result.stdout or "Unknown error"
+                    error = response.error or response.output or "Unknown error"
                     self.dialog.after(0, lambda e=error: self._on_init_error(e))
-            except subprocess.TimeoutExpired:
-                self.dialog.after(0, lambda: self._on_init_error("Timed out after 5 minutes"))
-            except FileNotFoundError:
-                self.dialog.after(0, lambda: self._on_init_error(
-                    "Claude CLI not found. Please ensure 'claude' is installed and in your PATH."
-                ))
             except Exception as e:
                 self.dialog.after(0, lambda e=str(e): self._on_init_error(e))
 

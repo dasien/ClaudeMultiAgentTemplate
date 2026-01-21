@@ -472,7 +472,8 @@ class AgentDetailsDialog(BaseDialog):
                 return
 
             # Set basic fields
-            self.name_var.set(agent_data.get('name', ''))
+            display_name = agent_data.get('display_name', '') or agent_data.get('name', '')
+            self.name_var.set(display_name)
             self.file_var.set(self.agent_file)
             self.description_var.set(agent_data.get('description', ''))
             self.role_var.set(agent_data.get('role', ''))

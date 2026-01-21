@@ -5,7 +5,9 @@ Provides a subprocess wrapper for invoking Claude Code CLI
 with proper argument handling, output capture, and error management.
 """
 
+import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -50,7 +52,8 @@ class ClaudeClient:
         args = [self.claude_path]
 
         # Add print flag for non-interactive mode
-        args.append("--print")
+        if config.print_mode:
+            args.append("--print")
 
         # Model selection
         if config.model:
@@ -92,8 +95,9 @@ class ClaudeClient:
         elif config.continue_session:
             args.append("--continue")
 
-        # Add the prompt
-        args.extend(["--prompt", prompt])
+        # Add the prompt as positional argument
+        if prompt:
+            args.append(prompt)
 
         return args
 
@@ -117,53 +121,85 @@ class ClaudeClient:
 
         log_operation("CLAUDE_INVOKE", f"Prompt length: {len(prompt)}, Tools: {config.allowed_tools}")
 
+        # Merge environment variables
+        env = {**os.environ, **config.environment} if config.environment else None
+
+        start_time = time.time()
+        pid = None
+
         try:
-            result = subprocess.run(
+            process = subprocess.Popen(
                 args,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.PIPE if config.input_text else subprocess.DEVNULL,
+                env=env,
                 text=True,
-                timeout=config.timeout,
                 cwd=config.working_dir,
             )
+            pid = process.pid
 
-            if result.returncode == 0:
+            # Communicate with optional stdin input
+            output, _ = process.communicate(
+                input=config.input_text,
+                timeout=config.timeout,
+            )
+            exit_code = process.returncode
+
+            duration = int(time.time() - start_time)
+
+            if exit_code == 0:
                 return ClaudeResponse(
                     success=True,
-                    output=result.stdout,
-                    exit_code=result.returncode,
+                    output=output,
+                    exit_code=exit_code,
+                    pid=pid,
+                    duration_seconds=duration,
                 )
             else:
-                log_error(f"Claude exited with code {result.returncode}: {result.stderr}")
+                log_error(f"Claude exited with code {exit_code}")
                 return ClaudeResponse(
                     success=False,
-                    output=result.stdout,
-                    error=result.stderr,
-                    exit_code=result.returncode,
+                    output=output,
+                    exit_code=exit_code,
+                    pid=pid,
+                    duration_seconds=duration,
                 )
 
         except subprocess.TimeoutExpired:
+            duration = int(time.time() - start_time)
             log_error(f"Claude timed out after {config.timeout}s")
+            if process:
+                process.kill()
             return ClaudeResponse(
                 success=False,
                 output="",
                 error=f"Timeout after {config.timeout} seconds",
                 exit_code=-1,
+                pid=pid,
+                duration_seconds=duration,
             )
         except FileNotFoundError:
+            duration = int(time.time() - start_time)
             log_error(f"Claude CLI not found at: {self.claude_path}")
             return ClaudeResponse(
                 success=False,
                 output="",
                 error=f"Claude CLI not found: {self.claude_path}",
                 exit_code=-1,
+                pid=pid,
+                duration_seconds=duration,
             )
         except Exception as e:
+            duration = int(time.time() - start_time)
             log_error(f"Error invoking Claude: {str(e)}")
             return ClaudeResponse(
                 success=False,
                 output="",
                 error=str(e),
                 exit_code=-1,
+                pid=pid,
+                duration_seconds=duration,
             )
 
     def run_with_agent_prompt(

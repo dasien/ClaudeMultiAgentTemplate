@@ -205,6 +205,7 @@ class AgentService:
                     agent_file=agent_file,
                     role=frontmatter.get("role", ""),
                     description=frontmatter.get("description", ""),
+                    display_name=frontmatter.get("display-name", ""),
                     tools=frontmatter.get("tools", []),
                     skills=frontmatter.get("skills", []),
                 )

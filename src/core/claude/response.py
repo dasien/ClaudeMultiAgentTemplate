@@ -19,6 +19,8 @@ class ClaudeResponse:
     cost_usd: Optional[float] = None
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
+    pid: Optional[int] = None  # Process ID for tracking
+    duration_seconds: int = 0  # Execution duration
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -31,6 +33,8 @@ class ClaudeResponse:
             "cost_usd": self.cost_usd,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
+            "pid": self.pid,
+            "duration_seconds": self.duration_seconds,
         }
 
     @classmethod
@@ -45,4 +49,6 @@ class ClaudeResponse:
             cost_usd=data.get("cost_usd"),
             input_tokens=data.get("input_tokens"),
             output_tokens=data.get("output_tokens"),
+            pid=data.get("pid"),
+            duration_seconds=data.get("duration_seconds", 0),
         )

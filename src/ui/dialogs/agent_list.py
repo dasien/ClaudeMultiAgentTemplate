@@ -65,7 +65,7 @@ class AgentListDialog(BaseDialog):
             agents = agents_data.get('agents', []) if agents_data else []
 
             for agent in agents:
-                name = agent.get('name', '')
+                display_name = agent.get('display_name', '') or agent.get('name', '')
                 agent_file = agent.get('agent-file', '')
                 description = agent.get('description', '')
 
@@ -76,7 +76,7 @@ class AgentListDialog(BaseDialog):
                 self.agent_tree.insert(
                     '',
                     tk.END,
-                    values=(name, agent_file, skills_count, description)
+                    values=(display_name, agent_file, skills_count, description)
                 )
 
         except Exception as e:

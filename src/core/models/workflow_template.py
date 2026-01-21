@@ -89,20 +89,9 @@ class WorkflowTemplate:
                             f"in status '{status}'"
                         )
 
-            # Check input/output chain
-            if i > 0:
-                prev_step = self.steps[i - 1]
-                # Check if current input references previous step
-                if '{previous_step}' in step.input:
-                    # Good - uses previous step output
-                    pass
-                elif prev_step.agent in step.input:
-                    # Good - explicitly references previous agent
-                    pass
-                else:
-                    issues.append(
-                        f"Step {i} ({step.agent}): Input doesn't reference previous step output"
-                    )
+            # Check that input is defined
+            if not step.input or not step.input.strip():
+                issues.append(f"Step {i} ({step.agent}): No input location defined")
 
         return issues
 

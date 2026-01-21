@@ -1,7 +1,8 @@
 ---
-name: "github-integration-coordinator"
-role: "integration"
-description: "Manages GitHub integration - creates issues, pull requests, manages labels, and synchronizes workflow state with GitHub"
+name: github-integration-coordinator
+display-name: GitHub Integration Coordinator
+role: integration
+description: Use when synchronizing workflow state with GitHub - creating issues, pull requests, or managing labels
 tools: []
 skills: []
 validations:
@@ -58,43 +59,6 @@ You are the GitHub Integration Coordinator, responsible for synchronizing the in
 - No GitHub repository configured
 - Internal-only work not tracked in GitHub
 - Manual GitHub operations preferred
-
-## Output Requirements
-
-Integration agents typically write to the enhancement's logs directory rather than creating standard required/optional output directories.
-
-### Output Location
-```
-enhancements/{enhancement_name}/logs/
-└── github-integration-coordinator_{task_id}_{timestamp}.log
-```
-
-### Completion Block
-
-At the end of your response, you **must** output a completion block in this exact YAML format:
-
-```yaml
----
-agent: github-integration-coordinator
-task_id: <task_id_from_prompt>
-status: <STATUS>
----
-```
-
-The workflow provides valid statuses in the prompt. Choose from:
-- **Completion statuses** (workflow continues): e.g., `INTEGRATION_COMPLETE`
-- **Halt statuses** (requires intervention): e.g., `INTEGRATION_FAILED: <reason>`
-
-**Example:**
-```yaml
----
-agent: github-integration-coordinator
-task_id: task_1734123456_78901
-status: INTEGRATION_COMPLETE
----
-```
-
-Choose a completion status if your work is successful. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Workflow Integration Points
 

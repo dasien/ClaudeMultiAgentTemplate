@@ -1,7 +1,8 @@
 ---
-name: Agent Architect
+name: agent-architect
+display-name: Agent Architect
 role: AI Agent Design & Creation
-description: Designs and creates CMAT agent definitions with appropriate tools, skills, and personas
+description: Use when designing new CMAT agents or updating agent definitions with tools, skills, and personas
 tools: ["Read", "Write", "Glob", "Grep"]
 skills: ["agent-design", "architecture-patterns", "technical-writing"]
 validations:

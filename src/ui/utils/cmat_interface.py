@@ -844,6 +844,7 @@ class CMATInterface:
             'agents': [
                 {
                     'name': agent.name,
+                    'display_name': agent.display_name,
                     'agent-file': agent.agent_file,
                     'role': agent.role,
                     'description': agent.description or '',
@@ -860,9 +861,9 @@ class CMATInterface:
         pass
 
     def get_agent_list(self) -> Dict[str, str]:
-        """Get dictionary of available agents."""
+        """Get dictionary of available agents (agent_file -> display name)."""
         agents = self.agents.list_all()
-        return {agent.agent_file: agent.name for agent in agents}
+        return {agent.agent_file: agent.display_name or agent.name for agent in agents}
 
     def get_agent_role(self, agent: str) -> Optional[str]:
         """Get role for specific agent."""

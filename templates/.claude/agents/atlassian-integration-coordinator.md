@@ -1,7 +1,8 @@
 ---
-name: "atlassian-integration-coordinator"
-role: "integration"
-description: "Manages Jira and Confluence integration - creates tickets, updates status, publishes documentation, and synchronizes workflow with Atlassian platforms"
+name: atlassian-integration-coordinator
+display-name: Atlassian Integration Coordinator
+role: integration
+description: Use when synchronizing workflow state with Jira or Confluence - creating tickets, updating status, or publishing documentation
 tools: []
 skills: []
 validations:
@@ -61,43 +62,6 @@ You are the Atlassian Integration Coordinator, responsible for synchronizing the
 - No Jira/Confluence configured
 - Internal-only work not tracked in Jira
 - Manual Jira operations preferred
-
-## Output Requirements
-
-Integration agents typically write to the enhancement's logs directory.
-
-### Output Location
-```
-enhancements/{enhancement_name}/logs/
-└── atlassian-integration-coordinator_{task_id}_{timestamp}.log
-```
-
-### Completion Block
-
-At the end of your response, you **must** output a completion block in this exact YAML format:
-
-```yaml
----
-agent: atlassian-integration-coordinator
-task_id: <task_id_from_prompt>
-status: <STATUS>
----
-```
-
-The workflow provides valid statuses in the prompt. Choose from:
-- **Completion statuses** (workflow continues): e.g., `INTEGRATION_COMPLETE`
-- **Halt statuses** (requires intervention): e.g., `INTEGRATION_FAILED: <reason>`, `INTEGRATION_PARTIAL: <details>`
-
-**Example:**
-```yaml
----
-agent: atlassian-integration-coordinator
-task_id: task_1734123456_78901
-status: INTEGRATION_COMPLETE
----
-```
-
-Choose a completion status if your work is successful. Choose a halt status if you encountered an issue that prevents progression.
 
 ## Workflow Integration Points
 

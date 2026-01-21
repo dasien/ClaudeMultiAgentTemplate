@@ -21,6 +21,7 @@ class Agent:
     agent_file: str
     role: str
     description: str
+    display_name: str = ""
     tools: list[str] = field(default_factory=list)
     skills: list[str] = field(default_factory=list)
     validations: dict = field(default_factory=dict)
@@ -45,6 +46,7 @@ class Agent:
         """Convert to dictionary for JSON serialization."""
         return {
             "name": self.name,
+            "display_name": self.display_name,
             "agent-file": self.agent_file,
             "role": self.role,
             "tools": self.tools,
@@ -61,6 +63,7 @@ class Agent:
             agent_file=data["agent-file"],
             role=data["role"],
             description=data["description"],
+            display_name=data.get("display_name", ""),
             tools=data.get("tools", []),
             skills=data.get("skills", []),
             validations=data.get("validations", {}),

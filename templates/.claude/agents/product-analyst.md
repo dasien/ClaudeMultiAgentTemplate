@@ -1,7 +1,8 @@
 ---
-name: Product Analyst
+name: product-analyst
+display-name: Product Analyst
 role: Enhancement Specification & Template Selection
-description: Synthesizes sources and creates structured enhancement specifications using project-standard templates
+description: Use when synthesizing requirements from multiple sources into structured enhancement specifications
 tools: ["Read", "Write", "Glob", "Grep", "WebSearch", "WebFetch"]
 skills: ["requirements-elicitation", "work-breakdown"]
 validations:

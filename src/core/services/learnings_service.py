@@ -319,7 +319,24 @@ class LearningsService(JSONFileServiceMixin):
         # Read and parse JSON
         try:
             with open(actions_path, "r") as f:
-                data = json.load(f)
+                content = f.read()
+
+            # Strip YAML frontmatter if present (agent may include metadata header)
+            if content.strip().startswith("---"):
+                # Find the closing --- and skip to after it
+                lines = content.split("\n")
+                in_frontmatter = False
+                json_start_line = 0
+                for i, line in enumerate(lines):
+                    if line.strip() == "---":
+                        if not in_frontmatter:
+                            in_frontmatter = True
+                        else:
+                            json_start_line = i + 1
+                            break
+                content = "\n".join(lines[json_start_line:])
+
+            data = json.loads(content)
         except json.JSONDecodeError as e:
             log_error(f"Invalid JSON in actions file: {e}")
             result["errors"] = 1
