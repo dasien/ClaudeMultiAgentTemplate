@@ -68,10 +68,7 @@ class MainView:
         # Window close handler
         self.root.protocol("WM_DELETE_WINDOW", self.quit_app)
 
-        # Try connecting to CMAT instance
-        self.try_auto_connect()
-
-        # Initial focus will be set by splash screen callback (see main())
+        # Note: Auto-connect is handled by splash screen during startup (see main())
 
     def _set_initial_focus(self):
         """Set initial focus to status list after window is fully rendered."""
@@ -1341,10 +1338,47 @@ def main():
     root = ttkb.Window(themename=theme_manager.get_ttkbootstrap_theme())
 
     # Create main view first (so it's visible behind splash)
+    # Note: MainView no longer auto-connects - splash handles that
     app = MainView(root, theme_manager)
 
-    # Show splash screen overlay with callback to set initial focus
-    splash = SplashScreen(root, duration_ms=2500, on_close=app._set_initial_focus)
+    def init_cmat_interface():
+        """Initialize CMATInterface during splash (runs in background thread)."""
+        last_path = settings.get_last_queue_manager()
+        if not last_path or not Path(last_path).exists():
+            return None
+
+        try:
+            path_obj = Path(last_path)
+            if path_obj.is_dir():
+                # New format: project root
+                project_root = str(path_obj)
+            elif path_obj.name == 'cmat.sh' and path_obj.parent.name == 'scripts':
+                # Old format: convert script path to project root
+                project_root = str(path_obj.parent.parent.parent)
+            else:
+                return None
+
+            # This is the slow part - creates ChromaDB, loads embeddings, etc.
+            return CMATInterface(project_root)
+        except Exception as e:
+            print(f"Auto-connect init failed: {e}")
+            settings.clear_last_queue_manager()
+            return None
+
+    def on_splash_close(cmat_interface):
+        """Handle splash close - connect if interface was initialized."""
+        if cmat_interface:
+            app.connect_with_interface(cmat_interface)
+        app._set_initial_focus()
+
+    # Show splash screen with background initialization
+    # min_duration_ms ensures splash shows long enough to be visible
+    splash = SplashScreen(
+        root,
+        min_duration_ms=1000,
+        on_close=on_splash_close,
+        init_func=init_cmat_interface
+    )
     splash.show()
 
     root.mainloop()
