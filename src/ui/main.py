@@ -564,9 +564,14 @@ class MainView:
 
         # If installation succeeded and user wants to connect
         if dialog.result and dialog.result.get("success") and dialog.result.get("connect"):
-            project_root = dialog.result["project_root"]
-            # Connect using project root (Python CMAT v8.2+)
-            self.connect_to_project(str(project_root))
+            # Use pre-initialized interface from install dialog (avoids re-init delay)
+            cmat_interface = dialog.result.get("cmat_interface")
+            if cmat_interface:
+                self.connect_with_interface(cmat_interface)
+            else:
+                # Fallback to creating new interface
+                project_root = dialog.result["project_root"]
+                self.connect_to_project(str(project_root))
 
     def try_auto_connect(self):
         """Try to auto-connect to last project."""
@@ -619,6 +624,36 @@ class MainView:
             self.update_ui_state()
             if not silent:
                 messagebox.showerror("Connection Error", f"Failed to connect: {e}")
+
+    def connect_with_interface(self, cmat_interface):
+        """Connect using a pre-initialized CMATInterface.
+
+        Used after installation to avoid re-initializing services.
+
+        Args:
+            cmat_interface: Pre-initialized CMATInterface instance
+        """
+        try:
+            self.queue = cmat_interface
+
+            # Update state
+            self.state.connection_state = ConnectionState.CONNECTED
+            self.state.project_root = self.queue.project_root
+            self.state.queue_file = self.queue.queue_file
+            self.state.logs_dir = self.queue.logs_dir
+
+            # Save path
+            self.settings.set_last_queue_manager(str(self.queue.project_root))
+
+            # Update UI
+            self.update_ui_state()
+            self.refresh()
+
+        except Exception as e:
+            self.state.connection_state = ConnectionState.ERROR
+            self.state.error_message = str(e)
+            self.update_ui_state()
+            messagebox.showerror("Connection Error", f"Failed to connect: {e}")
 
     def is_blocked_status(self, task):
         """Check if a completed task has a blocked/warning status.

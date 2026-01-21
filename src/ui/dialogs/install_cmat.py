@@ -288,12 +288,32 @@ class InstallCMATDialog(BaseDialog):
         """Run installation in background thread (do not call directly)."""
         try:
             overwrite = self.installer.check_existing_installation()
-            # Use local installation (copies from bundled templates)
+
+            # Phase 1: Copy files (0-80%)
+            def scaled_progress(message: str, percent: int):
+                # Scale file copy progress to 0-80%
+                scaled = int(percent * 0.8)
+                self._progress_callback(message, scaled)
+
             self.installer.install_local(
-                progress_callback=self._progress_callback,
+                progress_callback=scaled_progress,
                 overwrite=overwrite
             )
-            self.result_queue.put(("success", None))
+
+            # Phase 2: Initialize services (80-100%)
+            self._progress_callback("Initializing services...", 85)
+
+            from ..utils.cmat_interface import CMATInterface
+            project_root = str(self.installer.target_directory)
+
+            # This initializes ChromaDB, loads embedding model, runs migrations
+            self._progress_callback("Setting up knowledge base...", 90)
+            cmat_interface = CMATInterface(project_root)
+
+            self._progress_callback("Ready!", 100)
+
+            # Pass the initialized interface to avoid re-initialization
+            self.result_queue.put(("success", cmat_interface))
         except Exception as e:
             self.result_queue.put(("error", e))
 
@@ -316,42 +336,38 @@ class InstallCMATDialog(BaseDialog):
         try:
             result_type, data = self.result_queue.get_nowait()
             if result_type == "success":
-                self.on_installation_complete(True)
+                self.on_installation_complete(data)  # data is the CMATInterface
             elif result_type == "error":
                 self.handle_error(data)
         except queuemod.Empty:
             # Not done yet, poll again
             self.dialog.after(100, self._poll_installation_result)
 
-    def on_installation_complete(self, success: bool):
+    def on_installation_complete(self, cmat_interface):
         """Handle installation completion."""
-        if success:
-            self.current_state = self.STATE_COMPLETED
+        self.current_state = self.STATE_COMPLETED
 
-            # Save CMAT root path for hooks to use
-            if self.settings:
-                templates_dir = get_templates_dir()
-                if templates_dir:
-                    cmat_root = templates_dir.parent
-                    self.settings.set_cmat_root(str(cmat_root))
+        # Save CMAT root path for hooks to use
+        if self.settings:
+            templates_dir = get_templates_dir()
+            if templates_dir:
+                cmat_root = templates_dir.parent
+                self.settings.set_cmat_root(str(cmat_root))
 
-            # Show simple success message
-            self.show_info(
-                "Installation Complete",
-                "CMAT installed successfully."
-            )
+        # Show simple success message
+        self.show_info(
+            "Installation Complete",
+            "CMAT installed successfully."
+        )
 
-            # Close dialog and connect
-            self.result = {
-                "success": True,
-                "connect": True,
-                "project_root": str(self.installer.target_directory)
-            }
-            self.close(self.result)
-        else:
-            self.current_state = self.STATE_FAILED
-            self.progress_label.config(text="Installation failed", bootstyle="danger")
-            self._reset_ui()
+        # Close dialog and pass the pre-initialized interface
+        self.result = {
+            "success": True,
+            "connect": True,
+            "project_root": str(self.installer.target_directory),
+            "cmat_interface": cmat_interface  # Pre-initialized, no re-init needed
+        }
+        self.close(self.result)
 
     def handle_error(self, error: Exception):
         """Display error message to user using exception title and message."""
