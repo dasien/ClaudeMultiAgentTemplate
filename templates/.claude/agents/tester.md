@@ -3,7 +3,7 @@ name: tester
 display-name: Tester
 role: testing
 description: Use after implementation to design test suites, validate functionality, and ensure code quality
-tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
+tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Task"]
 skills: ["test-design-patterns", "test-coverage", "bug-triage"]
 validations:
   metadata_required: true

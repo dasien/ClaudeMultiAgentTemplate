@@ -3,7 +3,7 @@ name: documenter
 display-name: Documenter
 role: documentation
 description: Use when creating or updating project documentation, user guides, API references, or README files
-tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep"]
+tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 skills: ["technical-writing", "api-documentation"]
 validations:
   metadata_required: true

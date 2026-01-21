@@ -57,8 +57,7 @@ Match tools to agent capabilities:
 - **Read**: Read files from the project
 - **Write**: Create new files
 - **List**: List directory contents
-- **Edit**: Modify existing files (single file)
-- **MultiEdit**: Modify multiple files at once
+- **Edit**: Modify existing files
 
 **Code Search:**
 - **Glob**: Find files by pattern (*.py, src/**/*.js)

@@ -192,7 +192,6 @@ When you create a new agent file, you must also add an entry to `.claude/agents/
   - `Read` - Read files
   - `Write` - Create new files
   - `Edit` - Modify existing files
-  - `MultiEdit` - Make multiple edits across files
   - `Bash` - Execute shell commands
   - `Glob` - Find files by pattern
   - `Grep` - Search file contents
@@ -218,17 +217,17 @@ When you create a new agent file, you must also add an entry to `.claude/agents/
 
 ### Implementation Agents
 **Purpose**: Write production code based on specifications
-**Common Tools**: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task
+**Common Tools**: Read, Write, Edit, Bash, Glob, Grep, Task
 **Examples**: Implementer, Refactorer, Bug Fixer
 
 ### Testing Agents
 **Purpose**: Validate functionality, quality, and performance
-**Common Tools**: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task
+**Common Tools**: Read, Write, Edit, Bash, Glob, Grep, Task
 **Examples**: Tester, Performance Tester, Security Tester
 
 ### Documentation Agents
 **Purpose**: Create and maintain project documentation
-**Common Tools**: Read, Write, Edit, MultiEdit, Glob, Grep
+**Common Tools**: Read, Write, Edit, Glob, Grep
 **Examples**: Documenter, API Documentation Writer, Tutorial Creator
 
 ### Integration Agents

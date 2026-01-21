@@ -3,7 +3,7 @@ name: architect
 display-name: Architect
 role: technical_design
 description: Use when designing system architecture, creating technical specifications, or making high-level design decisions
-tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"]
+tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"]
 skills: ["api-design", "architecture-patterns", "desktop-ui-design", "web-ui-design"]
 validations:
   metadata_required: true

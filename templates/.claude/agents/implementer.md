@@ -3,7 +3,7 @@ name: implementer
 display-name: Implementer
 role: implementation
 description: Use when writing production code based on architectural specifications or implementation plans
-tools: ["Read", "Write", "Edit", "MultiEdit", "Bash", "Glob", "Grep", "Task"]
+tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Task"]
 skills: ["error-handling", "code-refactoring", "sql-development", "logging-strategies"]
 validations:
   metadata_required: true

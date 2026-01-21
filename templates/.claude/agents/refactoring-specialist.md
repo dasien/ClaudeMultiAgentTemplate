@@ -3,7 +3,7 @@ name: refactoring-specialist
 display-name: Refactoring Specialist
 role: code_improvement
 description: Use when improving code structure, reducing technical debt, or executing systematic refactoring
-tools: ["Read", "Edit", "MultiEdit", "Grep", "Glob", "Bash", "Write"]
+tools: ["Read", "Edit", "Grep", "Glob", "Bash", "Write"]
 skills: ["code-refactoring", "design-patterns", "tech-debt-assessment"]
 validations:
   metadata_required: true
