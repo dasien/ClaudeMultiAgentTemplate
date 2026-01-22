@@ -1,7 +1,7 @@
 ---
 name: performance-engineer
 display-name: Performance Engineer
-role: performance_optimization
+role: implementation
 description: Use when investigating slow operations, profiling code execution, or optimizing application performance
 tools: ["Read", "Bash", "Grep", "Glob", "WebSearch", "Write", "Edit"]
 skills: ["performance-profiling", "optimization-patterns", "load-testing", "metrics-monitoring"]

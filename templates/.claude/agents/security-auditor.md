@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 display-name: Security Auditor
-role: security_analysis
+role: testing
 description: Use when reviewing code for security vulnerabilities, performing threat modeling, or validating security controls
 tools: ["Read", "Grep", "Glob", "WebSearch", "Bash", "Write"]
 skills: ["security-review", "threat-modeling", "vulnerability-scanning"]

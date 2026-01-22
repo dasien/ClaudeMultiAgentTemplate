@@ -46,7 +46,6 @@ class TestQueueService:
             title="Test Task",
             assigned_agent="test-agent",
             priority="high",
-            task_type="analysis",
             source_file="test.md",
             description="A test task",
         )
@@ -63,7 +62,6 @@ class TestQueueService:
             title="Test Task with Model",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="A test task",
             model="claude-sonnet-4-20250514",
@@ -77,7 +75,6 @@ class TestQueueService:
             title="Test Task with Both",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="A test task",
             metadata={"requested_model": "claude-opus-4-20250514"},
@@ -93,7 +90,6 @@ class TestQueueService:
             title="Test Task",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
         )
@@ -116,7 +112,6 @@ class TestQueueService:
             title="Test",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
         )
@@ -141,7 +136,6 @@ class TestQueueService:
             title="Test",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
         )
@@ -165,7 +159,6 @@ class TestQueueService:
             title="Test",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
         )
@@ -185,7 +178,6 @@ class TestQueueService:
             title="Test",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
         )
@@ -202,7 +194,6 @@ class TestQueueService:
             title="Test",
             assigned_agent="test-agent",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
         )
@@ -221,9 +212,9 @@ class TestQueueService:
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
         # Add some tasks
-        service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
-        t2 = service.add("Task 2", "agent", "normal", "analysis", "t.md", "Test")
-        t3 = service.add("Task 3", "agent", "normal", "analysis", "t.md", "Test")
+        service.add("Task 1", "agent", "normal", "t.md", "Test")
+        t2 = service.add("Task 2", "agent", "normal", "t.md", "Test")
+        t3 = service.add("Task 3", "agent", "normal", "t.md", "Test")
 
         service.start(t2.id)
         service.start(t3.id)
@@ -240,8 +231,8 @@ class TestQueueService:
         """Test resetting queue to clean state."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
 
-        service.add("Task 1", "agent", "normal", "analysis", "t.md", "Test")
-        service.add("Task 2", "agent", "normal", "analysis", "t.md", "Test")
+        service.add("Task 1", "agent", "normal", "t.md", "Test")
+        service.add("Task 2", "agent", "normal", "t.md", "Test")
 
         # Reset queue
         result = service.init(force=True)
@@ -265,15 +256,15 @@ class TestQueueService:
     def test_rerun_pending_task_fails(self, cmat_test_env):
         """Test that rerun() doesn't work on pending tasks."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        task = service.add("Test", "architect", "normal", "t.md", "Test")
         result = service.rerun(task.id)
         assert result is None  # Can only rerun completed/failed
 
     def test_clear_tasks_single(self, cmat_test_env):
         """Test clearing a single task by ID."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task1 = service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
-        task2 = service.add("Test 2", "architect", "normal", "analysis", "t.md", "Test")
+        task1 = service.add("Test 1", "architect", "normal", "t.md", "Test")
+        task2 = service.add("Test 2", "architect", "normal", "t.md", "Test")
 
         count = service.clear_tasks([task1.id])
 
@@ -284,9 +275,9 @@ class TestQueueService:
     def test_clear_tasks_multiple(self, cmat_test_env):
         """Test clearing multiple tasks by ID."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task1 = service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
-        task2 = service.add("Test 2", "architect", "normal", "analysis", "t.md", "Test")
-        task3 = service.add("Test 3", "architect", "normal", "analysis", "t.md", "Test")
+        task1 = service.add("Test 1", "architect", "normal", "t.md", "Test")
+        task2 = service.add("Test 2", "architect", "normal", "t.md", "Test")
+        task3 = service.add("Test 3", "architect", "normal", "t.md", "Test")
 
         count = service.clear_tasks([task1.id, task3.id])
 
@@ -298,7 +289,7 @@ class TestQueueService:
     def test_clear_tasks_empty_list(self, cmat_test_env):
         """Test clearing with empty list does nothing."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        task = service.add("Test", "architect", "normal", "t.md", "Test")
 
         count = service.clear_tasks([])
 
@@ -308,7 +299,7 @@ class TestQueueService:
     def test_clear_tasks_nonexistent(self, cmat_test_env):
         """Test clearing nonexistent task IDs."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        task = service.add("Test", "architect", "normal", "t.md", "Test")
 
         count = service.clear_tasks(["nonexistent_id"])
 
@@ -318,8 +309,8 @@ class TestQueueService:
     def test_list_by_agent(self, cmat_test_env):
         """Test listing tasks by agent."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        service.add("Arch Task", "architect", "normal", "analysis", "t.md", "Test")
-        service.add("Impl Task", "implementer", "normal", "implementation", "t.md", "Test")
+        service.add("Arch Task", "architect", "normal", "t.md", "Test")
+        service.add("Impl Task", "implementer", "normal", "t.md", "Test")
 
         arch_tasks = service.list_by_agent("architect")
         impl_tasks = service.list_by_agent("implementer")
@@ -331,7 +322,7 @@ class TestQueueService:
     def test_update_single_metadata(self, cmat_test_env):
         """Test updating a single metadata field."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        task = service.add("Test", "architect", "normal", "t.md", "Test")
 
         updated = service.update_single_metadata(task.id, "process_pid", "12345")
 
@@ -342,8 +333,8 @@ class TestQueueService:
     def test_cancel_all(self, cmat_test_env):
         """Test cancelling all tasks."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        service.add("Test 1", "architect", "normal", "analysis", "t.md", "Test")
-        task2 = service.add("Test 2", "implementer", "normal", "implementation", "t.md", "Test")
+        service.add("Test 1", "architect", "normal", "t.md", "Test")
+        task2 = service.add("Test 2", "implementer", "normal", "t.md", "Test")
         service.start(task2.id)
 
         count = service.cancel_all("Bulk cancel")
@@ -356,7 +347,7 @@ class TestQueueService:
     def test_cancel_active_task(self, cmat_test_env):
         """Test cancelling an active task."""
         service = QueueService(str(cmat_test_env / ".claude/data/task_queue.json"))
-        task = service.add("Test", "architect", "normal", "analysis", "t.md", "Test")
+        task = service.add("Test", "architect", "normal", "t.md", "Test")
         service.start(task.id)
 
         cancelled = service.cancel(task.id, "User cancelled")
@@ -806,7 +797,7 @@ class TestLearningsService:
         # Query with semantically similar but different words
         context = RetrievalContext(
             agent_name="implementer",
-            task_type="coding",
+            role="coding",
             task_description="Add annotations to improve code quality",
         )
         results = service.retrieve(context, limit=5)
@@ -842,7 +833,7 @@ class TestLearningsService:
         # Query with specific agent and tags
         context = RetrievalContext(
             agent_name="tester",
-            task_type="testing",
+            role="testing",
             task_description="Write Python tests",
             tags=["python"],
         )
@@ -1393,13 +1384,13 @@ class TestTaskServiceTemplates:
     @pytest.fixture
     def task_service(self, tmp_path):
         """Create TaskService with test templates."""
-        templates_file = tmp_path / "templates.md"
-        templates_file.write_text(
-            """# Task Prompt Defaults
+        # Create prompts directory
+        prompts_dir = tmp_path / "prompts"
+        prompts_dir.mkdir()
 
-# ANALYSIS_TEMPLATE
-
-You are the **${agent}** agent.
+        # Create base.md
+        (prompts_dir / "base.md").write_text(
+            """You are the **${agent}** agent.
 
 ## Task: ${task_description}
 
@@ -1412,30 +1403,20 @@ Output to: ${enhancement_dir}/${agent}/required_output/${required_output_filenam
 Task ID: ${task_id}
 
 Expected statuses: ${expected_statuses}
-
-===END_TEMPLATE===
-
-# IMPLEMENTATION_TEMPLATE
-
-You are ${agent} implementing: ${task_description}
-
-===END_TEMPLATE===
 """
         )
+
+        # Create role files
+        (prompts_dir / "analysis.md").write_text("Analysis role content")
+        (prompts_dir / "implementation.md").write_text("Implementation role content")
+
         from core.services.task_service import TaskService
 
         return TaskService(
-            templates_file=str(templates_file),
+            prompts_dir=str(prompts_dir),
             agents_dir=str(tmp_path / "agents"),
             logs_dir=str(tmp_path / "logs"),
         )
-
-    def test_load_templates(self, task_service):
-        """Test that templates are loaded correctly."""
-        templates = task_service._load_templates()
-        assert "analysis" in templates
-        assert "implementation" in templates
-        assert "${agent}" in templates["analysis"]
 
     def test_get_template(self, task_service):
         """Test getting a specific template."""
@@ -1444,15 +1425,17 @@ You are ${agent} implementing: ${task_description}
         assert "${agent}" in template
 
     def test_get_nonexistent_template(self, task_service):
-        """Test getting a template that doesn't exist."""
+        """Test getting a template with nonexistent role falls back to base."""
         template = task_service.get_template("nonexistent")
-        assert template is None
+        # With new implementation, returns base content when role file missing
+        assert template is not None
+        assert "${agent}" in template
 
     def test_build_prompt_substitutions(self, task_service):
         """Test that all variables are substituted in prompt."""
         prompt = task_service.build_prompt(
             agent_name="architect",
-            task_type="analysis",
+            role="analysis",
             task_id="task_123",
             task_description="Analyze the feature",
             source_file="requirements.md",
@@ -1470,15 +1453,18 @@ You are ${agent} implementing: ${task_description}
         # Verify no unsubstituted variables remain
         assert "${" not in prompt
 
-    def test_build_prompt_invalid_type(self, task_service):
-        """Test building prompt with invalid task type."""
+    def test_build_prompt_invalid_role(self, task_service):
+        """Test building prompt with invalid role falls back to base."""
         prompt = task_service.build_prompt(
             agent_name="architect",
-            task_type="invalid_type",
+            role="invalid_role",
             task_id="task_123",
             task_description="Test",
         )
-        assert prompt is None
+        # With new implementation, returns base-only content when role file missing
+        assert prompt is not None
+        assert "architect" in prompt
+        assert "Test" in prompt
 
 
 class TestTaskServiceInputInstruction:
@@ -1487,16 +1473,19 @@ class TestTaskServiceInputInstruction:
     @pytest.fixture
     def task_service(self, tmp_path):
         """Create TaskService."""
-        templates_file = tmp_path / "templates.md"
-        templates_file.write_text(
-            """# ANALYSIS_TEMPLATE
-${input_instruction}
-===END_TEMPLATE===
-"""
-        )
+        # Create prompts directory
+        prompts_dir = tmp_path / "prompts"
+        prompts_dir.mkdir()
+
+        # Create minimal base.md
+        (prompts_dir / "base.md").write_text("${input_instruction}")
+
+        # Create minimal analysis.md
+        (prompts_dir / "analysis.md").write_text("Analysis content")
+
         from core.services.task_service import TaskService
 
-        return TaskService(templates_file=str(templates_file))
+        return TaskService(prompts_dir=str(prompts_dir))
 
     def test_input_instruction_no_file(self, task_service):
         """Test input instruction when no source file."""

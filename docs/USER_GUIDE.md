@@ -526,11 +526,11 @@ The Agent Details dialog has **three tabs**
 - Brief role description
 - One sentence explaining what agent does
 
-**Role** (required) 
+**Role** (required)
 - Used for categorization and task type suggestions
 - Options:
   - **analysis** - Requirements analysis
-  - **technical_design** - Architecture and design
+  - **design** - Architecture and design
   - **implementation** - Code implementation
   - **testing** - Test creation and execution
   - **documentation** - Documentation writing

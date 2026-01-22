@@ -1,7 +1,7 @@
 ---
 name: data-engineer
 display-name: Data Engineer
-role: data_pipeline_design
+role: design
 description: Use when designing data pipelines, ETL processes, or ensuring data quality for data-intensive applications
 tools: ["Read", "Write", "Edit", "Bash", "WebSearch", "Glob"]
 skills: ["data-modeling", "etl-design", "data-quality", "sql-development"]

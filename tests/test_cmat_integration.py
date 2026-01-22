@@ -43,7 +43,6 @@ class TestQueueOperations:
             title="[TEST] Task with model",
             agent="requirements-analyst",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test description",
             model="claude-sonnet-4-20250514"
@@ -59,7 +58,6 @@ class TestQueueOperations:
             title="[TEST] Task without model",
             agent="requirements-analyst",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test description"
         )
@@ -196,7 +194,6 @@ class TestDataTransformations:
             title="[TEST] Metadata validation",
             agent="requirements-analyst",
             priority="normal",
-            task_type="analysis",
             source_file="test.md",
             description="Test",
             model="claude-sonnet-4-20250514"

@@ -23,7 +23,7 @@ class RetrievalContext:
     """Context for learning retrieval."""
 
     agent_name: str
-    task_type: str
+    role: str
     task_description: str
     source_file: str | None = None
     tags: list[str] | None = None
@@ -452,8 +452,8 @@ class LearningsService(JSONFileServiceMixin):
         if context.agent_name:
             query_parts.append(f"agent: {context.agent_name}")
 
-        if context.task_type:
-            query_parts.append(f"task type: {context.task_type}")
+        if context.role:
+            query_parts.append(f"role: {context.role}")
 
         if context.source_file:
             query_parts.append(f"file: {context.source_file}")
@@ -517,7 +517,7 @@ They represent past decisions that may or may not apply to the current context.
 # Convenience function for simple retrieval
 def get_relevant_learnings(
     agent_name: str,
-    task_type: str,
+    role: str,
     task_description: str,
     data_dir: str | None = None,
     limit: int = 5,
@@ -527,7 +527,7 @@ def get_relevant_learnings(
 
     Args:
         agent_name: Name of the agent
-        task_type: Type of task
+        role: Agent's role (e.g., "analysis", "implementation")
         task_description: Description of the task
         data_dir: Path to data directory (defaults to .claude/data/)
         limit: Maximum number of learnings
@@ -538,7 +538,7 @@ def get_relevant_learnings(
     service = LearningsService(data_dir)
     context = RetrievalContext(
         agent_name=agent_name,
-        task_type=task_type,
+        role=role,
         task_description=task_description,
     )
     return service.retrieve(context, limit)

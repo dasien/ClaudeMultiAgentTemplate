@@ -87,7 +87,6 @@ class QueueService:
             title: str,
             assigned_agent: str,
             priority: str,
-            task_type: str,
             source_file: str,
             description: str,
             metadata: Optional[dict] = None,
@@ -102,7 +101,6 @@ class QueueService:
             title: Task title
             assigned_agent: Agent to execute the task
             priority: Task priority (low, normal, high, critical)
-            task_type: Type of task (analysis, implementation, etc.)
             source_file: Input file path
             description: Task description
             metadata: Optional metadata dict
@@ -122,7 +120,6 @@ class QueueService:
             title=title,
             assigned_agent=assigned_agent,
             priority=TaskPriority(priority),
-            task_type=task_type,
             source_file=source_file,
             description=description,
             created=get_datetime_utc(),
@@ -543,13 +540,19 @@ class QueueService:
             log_error("Cannot preview prompt: TaskService not configured")
             return None
 
-        # Get agent from agent service if available
+        # Get agent role from agent service
         agent_name = task.assigned_agent
+        role = "analysis"  # default fallback
+
+        if hasattr(self._task_service, '_agent_service') and self._task_service._agent_service:
+            agent = self._task_service._agent_service.get(agent_name)
+            if agent:
+                role = agent.role
 
         # Build prompt using task service
         return self._task_service.build_prompt(
             agent_name=agent_name,
-            task_type=task.task_type,
+            role=role,
             task_id=task.id,
             task_description=task.description,
             source_file=task.source_file,

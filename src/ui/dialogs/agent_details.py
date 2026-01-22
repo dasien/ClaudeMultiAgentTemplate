@@ -126,7 +126,7 @@ class AgentDetailsDialog(BaseDialog):
         role_combo = ttk.Combobox(parent, textvariable=self.role_var, state='readonly', width=40)
         role_combo['values'] = [
             'analysis',
-            'technical_design',
+            'design',
             'implementation',
             'testing',
             'documentation',

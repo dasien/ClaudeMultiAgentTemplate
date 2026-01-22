@@ -115,6 +115,7 @@ class CMAT:
 
         self.tasks = TaskService(
             templates_file=str(base / ".claude/data/TASK_PROMPT_DEFAULTS.md"),
+            prompts_dir=str(base / ".claude/prompts"),
             agents_dir=_agents_dir,
             logs_dir=str(base / ".claude/logs"),
             enhancements_dir=_enhancements_dir,

@@ -34,6 +34,7 @@ class ClaudeClientConfig:
     continue_session: bool = False
     environment: dict[str, str] = field(default_factory=dict)  # Additional env vars
     print_mode: bool = True  # --print flag for non-interactive mode
+    verbose: bool = False  # --verbose flag (required for stream-json with --print)
     input_text: Optional[str] = None  # Input to send via stdin (for /init, etc.)
 
     def to_dict(self) -> dict:

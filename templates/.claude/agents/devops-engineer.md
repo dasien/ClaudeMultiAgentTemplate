@@ -1,7 +1,7 @@
 ---
 name: devops-engineer
 display-name: DevOps Engineer
-role: infrastructure_deployment
+role: implementation
 description: Use when setting up CI/CD pipelines, creating deployment configurations, or managing infrastructure as code
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch"]
 skills: ["ci-cd-pipelines", "infrastructure-as-code", "container-orchestration", "logging-strategies", "metrics-monitoring"]

@@ -93,7 +93,6 @@ class TaskDetailsDialog(BaseDialog):
             ("Agent", self.task.assigned_agent),
             ("Status", f"● {self.task.status.value.upper()}"),
             ("Priority", self.task.priority.value.upper()),
-            ("Type", self.task.task_type),
             ("Created", self.task.created),
             ("Started", self.task.started or "(not started)"),
             ("Completed", self.task.completed or "(not completed)"),

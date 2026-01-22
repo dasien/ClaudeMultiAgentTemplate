@@ -6,10 +6,11 @@ with proper argument handling, output capture, and error management.
 """
 
 import os
+import select
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
 
 from .config import ClaudeClientConfig, OutputFormat
 from .response import ClaudeResponse
@@ -89,6 +90,10 @@ class ClaudeClient:
         if config.output_format != OutputFormat.TEXT:
             args.extend(["--output-format", config.output_format.value])
 
+        # Verbose mode (required for stream-json with --print)
+        if config.verbose:
+            args.append("--verbose")
+
         # Session management
         if config.resume_session:
             args.extend(["--resume", config.resume_session])
@@ -104,14 +109,16 @@ class ClaudeClient:
     def run(
             self,
             prompt: str,
-            config: Optional[ClaudeClientConfig] = None
+            config: Optional[ClaudeClientConfig] = None,
+            line_callback: Optional[Callable[[str], None]] = None,
     ) -> ClaudeResponse:
         """
-        Run a prompt through Claude Code.
+        Run a prompt through Claude Code with streaming output.
 
         Args:
             prompt: The prompt to send to Claude
             config: Configuration options (uses defaults if not provided)
+            line_callback: Optional callback invoked for each line of output (for live monitoring)
 
         Returns:
             ClaudeResponse with output and metadata
@@ -126,27 +133,104 @@ class ClaudeClient:
 
         start_time = time.time()
         pid = None
+        process = None
 
         try:
+            # If input_text is provided, use communicate() for stdin handling
+            # This is used for special commands like /init
+            if config.input_text:
+                process = subprocess.Popen(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.PIPE,
+                    env=env,
+                    text=True,
+                    cwd=config.working_dir,
+                )
+                pid = process.pid
+
+                output, _ = process.communicate(
+                    input=config.input_text,
+                    timeout=config.timeout,
+                )
+                exit_code = process.returncode
+                duration = int(time.time() - start_time)
+
+                if exit_code == 0:
+                    return ClaudeResponse(
+                        success=True,
+                        output=output,
+                        exit_code=exit_code,
+                        pid=pid,
+                        duration_seconds=duration,
+                    )
+                else:
+                    log_error(f"Claude exited with code {exit_code}")
+                    return ClaudeResponse(
+                        success=False,
+                        output=output,
+                        exit_code=exit_code,
+                        pid=pid,
+                        duration_seconds=duration,
+                    )
+
+            # Standard execution: stream output line-by-line
             process = subprocess.Popen(
                 args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                stdin=subprocess.PIPE if config.input_text else subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
                 env=env,
                 text=True,
                 cwd=config.working_dir,
+                bufsize=1,  # Line buffered
             )
             pid = process.pid
 
-            # Communicate with optional stdin input
-            output, _ = process.communicate(
-                input=config.input_text,
-                timeout=config.timeout,
-            )
-            exit_code = process.returncode
+            # Read output line-by-line with idle timeout
+            output_lines = []
+            last_output_time = time.time()
+            idle_timeout = config.timeout  # Use configured timeout as idle timeout
 
+            while True:
+                # Check if process has ended
+                if process.poll() is not None:
+                    # Process ended, read any remaining output
+                    for line in process.stdout:
+                        output_lines.append(line)
+                        if line_callback:
+                            line_callback(line)
+                    break
+
+                # Use select to check if there's data to read (with 1 second timeout)
+                ready, _, _ = select.select([process.stdout], [], [], 1.0)
+
+                if ready:
+                    line = process.stdout.readline()
+                    if line:
+                        output_lines.append(line)
+                        last_output_time = time.time()
+                        if line_callback:
+                            line_callback(line)
+
+                # Check for idle timeout
+                if time.time() - last_output_time > idle_timeout:
+                    log_error(f"Claude idle timeout after {idle_timeout}s of no output")
+                    process.kill()
+                    duration = int(time.time() - start_time)
+                    return ClaudeResponse(
+                        success=False,
+                        output="".join(output_lines),
+                        error=f"Idle timeout after {idle_timeout} seconds of no output",
+                        exit_code=-1,
+                        pid=pid,
+                        duration_seconds=duration,
+                    )
+
+            exit_code = process.returncode
             duration = int(time.time() - start_time)
+            output = "".join(output_lines)
 
             if exit_code == 0:
                 return ClaudeResponse(
@@ -193,6 +277,11 @@ class ClaudeClient:
         except Exception as e:
             duration = int(time.time() - start_time)
             log_error(f"Error invoking Claude: {str(e)}")
+            if process:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
             return ClaudeResponse(
                 success=False,
                 output="",

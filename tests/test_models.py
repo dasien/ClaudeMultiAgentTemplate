@@ -230,7 +230,7 @@ class TestAgent:
         agent = Agent(
             name="Architect",
             agent_file="architect",
-            role="technical_design",
+            role="design",
             description="Designs systems",
             tools=["Read", "Write"],
             skills=["api-design"],

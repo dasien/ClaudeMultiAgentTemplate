@@ -183,7 +183,7 @@ When you create a new agent file, you must also add an entry to `.claude/agents/
 - **agent-file**: Filename without the .md extension (must match the actual filename)
 - **role**: Agent's role category. Common values:
   - `analysis` - Analyzing requirements, code, or systems
-  - `technical_design` - Architecture and design work
+  - `design` - Architecture and design work
   - `implementation` - Writing production code
   - `testing` - Quality assurance and validation
   - `documentation` - Creating documentation

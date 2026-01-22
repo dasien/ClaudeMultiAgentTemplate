@@ -1,6 +1,6 @@
 """
-Enhanced Create Task Dialog with skills preview and quick workflows (v5.0).
-Updated validation to work without agent contracts.
+Enhanced Create Task Dialog with skills preview and quick workflows (v6.0).
+Updated to remove task_type selector - role is derived from agent config.
 """
 
 import tkinter as tk
@@ -12,7 +12,7 @@ from ..utils import PathUtils
 
 
 class CreateTaskDialog(BaseDialog):
-    """Enhanced dialog for creating tasks (v5.0)."""
+    """Enhanced dialog for creating tasks (v6.0)."""
 
     def __init__(self, parent, queue_interface):
         # Initialize base class
@@ -23,7 +23,6 @@ class CreateTaskDialog(BaseDialog):
 
         # Get agents map
         self.agents_map = self.queue.get_agent_list()
-        self.task_types_map = self.queue.get_task_types()
 
         self.build_ui()
         self.show()
@@ -39,7 +38,7 @@ class CreateTaskDialog(BaseDialog):
         self.title_entry = ttk.Entry(main_frame, textvariable=self.title_var, width=70)
         self.title_entry.pack(fill="x", pady=(0, 10))
 
-        # Agent, Priority, and Task Type on same line
+        # Agent, Priority, and Model on same line
         config_frame = ttk.Frame(main_frame)
         config_frame.pack(fill="x", pady=(0, 10))
 
@@ -64,16 +63,6 @@ class CreateTaskDialog(BaseDialog):
         priority_combo['values'] = self.queue.get_priorities()
         priority_combo.current(1)
         priority_combo.pack(fill="x")
-
-        # Task Type
-        type_col = ttk.Frame(config_frame)
-        type_col.pack(side="left", fill="x", expand=True, padx=(5, 5))
-        ttk.Label(type_col, text="Task Type: *").pack(anchor="w")
-        self.task_type_var = tk.StringVar()
-        task_type_combo = ttk.Combobox(type_col, textvariable=self.task_type_var, state='readonly')
-        task_type_combo['values'] = list(self.task_types_map.values())
-        task_type_combo.current(0)
-        task_type_combo.pack(fill="x")
 
         # Model Selection
         model_col = ttk.Frame(config_frame)
@@ -303,24 +292,16 @@ class CreateTaskDialog(BaseDialog):
                 return key
         return display_name
 
-    def get_task_type_key(self, display_name: str) -> str:
-        """Convert task type display name to internal key."""
-        for key, value in self.task_types_map.items():
-            if value == display_name:
-                return key
-        return display_name
-
     def validate(self) -> bool:
         """Validate form before creating task."""
         title = self.title_var.get().strip()
         agent_display = self.agent_var.get()
         priority = self.priority_var.get()
-        task_type_display = self.task_type_var.get()
         description = self.description_text.get('1.0', tk.END).strip()
 
         # Source file is now optional
-        if not all([title, agent_display, priority, task_type_display, description]):
-            self.show_warning("Validation Error", "Title, Agent, Priority, Task Type, and Description are required.")
+        if not all([title, agent_display, priority, description]):
+            self.show_warning("Validation Error", "Title, Agent, Priority, and Description are required.")
             return False
 
         # If source file is provided, validate it exists (optional warning)
@@ -348,16 +329,14 @@ class CreateTaskDialog(BaseDialog):
         title = self.title_var.get().strip()
         agent_display = self.agent_var.get()
         priority = self.priority_var.get()
-        task_type_display = self.task_type_var.get()
         source_file = self.source_var.get().strip()
         description = self.description_text.get('1.0', tk.END).strip()
 
         # Get selected model (None = use default)
         model = self.models_map.get(self.model_var.get())
 
-        # Convert to keys
+        # Convert to key
         agent = self.get_agent_key(agent_display)
-        task_type = self.get_task_type_key(task_type_display)
 
         # If no source file provided, use empty string (CMAT will handle it)
         if not source_file:
@@ -368,7 +347,6 @@ class CreateTaskDialog(BaseDialog):
                 title=title,
                 agent=agent,
                 priority=priority,
-                task_type=task_type,
                 source_file=source_file,
                 description=description,
                 model=model,  # Pass selected model to CMAT

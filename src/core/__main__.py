@@ -535,14 +535,10 @@ def cmd_queue(cmat: CMAT, args: list[str]) -> int:
             if idx + 1 < len(args):
                 model = args[idx + 1]
 
-        # Determine task type from agent
-        task_type = cmat.workflow.get_task_type_for_agent(agent)
-
         task = cmat.queue.add(
             title=title,
             assigned_agent=agent,
             priority="normal",
-            task_type=task_type,
             source_file=source_file,
             description=title,
             auto_complete=True,
@@ -825,7 +821,7 @@ def cmd_learnings(cmat: CMAT, args: list[str]) -> int:
 
         context = RetrievalContext(
             agent_name="search",
-            task_type="search",
+            role="search",
             task_description=query,
         )
         learnings = cmat.learnings.retrieve(context, limit=10)

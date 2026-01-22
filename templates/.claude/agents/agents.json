@@ -5,7 +5,7 @@
     {
       "name": "accessibility-specialist",
       "display-name": "Accessibility Specialist",
-      "role": "accessibility_compliance",
+      "role": "testing",
       "description": "Use when ensuring UI compliance with WCAG standards or testing with assistive technologies",
       "tools": [
         "Read",
@@ -25,7 +25,7 @@
     {
       "name": "agent-architect",
       "display-name": "Agent Architect",
-      "role": "AI Agent Design & Creation",
+      "role": "design",
       "description": "Use when designing new CMAT agents or updating agent definitions with tools, skills, and personas",
       "tools": [
         "Read",
@@ -43,7 +43,7 @@
     {
       "name": "api-integration-specialist",
       "display-name": "API Integration Specialist",
-      "role": "integration_implementation",
+      "role": "implementation",
       "description": "Use when implementing third-party API integrations requiring authentication, error handling, or rate limiting",
       "tools": [
         "Read",
@@ -64,7 +64,7 @@
     {
       "name": "architect",
       "display-name": "Architect",
-      "role": "technical_design",
+      "role": "design",
       "description": "Use when designing system architecture, creating technical specifications, or making high-level design decisions",
       "tools": [
         "Read",
@@ -114,7 +114,7 @@
     {
       "name": "data-engineer",
       "display-name": "Data Engineer",
-      "role": "data_pipeline_design",
+      "role": "design",
       "description": "Use when designing data pipelines, ETL processes, or ensuring data quality for data-intensive applications",
       "tools": [
         "Read",
@@ -135,7 +135,7 @@
     {
       "name": "devops-engineer",
       "display-name": "DevOps Engineer",
-      "role": "infrastructure_deployment",
+      "role": "implementation",
       "description": "Use when setting up CI/CD pipelines, creating deployment configurations, or managing infrastructure as code",
       "tools": [
         "Read",
@@ -208,7 +208,7 @@
     {
       "name": "performance-engineer",
       "display-name": "Performance Engineer",
-      "role": "performance_optimization",
+      "role": "implementation",
       "description": "Use when investigating slow operations, profiling code execution, or optimizing application performance",
       "tools": [
         "Read",
@@ -230,7 +230,7 @@
     {
       "name": "product-analyst",
       "display-name": "Product Analyst",
-      "role": "Enhancement Specification & Template Selection",
+      "role": "analysis",
       "description": "Use when synthesizing requirements from multiple sources into structured enhancement specifications",
       "tools": [
         "Read",
@@ -249,7 +249,7 @@
     {
       "name": "refactoring-specialist",
       "display-name": "Refactoring Specialist",
-      "role": "code_improvement",
+      "role": "implementation",
       "description": "Use when improving code structure, reducing technical debt, or executing systematic refactoring",
       "tools": [
         "Read",
@@ -290,7 +290,7 @@
     {
       "name": "retrospective",
       "display-name": "Retrospective",
-      "role": "knowledge_curation",
+      "role": "analysis",
       "description": "Use after workflow completion to extract learnings and insights for the knowledge base",
       "tools": [
         "Read",
@@ -305,7 +305,7 @@
     {
       "name": "security-auditor",
       "display-name": "Security Auditor",
-      "role": "security_analysis",
+      "role": "testing",
       "description": "Use when reviewing code for security vulnerabilities, performing threat modeling, or validating security controls",
       "tools": [
         "Read",

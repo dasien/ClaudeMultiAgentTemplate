@@ -45,7 +45,6 @@ class Task:
     title: str
     assigned_agent: str
     priority: TaskPriority
-    task_type: str
     description: str
     source_file: str
     created: datetime
@@ -113,7 +112,6 @@ class Task:
             "title": self.title,
             "assigned_agent": self.assigned_agent,
             "priority": self.priority.value,
-            "task_type": self.task_type,
             "description": self.description,
             "source_file": self.source_file,
             "created": self.created.isoformat() + "Z",
@@ -128,13 +126,15 @@ class Task:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Task":
-        """Create Task from dictionary (e.g., loaded from JSON)."""
+        """Create Task from dictionary (e.g., loaded from JSON).
+
+        Backward compatible: ignores task_type if present (removed in v3.1).
+        """
         return cls(
             id=data["id"],
             title=data["title"],
             assigned_agent=data["assigned_agent"],
             priority=TaskPriority(data["priority"]),
-            task_type=data["task_type"],
             description=data["description"],
             source_file=data["source_file"],
             created=datetime.fromisoformat(data["created"].rstrip("Z")),

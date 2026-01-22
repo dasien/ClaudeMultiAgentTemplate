@@ -32,7 +32,6 @@ The queue system manages the lifecycle of all agent tasks.
   "title": "Workflow: new-feature - step 0",
   "assigned_agent": "requirements-analyst",
   "priority": "high",
-  "task_type": "analysis",
   "description": "Analyze feature requirements",
   "source_file": "enhancements/feature/feature.md",
   "status": "pending",
@@ -60,7 +59,6 @@ The queue system manages the lifecycle of all agent tasks.
 | `title` | string | Short descriptive title |
 | `assigned_agent` | string | Agent responsible for execution |
 | `priority` | enum | `critical`, `high`, `normal`, `low` |
-| `task_type` | string | Type: `analysis`, `implementation`, `testing`, etc. |
 | `status` | enum | `pending`, `active`, `completed`, `failed`, `cancelled` |
 | `auto_complete` | boolean | Auto-complete without user prompt |
 | `auto_chain` | boolean | Auto-chain to next workflow step |
@@ -129,14 +127,14 @@ validations:
 
 ### Agent Roles
 
-| Role | Description | Typical Task Types |
-|------|-------------|-------------------|
-| `analysis` | Requirements and scope analysis | analysis |
-| `technical_design` | Architecture and system design | technical_analysis |
-| `implementation` | Code writing and development | implementation |
-| `testing` | Test creation and execution | testing |
-| `documentation` | Documentation writing | documentation |
-| `integration` | External system integration | integration |
+| Role | Description |
+|------|-------------|
+| `analysis` | Requirements and scope analysis |
+| `design` | Architecture and system design |
+| `implementation` | Code writing and development |
+| `testing` | Test creation and execution |
+| `documentation` | Documentation writing |
+| `integration` | External system integration |
 
 ### Available Tools
 
@@ -367,7 +365,7 @@ When you start a task, CMAT constructs a prompt that includes:
 ### Prompt Construction Pipeline
 
 ```
-1. Load base template (by task_type)
+1. Load role-specific template (by agent role)
 2. Inject skills section
 3. Get workflow context (expected statuses, required output)
 4. Substitute all variables
@@ -646,7 +644,7 @@ Learnings can be added through the UI's Learnings Browser dialog or extracted au
 
 ```python
 # Task operations
-queue.add(title, agent, priority, task_type, source_file, description)
+queue.add(title, agent, priority, source_file, description)
 queue.get(task_id) -> Task
 queue.start(task_id) -> Task
 queue.complete(task_id, result) -> Task

@@ -446,33 +446,6 @@ class WorkflowService:
         self._task_service = task
         self._agent_service = agent
 
-    def get_task_type_for_agent(self, agent_name: str) -> str:
-        """
-        Map agent role to task type.
-
-        Returns appropriate task type based on agent's role.
-        """
-        if not self._agent_service:
-            return "analysis"  # default
-
-        agent = self._agent_service.get(agent_name)
-        if not agent:
-            return "analysis"
-
-        # Map roles to task types
-        role_map = {
-            "analyst": "analysis",
-            "requirements-analyst": "analysis",
-            "product-analyst": "analysis",
-            "architect": "technical_analysis",
-            "implementer": "implementation",
-            "tester": "testing",
-            "documenter": "documentation",
-            "integration": "integration",
-        }
-
-        return role_map.get(agent.role.lower(), "analysis")
-
     def validate_agent_outputs(
         self,
         agent_name: str,
@@ -552,9 +525,6 @@ class WorkflowService:
         # Resolve input path
         input_path = self.resolve_input_path(first_step, enhancement_name)
 
-        # Determine task type from agent role
-        task_type = self.get_task_type_for_agent(first_step.agent)
-
         # Use CLI override if provided, otherwise step's configured model
         effective_model = model or first_step.model
 
@@ -563,7 +533,6 @@ class WorkflowService:
             title=f"{workflow_name}: {first_step.agent}",
             assigned_agent=first_step.agent,
             priority="normal",
-            task_type=task_type,
             source_file=input_path,
             description=description or f"Execute {first_step.agent} for {enhancement_name}",
             metadata={
@@ -647,15 +616,11 @@ class WorkflowService:
         # Resolve input path for next step
         input_path = self.resolve_input_path(next_step, enhancement_name, previous_agent)
 
-        # Determine task type
-        task_type = self.get_task_type_for_agent(next_step.agent)
-
         # Create next task (in pending state)
         next_task = self._queue_service.add(
             title=f"{workflow_name}: {next_step.agent}",
             assigned_agent=next_step.agent,
             priority="normal",
-            task_type=task_type,
             source_file=input_path,
             description=f"Execute {next_step.agent} for {enhancement_name}",
             metadata={

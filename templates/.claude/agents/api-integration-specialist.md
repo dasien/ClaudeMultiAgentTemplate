@@ -1,7 +1,7 @@
 ---
 name: api-integration-specialist
 display-name: API Integration Specialist
-role: integration_implementation
+role: implementation
 description: Use when implementing third-party API integrations requiring authentication, error handling, or rate limiting
 tools: ["Read", "Write", "Edit", "Bash", "WebSearch", "WebFetch"]
 skills: ["api-integration", "webhook-design", "rate-limiting", "error-handling"]

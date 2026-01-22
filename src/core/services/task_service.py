@@ -10,42 +10,47 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from core.models.task import Task
-from core.models.agent import Agent
 from core.claude.client import ClaudeClient
 from core.claude.config import ClaudeClientConfig
-from core.utils import get_timestamp, log_operation, log_error
+from core.models.agent import Agent
+from core.models.task import Task
+from core.utils import get_timestamp, log_error, log_operation
 
 
 @dataclass
 class ExecutionResult:
     """Result of a task execution."""
+
     success: bool
-    status: Optional[str]
+    status: str | None
     exit_code: int
     output_dir: str
     log_file: str
     duration_seconds: int
-    pid: Optional[int] = None
+    pid: int | None = None
 
 
 class TaskService:
     """
     Task execution service.
 
-    Builds prompts from templates, invokes Claude, and extracts status.
+    Builds prompts from base + role-specific templates, invokes Claude,
+    and extracts status from completion blocks.
+
+    Prompt Structure:
+        Prompts are loaded from .claude/prompts/ directory:
+        - base.md: Common content for all task types
+        - {role}.md: Role-specific optional output guidance
+
+        Templates are combined with double newline separator and passed
+        through variable substitution before being sent to agents.
     """
 
     # Regex pattern for YAML frontmatter completion block
     # Matches: ---\nagent: ...\ntask_id: ...\nstatus: <STATUS>\n---
     COMPLETION_BLOCK_PATTERN = re.compile(
-        r"^---\s*\n"
-        r"agent:\s*\S+\s*\n"
-        r"task_id:\s*\S+\s*\n"
-        r"status:\s*(.+?)\s*\n"
-        r"---\s*$",
+        r"^---\s*\n" r"agent:\s*\S+\s*\n" r"task_id:\s*\S+\s*\n" r"status:\s*(.+?)\s*\n" r"---\s*$",
         re.MULTILINE,
     )
 
@@ -64,13 +69,15 @@ class TaskService:
 
     def __init__(
         self,
-        templates_file: str = ".claude/data/TASK_PROMPT_DEFAULTS.md",
+        templates_file: str = ".claude/data/TASK_PROMPT_DEFAULTS.md",  # DEPRECATED
+        prompts_dir: str = ".claude/prompts",
         agents_dir: str = ".claude/agents",
         logs_dir: str = ".claude/logs",
         enhancements_dir: str = "enhancements",
-        project_root: Optional[str] = None,
+        project_root: str | None = None,
     ):
-        self.templates_file = Path(templates_file)
+        self.templates_file = Path(templates_file)  # Deprecated, kept for compatibility
+        self.prompts_dir = Path(prompts_dir)
         self.agents_dir = Path(agents_dir)
         self.logs_dir = Path(logs_dir)
         self.enhancements_dir = Path(enhancements_dir)
@@ -87,8 +94,6 @@ class TaskService:
             else:
                 self.project_root = Path.cwd()
 
-        self._templates: Optional[dict[str, str]] = None
-
         # Services injected later to avoid circular imports
         self._agent_service = None
         self._skills_service = None
@@ -96,7 +101,9 @@ class TaskService:
         self._learnings_service = None
         self._model_service = None
 
-    def set_services(self, agent=None, skills=None, queue=None, learnings=None, models=None) -> None:
+    def set_services(
+        self, agent=None, skills=None, queue=None, learnings=None, models=None
+    ) -> None:
         """Inject service dependencies."""
         if agent:
             self._agent_service = agent
@@ -109,51 +116,57 @@ class TaskService:
         if learnings:
             self._learnings_service = learnings
 
-    def _load_templates(self) -> dict[str, str]:
-        """Load prompt templates from TASK_PROMPT_DEFAULTS.md."""
-        if self._templates is not None:
-            return self._templates
+    def _load_prompt_file(self, filename: str) -> str | None:
+        """
+        Load a prompt file from the prompts directory.
 
-        if not self.templates_file.exists():
-            log_error(f"Templates file not found: {self.templates_file}")
-            return {}
+        Args:
+            filename: Name of the prompt file (e.g., "base.md", "analysis.md")
 
-        content = self.templates_file.read_text()
-        templates = {}
+        Returns:
+            File content as string, or None if file doesn't exist
+        """
+        file_path = self.prompts_dir / filename
 
-        # Parse each template section
-        template_types = [
-            "ANALYSIS_TEMPLATE",
-            "TECHNICAL_ANALYSIS_TEMPLATE",
-            "IMPLEMENTATION_TEMPLATE",
-            "TESTING_TEMPLATE",
-            "DOCUMENTATION_TEMPLATE",
-            "INTEGRATION_TEMPLATE",
-        ]
+        if not file_path.exists():
+            return None
 
-        for template_type in template_types:
-            # Find template section
-            pattern = rf"^# {template_type}$"
-            match = re.search(pattern, content, re.MULTILINE)
-            if match:
-                start = match.end()
-                # Find the end marker
-                end_match = re.search(r"^===END_TEMPLATE===$", content[start:], re.MULTILINE)
-                if end_match:
-                    template_content = content[start:start + end_match.start()].strip()
-                    # Map to task type
-                    task_type = template_type.replace("_TEMPLATE", "").lower()
-                    templates[task_type] = template_content
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except OSError as e:
+            log_error(f"Failed to read prompt file {file_path}: {e}")
+            return None
 
-        self._templates = templates
-        return templates
+    def get_template(self, role: str) -> str | None:
+        """
+        Get a prompt template by role.
 
-    def get_template(self, task_type: str) -> Optional[str]:
-        """Get a prompt template by task type."""
-        templates = self._load_templates()
-        return templates.get(task_type)
+        Loads and combines base.md with role-specific prompt file.
 
-    def _build_input_instruction(self, source_file: Optional[str]) -> str:
+        Args:
+            role: Role name (e.g., "analysis", "design", "implementation")
+
+        Returns:
+            Combined prompt content, or None if base.md not found
+        """
+        # Load base prompt (required)
+        base_content = self._load_prompt_file("base.md")
+        if not base_content:
+            log_error(f"Base prompt not found: {self.prompts_dir}/base.md")
+            return None
+
+        # Load role-specific prompt (optional)
+        role_content = self._load_prompt_file(f"{role}.md")
+        if not role_content:
+            log_operation(
+                "PROMPT_LOAD_WARNING", f"Role prompt not found: {role}.md, using base only"
+            )
+            return base_content
+
+        # Combine with double newline
+        return base_content + "\n\n" + role_content
+
+    def _build_input_instruction(self, source_file: str | None) -> str:
         """Build the input instruction based on source file type."""
         if not source_file or source_file == "null":
             return "Work from the task description provided."
@@ -169,23 +182,34 @@ class TaskService:
     def build_prompt(
         self,
         agent_name: str,
-        task_type: str,
+        role: str,
         task_id: str,
         task_description: str,
-        source_file: Optional[str] = None,
+        source_file: str | None = None,
         enhancement_name: str = "unknown",
         enhancement_dir: str = "enhancements/unknown",
         required_output_filename: str = "output.md",
         expected_statuses: str = "(No workflow-defined statuses)",
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Build a complete prompt from template and parameters.
 
+        Args:
+            agent_name: Name of the agent to execute
+            role: Agent's role (e.g., "analysis", "implementation") - derived from agent config
+            task_id: Unique task identifier
+            task_description: Description of the task
+            source_file: Optional input file path
+            enhancement_name: Name of the enhancement being worked on
+            enhancement_dir: Path to enhancement directory
+            required_output_filename: Expected output filename
+            expected_statuses: Workflow-expected status codes
+
         Returns None if template not found.
         """
-        template = self.get_template(task_type)
+        template = self.get_template(role)
         if not template:
-            log_error(f"No template found for task type: {task_type}")
+            log_error(f"No template found for role: {role}")
             return None
 
         # Build agent config path
@@ -209,7 +233,6 @@ class TaskService:
             "${source_file}": source_file or "",
             "${task_description}": task_description,
             "${task_id}": task_id,
-            "${task_type}": task_type,
             "${enhancement_name}": enhancement_name,
             "${enhancement_dir}": enhancement_dir,
             "${input_instruction}": input_instruction,
@@ -227,9 +250,10 @@ class TaskService:
         # Retrieve and append learnings section if service available
         if self._learnings_service:
             from core.services.learnings_service import RetrievalContext
+
             context = RetrievalContext(
                 agent_name=agent_name,
-                task_type=task_type,
+                role=role,
                 task_description=task_description,
                 source_file=source_file,
             )
@@ -240,7 +264,7 @@ class TaskService:
 
         return prompt
 
-    def extract_status(self, output: str) -> Optional[str]:
+    def extract_status(self, output: str) -> str | None:
         """
         Extract completion status from agent output.
 
@@ -280,8 +304,8 @@ class TaskService:
         self,
         task: Task,
         agent: Agent,
-        workflow_name: Optional[str] = None,
-        workflow_step: Optional[int] = None,
+        workflow_name: str | None = None,
+        workflow_step: int | None = None,
         expected_statuses: str = "(No workflow-defined statuses)",
         required_output_filename: str = "output.md",
     ) -> ExecutionResult:
@@ -304,10 +328,10 @@ class TaskService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = enhancement_logs_dir / f"{agent.agent_file}_{task.id}_{timestamp}.log"
 
-        # Build prompt
+        # Build prompt using agent's role (not task_type)
         prompt = self.build_prompt(
             agent_name=agent.agent_file,
-            task_type=task.task_type,
+            role=agent.role,
             task_id=task.id,
             task_description=task.description,
             source_file=task.source_file,
@@ -360,15 +384,15 @@ class TaskService:
     def execute_direct(
         self,
         agent_name: str,
-        input_file: Optional[str],
+        input_file: str | None,
         output_dir: str,
         task_description: str = "UI-invoked task",
-        task_type: str = "analysis",
     ) -> ExecutionResult:
         """
         Execute an agent directly without task queue integration.
 
         Designed for UI-driven operations like enhancement creation.
+        Role is derived from the agent's configuration.
         """
         # Create output directory
         Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -388,10 +412,17 @@ class TaskService:
         if match:
             enhancement_name = match.group(1)
 
-        # Build prompt
+        # Get agent's role from agent service (default to "analysis" if not found)
+        role = "analysis"
+        if self._agent_service:
+            agent = self._agent_service.get(agent_name)
+            if agent:
+                role = agent.role
+
+        # Build prompt using agent's role
         prompt = self.build_prompt(
             agent_name=agent_name,
-            task_type=task_type,
+            role=role,
             task_id=task_id,
             task_description=task_description,
             source_file=input_file,
@@ -427,7 +458,7 @@ class TaskService:
             duration_seconds=result["duration"],
         )
 
-    def _resolve_model(self, model: Optional[str]) -> Optional[str]:
+    def _resolve_model(self, model: str | None) -> str | None:
         """
         Resolve model name to API ID.
 
@@ -495,7 +526,7 @@ class TaskService:
         task_id: str,
         agent_name: str,
         enhancement_name: str,
-        model: Optional[str],
+        model: str | None,
         prompt: str,
     ) -> None:
         """Write execution header to log file."""
@@ -517,20 +548,29 @@ class TaskService:
             f.write("END OF PROMPT\n")
             f.write("=" * 70 + "\n\n")
 
+    def _write_log_output_header(self, log_file: Path) -> None:
+        """Write the AGENT OUTPUT section header to log file."""
+        with open(log_file, "a") as f:
+            f.write("=" * 70 + "\n")
+            f.write("AGENT OUTPUT (streaming)\n")
+            f.write("=" * 70 + "\n\n")
+
     def _write_log_footer(
         self,
         log_file: Path,
         output: str,
         exit_code: int,
         duration: int,
-        status: Optional[str],
+        status: str | None,
+        output_already_written: bool = False,
     ) -> None:
         """Write execution footer to log file."""
         with open(log_file, "a") as f:
-            f.write("=" * 70 + "\n")
-            f.write("AGENT OUTPUT\n")
-            f.write("=" * 70 + "\n\n")
-            f.write(output or "(no output)")
+            if not output_already_written:
+                f.write("=" * 70 + "\n")
+                f.write("AGENT OUTPUT\n")
+                f.write("=" * 70 + "\n\n")
+                f.write(output or "(no output)")
             f.write("\n\n")
             f.write("=== Agent Execution Complete ===\n")
             f.write(f"End Time: {get_timestamp()}\n")
@@ -546,10 +586,13 @@ class TaskService:
         task_id: str,
         agent_name: str,
         enhancement_name: str,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> dict:
         """
         Execute Claude CLI with the given prompt.
+
+        Output is streamed to the log file in real-time as Claude produces it,
+        allowing monitoring of agent progress during execution.
 
         Args:
             prompt: The prompt to send to Claude
@@ -565,21 +608,42 @@ class TaskService:
         api_model_id = self._resolve_model(model)
 
         # Write log header
-        self._write_log_header(log_file, task_id, agent_name, enhancement_name, api_model_id, prompt)
+        self._write_log_header(
+            log_file, task_id, agent_name, enhancement_name, api_model_id, prompt
+        )
+
+        # Write output section header before execution starts
+        self._write_log_output_header(log_file)
 
         # Build environment variables for cost tracking hooks
         env = self._build_environment(task_id, log_file, agent_name, enhancement_name)
 
         # Build config and execute via ClaudeClient
+        # Use stream-json format for real-time output visibility
+        from core.claude.config import OutputFormat
+
         config = ClaudeClientConfig(
             model=api_model_id,
             permission_mode="bypassPermissions",
             working_dir=str(self.project_root),
             environment=env,
+            output_format=OutputFormat.STREAM_JSON,
+            verbose=True,  # Required for stream-json with --print
         )
 
+        # Create line callback to stream output to log file
+        log_file_handle = open(log_file, "a")
+
+        def line_callback(line: str) -> None:
+            """Write each line to log file as it arrives."""
+            log_file_handle.write(line)
+            log_file_handle.flush()
+
         client = ClaudeClient()
-        response = client.run(prompt, config)
+        try:
+            response = client.run(prompt, config, line_callback=line_callback)
+        finally:
+            log_file_handle.close()
 
         # Store PID if queue service available
         if response.pid and self._queue_service:
@@ -588,8 +652,15 @@ class TaskService:
         # Extract status from output
         status = self.extract_status(response.output or "")
 
-        # Write log footer
-        self._write_log_footer(log_file, response.output, response.exit_code, response.duration_seconds, status)
+        # Write log footer (output already written via streaming)
+        self._write_log_footer(
+            log_file,
+            response.output,
+            response.exit_code,
+            response.duration_seconds,
+            status,
+            output_already_written=True,
+        )
 
         log_operation("TASK_EXECUTED", f"Task: {task_id}, Agent: {agent_name}, Status: {status}")
 

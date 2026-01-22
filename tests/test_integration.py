@@ -47,7 +47,7 @@ class TestLearningsServiceWithClaude:
         # Test retrieval for a database-related task
         context = RetrievalContext(
             agent_name="implementer",
-            task_type="implementation",
+            role="implementation",
             task_description="Implement database access layer for user management",
         )
 
@@ -90,7 +90,7 @@ class TestFullWorkflowWithClaude:
         # 2. Retrieve for a formatting task
         context = RetrievalContext(
             agent_name="implementer",
-            task_type="implementation",
+            role="implementation",
             task_description="Write new Python module following project conventions",
         )
 

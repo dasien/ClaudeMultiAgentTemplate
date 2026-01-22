@@ -47,6 +47,7 @@ class CMATInterface:
         data_dir = claude_dir / "data"
         agents_dir = claude_dir / "agents"
         skills_dir = claude_dir / "skills"
+        prompts_dir = claude_dir / "prompts"
         logs_dir = claude_dir / "logs"
         enhancements_dir = self.project_root / "enhancements"
 
@@ -75,6 +76,7 @@ class CMATInterface:
 
         self.tasks = TaskService(
             templates_file=str(data_dir / "TASK_PROMPT_DEFAULTS.md"),
+            prompts_dir=str(prompts_dir),
             agents_dir=str(agents_dir),
             logs_dir=str(logs_dir),
             enhancements_dir=str(enhancements_dir),
@@ -128,12 +130,19 @@ class CMATInterface:
     # =========================================================================
 
     def add_task(self, title: str, agent: str, priority: str,
-                 task_type: str, source_file: str, description: str,
+                 source_file: str, description: str,
                  auto_complete: bool = False, auto_chain: bool = False,
                  model: Optional[str] = None) -> str:
         """Add a new task to the queue.
 
         Args:
+            title: Task title
+            agent: Agent to execute the task
+            priority: Task priority
+            source_file: Input file path
+            description: Task description
+            auto_complete: Whether to auto-complete on success
+            auto_chain: Whether to auto-chain to next workflow step
             model: Optional Claude model ID to use (e.g., "claude-sonnet-4-20250514").
                    If None, uses the project's default model.
         """
@@ -141,7 +150,6 @@ class CMATInterface:
             title=title,
             assigned_agent=agent,
             priority=priority,
-            task_type=task_type,
             source_file=source_file,
             description=description,
             auto_complete=auto_complete,
@@ -772,15 +780,16 @@ class CMATInterface:
             input_file: Path,
             output_dir: Path,
             task_description: str = "UI-invoked task",
-            task_type: str = "analysis"
     ) -> Path:
-        """Run an agent directly (synchronous)."""
+        """Run an agent directly (synchronous).
+
+        Role is automatically derived from the agent's configuration.
+        """
         result = self.tasks.execute_direct(
             agent_name=agent_name,
             input_file=str(input_file),
             output_dir=str(output_dir),
             task_description=task_description,
-            task_type=task_type
         )
 
         if not result.success:
@@ -794,11 +803,13 @@ class CMATInterface:
             input_file: Path,
             output_dir: Path,
             task_description: str = "UI-invoked task",
-            task_type: str = "analysis",
             on_success=None,
             on_error=None
     ):
-        """Run an agent asynchronously."""
+        """Run an agent asynchronously.
+
+        Role is automatically derived from the agent's configuration.
+        """
         def run_in_thread():
             try:
                 result = self.tasks.execute_direct(
@@ -806,7 +817,6 @@ class CMATInterface:
                     input_file=str(input_file),
                     output_dir=str(output_dir),
                     task_description=task_description,
-                    task_type=task_type
                 )
 
                 if result.success and on_success:
@@ -904,17 +914,6 @@ class CMATInterface:
         """Get CMAT version."""
         from core import __version__
         return __version__
-
-    def get_task_types(self) -> Dict[str, str]:
-        """Get available task types."""
-        return {
-            "analysis": "Analysis",
-            "technical_analysis": "Technical Analysis",
-            "implementation": "Implementation",
-            "testing": "Testing",
-            "documentation": "Documentation",
-            "integration": "Integration"
-        }
 
     def get_priorities(self) -> List[str]:
         """Get available priorities."""

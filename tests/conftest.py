@@ -76,6 +76,7 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
     (temp_dir / ".claude/agents").mkdir(parents=True)
     (temp_dir / ".claude/skills").mkdir(parents=True)
     (temp_dir / ".claude/data").mkdir(parents=True)
+    (temp_dir / ".claude/prompts").mkdir(parents=True)
     (temp_dir / ".claude/logs").mkdir(parents=True)
     (temp_dir / ".claude/docs").mkdir(parents=True)
     (temp_dir / "enhancements").mkdir(parents=True)
@@ -158,25 +159,86 @@ def cmat_test_env(temp_dir: Path) -> Generator[Path, None, None]:
     with open(temp_dir / ".claude/data/models.json", "w") as f:
         json.dump(models_data, f)
 
-    # Create minimal TASK_PROMPT_DEFAULTS.md
-    defaults_content = """# TASK_PROMPT_DEFAULTS
+    # Create minimal base.md for prompts
+    base_content = """You are the **${agent}** agent. Your configuration and instructions are in: `${agent_config}`
 
-# ANALYSIS_TEMPLATE
+## Task: ${task_description}
 
-You are ${agent} analyzing ${source_file}.
+You are working on enhancement: **${enhancement_name}**
 
-Task: ${task_description}
+## Input
 
-===END_TEMPLATE===
+${input_instruction}
 
-# IMPLEMENTATION_TEMPLATE
+## Output Requirements
 
-You are ${agent} implementing ${task_description}.
+Create the following directory structure:
 
-===END_TEMPLATE===
+```
+${enhancement_dir}/${agent}/
+├── required_output/
+│   └── ${required_output_filename}  (REQUIRED)
+└── optional_output/                  (OPTIONAL)
+    └── [any additional files]
+```
+
+### Required Output File
+
+You **must** create: `${enhancement_dir}/${agent}/required_output/${required_output_filename}`
+
+This file must include a metadata header:
+```markdown
+---
+enhancement: ${enhancement_name}
+agent: ${agent}
+task_id: ${task_id}
+timestamp: <ISO-8601-timestamp>
+status: <your-completion-status>
+---
+```
+
+### Optional Outputs
+
+Place any additional supporting documents in: `${enhancement_dir}/${agent}/optional_output/`
+
+## Completion Block
+
+At the end of your response, you **must** output a completion block in this exact format:
+
+```yaml
+---
+agent: ${agent}
+task_id: ${task_id}
+status: <STATUS>
+skills_used: [list of skill names you applied, or empty array if none]
+---
+```
+
+The `status` field must be one of the following:
+
+${expected_statuses}
+
+The `skills_used` field should list any specialized skills you applied from those available to you. If you didn't use any skills, use an empty array `[]`.
+
+## Your Task
+
+Read the agent configuration at `${agent_config}` for detailed instructions on your role and responsibilities, then complete the analysis task described above.
 """
-    with open(temp_dir / ".claude/docs/TASK_PROMPT_DEFAULTS.md", "w") as f:
-        f.write(defaults_content)
+    with open(temp_dir / ".claude/prompts/base.md", "w") as f:
+        f.write(base_content)
+
+    # Create minimal role files for testing
+    role_files = {
+        "analysis.md": "These might include:\n- Detailed analysis notes\n- Research findings\n- Alternative approaches considered\n- Risk assessments\n",
+        "design.md": "These might include:\n- Architecture diagrams\n- API specifications\n- Data model designs\n- Technology research\n",
+        "implementation.md": "These might include:\n- Implementation notes\n- Code change summaries\n- Refactoring documentation\n- Performance considerations\n",
+        "testing.md": "These might include:\n- Detailed test results\n- Coverage reports\n- Performance test data\n- Bug reports\n",
+        "documentation.md": "These might include:\n- User guide updates\n- API documentation updates\n- Additional examples\n- Tutorial content\n",
+        "integration.md": "**Note**: Integration tasks may include additional metadata fields for tracking synchronization state.\n\nThese might include:\n- Integration logs\n- Sync reports\n- Error details\n",
+    }
+    for filename, content in role_files.items():
+        with open(temp_dir / f".claude/prompts/{filename}", "w") as f:
+            f.write(content)
 
     yield temp_dir
 
@@ -210,7 +272,6 @@ def sample_task_data() -> dict:
         "assigned_agent": "test-agent",
         "priority": "high",
         "status": "pending",
-        "task_type": "analysis",
         "source_file": "test.md",
         "description": "A test task",
         "created": "2025-01-01T00:00:00Z",

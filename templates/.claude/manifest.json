@@ -33,9 +33,17 @@
         "models.json",
         "task_queue.json",
         "task_queue_empty.json",
-        "TASK_PROMPT_DEFAULTS.md",
         "tools.json",
         "workflow_templates.json"
+      ],
+      "prompts": [
+        "base.md",
+        "analysis.md",
+        "design.md",
+        "implementation.md",
+        "testing.md",
+        "documentation.md",
+        "integration.md"
       ],
       "hooks": [
         "on-session-end-cost.sh"

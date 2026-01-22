@@ -1,7 +1,7 @@
 ---
 name: accessibility-specialist
 display-name: Accessibility Specialist
-role: accessibility_compliance
+role: testing
 description: Use when ensuring UI compliance with WCAG standards or testing with assistive technologies
 tools: ["Read", "Write", "Bash", "WebSearch", "Edit"]
 skills: ["wcag-compliance", "screen-reader-testing", "keyboard-navigation", "web-ui-design"]

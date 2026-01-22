@@ -1,7 +1,7 @@
 ---
 name: retrospective
 display-name: Retrospective
-role: knowledge_curation
+role: analysis
 description: Use after workflow completion to extract learnings and insights for the knowledge base
 tools: ["Read", "Glob", "Grep"]
 skills: ["technical-writing"]
