@@ -15,7 +15,7 @@ Complete guide to using the CMAT graphical interface for managing multi-agent wo
 7. [Workflow Template Management](#workflow-template-management)
 8. [Starting Workflows](#starting-workflows)
 9. [Skills System](#skills-system)
-10. [Workflow Visualization](#workflow-visualization)
+10. [Workflows](#workflows)
 11. [Integration Dashboard](#integration-dashboard)
 12. [Settings and Configuration](#settings-and-configuration)
     - [CLAUDE.md Management](#claudemd-management)
@@ -1041,51 +1041,44 @@ After saving, you can:
 
 ---
 
-## Workflow Visualization
+## Workflows
 
 ### Understanding Workflows
 
-A **workflow** is the sequence of agents that process an enhancement. Workflows are defined by templates and can be any length.
+A **workflow** defines the sequence of agents that process an enhancement from start to finish. Workflows provide:
 
-### Viewing Active Workflows
+- **Structured Execution**: Agents run in a defined order with clear inputs and outputs
+- **Automatic Chaining**: When one agent completes successfully, the next agent starts automatically
+- **Status-Based Transitions**: Agent completion statuses determine what happens next
+- **Consistency**: The same workflow produces consistent results across different enhancements
 
-**Menu**: Workflows > View Active Workflows...  
-**Shortcut**: `Ctrl+W`
+### How Workflows Work
 
-Shows visual progress for each enhancement being worked on.
+1. **Workflow Launch**: User selects a workflow template and enhancement to process
+2. **First Agent**: The workflow starts with the first agent (typically requirements-analyst)
+3. **Agent Execution**: Each agent reads input from the previous step's output directory
+4. **Status Reporting**: Agents report a completion status (e.g., `READY_FOR_TESTING`)
+5. **Auto-Chain**: Based on the status, the workflow automatically starts the next agent
+6. **Completion**: Workflow ends when the final agent completes or a halt status is returned
 
-**Workflow Display** shows for each active workflow:
+### Workflow Templates
 
-1. **Enhancement Title** - Shows enhancement name and workflow name
-2. **Progress Bar** - Based on actual step count
-3. **Agent Steps** - Shows all steps from template:
-   - ✓ Green - Completed
-   - → Orange - Currently active
-   - ○ Blue - Pending
-   - ✗ Red - Failed
-4. **Step Details** - Shows expected output for steps
-5. **Current Status** - Overall workflow state
-6. **Next Step** - Which agent executes next (if applicable)
+Workflow templates are defined in `.claude/data/workflow_templates.json` and specify:
 
-**Example Display**:
-```
-Enhancement: user-authentication | Workflow: New Feature Development
+- **Steps**: Ordered list of agents to execute
+- **Input/Output**: Where each agent reads from and writes to
+- **Status Transitions**: Which completion statuses trigger which next steps
+- **Auto-Chain Settings**: Whether to automatically proceed or wait for user action
 
-35% complete (2/5 steps)
-████████░░░░░░░░░░░░
+### Tracking Workflow Progress
 
-✓ Step 1: Requirements Analyst (completed, 2m 45s)
-  → analysis_summary.md
-✓ Step 2: Architect (completed, 4m 12s)
-  → implementation_plan.md
-→ Step 3: Implementer (active, 1m 30s)
-  → implementation_summary.md
-○ Step 4: Tester (pending)
-○ Step 5: Documenter (pending)
+You can track workflow progress through the main task queue view:
 
-Status: IN PROGRESS - Implementer
-Next: Tester
-```
+- Tasks show their workflow name and current step
+- The status column shows if a task is pending, active, completed, or failed
+- Completed tasks show their final status code
+- Use View Details to see full task information including logs
+
 ---
 
 ## Skills System
@@ -1394,8 +1387,7 @@ Auto-refresh is always enabled when connected to a project:
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+E` | Generate enhancement |
-| `Ctrl+Shift+W` | **Start workflow** (NEW!) |
-| `Ctrl+W` | View active workflows |
+| `Ctrl+Shift+W` | Start workflow |
 | `Ctrl+K` | Browse skills |
 | `Ctrl+I` | Integration dashboard |
 | `Ctrl+L` | View operations log |

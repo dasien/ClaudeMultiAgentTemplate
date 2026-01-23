@@ -955,6 +955,23 @@ class CMATInterface:
         """Check if log exists for a task."""
         return self.get_task_log(task_id, source_file) is not None
 
+    def get_task_log_path(self, task_id: str, source_file: str) -> Optional[str]:
+        """Get the file path for a task's log file."""
+        enhancement_name = self._extract_enhancement_name(source_file)
+        if not enhancement_name:
+            return None
+
+        log_dir = self.project_root / "enhancements" / enhancement_name / "logs"
+        if not log_dir.exists():
+            return None
+
+        log_files = list(log_dir.glob(f"*{task_id}*.log"))
+        if not log_files:
+            return None
+
+        log_file = max(log_files, key=lambda p: p.stat().st_mtime)
+        return str(log_file)
+
     def get_operations_log(self, max_lines: int = 1000) -> str:
         """Get operations log content."""
         log_file = self.logs_dir / "queue_operations.log"

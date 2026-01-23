@@ -304,21 +304,23 @@ enhancements/
     ├── user-authentication.md          # Enhancement spec (input)
     ├── requirements-analyst/           # Step 1 outputs
     │   ├── required_output/
-    │   │   └── analysis_summary.md
+    │   │   └── *.md                    # Output file (name defined by workflow)
     │   └── optional_output/
-    │       └── user_stories_detailed.md
+    │       └── [additional files]
     ├── architect/                      # Step 2 outputs
     │   └── required_output/
-    │       └── implementation_plan.md
+    │       └── *.md
     ├── implementer/                    # Step 3 outputs
     │   └── required_output/
-    │       └── implementation_summary.md
+    │       └── *.md
     ├── tester/                         # Step 4 outputs
     │   └── required_output/
-    │       └── test_summary.md
+    │       └── *.md
     └── logs/                           # Task execution logs
         └── task_1702345678_12345.log
 ```
+
+**Note**: Each agent reads any files in the previous step's `required_output/` directory. The specific output filename is configured in the workflow template, not hardcoded.
 
 ### Enhancement Spec Format
 

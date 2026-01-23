@@ -25,6 +25,7 @@ from .markdown_viewer import MarkdownViewerDialog
 from .claude_md_manager import ClaudeMdManagerDialog
 from .splash_screen import SplashScreen
 from .theme_selector import ThemeSelectorDialog
+from .live_monitor import LiveMonitorDialog
 
 __all__ = [
     'ConnectDialog',
@@ -49,4 +50,5 @@ __all__ = [
     'ClaudeMdManagerDialog',
     'SplashScreen',
     'ThemeSelectorDialog',
+    'LiveMonitorDialog',
 ]

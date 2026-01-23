@@ -17,6 +17,7 @@ from .claude_model import ClaudeModel, ModelPricing
 from .enhancement import Enhancement
 from .learning import Learning
 from .protocols import Serializable
+from .agent_event import AgentEvent, EventType
 
 __all__ = [
     "Task",
@@ -34,4 +35,6 @@ __all__ = [
     "Enhancement",
     "Learning",
     "Serializable",
+    "AgentEvent",
+    "EventType",
 ]

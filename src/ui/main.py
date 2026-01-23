@@ -889,6 +889,9 @@ class MainView:
 
                 if self.queue.task_log_exists(task.id, task.source_file):
                     menu.add_command(label="View Log...", command=self.show_task_log)
+                    # Only show Live Monitor for active tasks (not completed/failed/cancelled)
+                    if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
+                        menu.add_command(label="Live Monitor...", command=self.show_live_monitor)
 
                 menu.add_separator()
 
@@ -1100,6 +1103,24 @@ class MainView:
         if task:
             # Use enhanced details which has better log viewer
             self.show_task_details()
+
+    def show_live_monitor(self):
+        """Show live monitor dialog for the selected task."""
+        task = self.get_selected_task()
+        if not task:
+            return
+
+        log_path = self.queue.get_task_log_path(task.id, task.source_file)
+        if not log_path:
+            messagebox.showwarning("No Log", "No log file found for this task.")
+            return
+
+        from .dialogs import LiveMonitorDialog
+        LiveMonitorDialog(
+            self.root,
+            title=f"Live Monitor - {task.assigned_agent}",
+            log_file=log_path,
+        )
 
     def copy_task_id(self):
         """Copy task ID."""

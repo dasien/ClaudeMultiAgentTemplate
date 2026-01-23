@@ -32,6 +32,12 @@ from .serialization import (
     value_to_enum,
 )
 
+# Import stream formatting utilities
+from .stream_formatter import (
+    StreamFormatter,
+    convert_log_file,
+)
+
 __all__ = [
     # Common utilities
     "logger",
@@ -54,4 +60,7 @@ __all__ = [
     "iso_to_datetime",
     "enum_to_value",
     "value_to_enum",
+    # Stream formatting utilities
+    "StreamFormatter",
+    "convert_log_file",
 ]

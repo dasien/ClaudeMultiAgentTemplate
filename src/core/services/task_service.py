@@ -10,12 +10,16 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Callable
 
 from core.claude.client import ClaudeClient
 from core.claude.config import ClaudeClientConfig
 from core.models.agent import Agent
 from core.models.task import Task
 from core.utils import get_timestamp, log_error, log_operation
+
+if TYPE_CHECKING:
+    from core.models.agent_event import AgentEvent
 
 
 @dataclass
@@ -175,7 +179,11 @@ class TaskService:
         if path.is_file():
             return f"Read and process this file: {source_file}"
         elif path.is_dir():
-            return f"Read and process all files in this directory: {source_file}"
+            return (
+                f"Read and process all files in this directory: {source_file}\n\n"
+                "**Important**: List the directory contents first to see what files exist. "
+                "Do not assume specific filenames."
+            )
         else:
             return f"Input: {source_file}"
 
@@ -587,11 +595,12 @@ class TaskService:
         agent_name: str,
         enhancement_name: str,
         model: str | None = None,
+        event_callback: "Callable[[AgentEvent], None] | None" = None,
     ) -> dict:
         """
         Execute Claude CLI with the given prompt.
 
-        Output is streamed to the log file in real-time as Claude produces it,
+        Output is streamed to the log file in real-time as human-readable text,
         allowing monitoring of agent progress during execution.
 
         Args:
@@ -601,9 +610,13 @@ class TaskService:
             agent_name: Name of the agent executing
             enhancement_name: Name of the enhancement being worked on
             model: Optional Claude model to use (e.g., "claude-sonnet-4-20250514")
+            event_callback: Optional callback for AgentEvents (for live monitoring UI)
 
         Returns dict with exit_code, status, duration, and optionally pid.
         """
+        from core.models.agent_event import AgentEvent
+        from core.utils import StreamFormatter
+
         # Resolve model to API ID
         api_model_id = self._resolve_model(model)
 
@@ -631,13 +644,26 @@ class TaskService:
             verbose=True,  # Required for stream-json with --print
         )
 
-        # Create line callback to stream output to log file
+        # Create StreamFormatter for parsing JSON lines
+        formatter = StreamFormatter()
         log_file_handle = open(log_file, "a")
 
         def line_callback(line: str) -> None:
-            """Write each line to log file as it arrives."""
-            log_file_handle.write(line)
-            log_file_handle.flush()
+            """Parse JSON to AgentEvent and write human-readable format to log."""
+            # Parse JSON line to AgentEvent
+            event = formatter.get_event(line)
+            if not event:
+                return
+
+            # Send to UI callback if provided
+            if event_callback:
+                event_callback(event)
+
+            # Format event as human-readable text for log file
+            formatted = event.format_human_readable()
+            if formatted:
+                log_file_handle.write(formatted + "\n")
+                log_file_handle.flush()
 
         client = ClaudeClient()
         try:
