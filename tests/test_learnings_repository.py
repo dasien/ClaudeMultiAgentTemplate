@@ -23,7 +23,7 @@ def temp_dir():
 @pytest.fixture
 def repository(temp_dir):
     """Create repository with temporary storage."""
-    repo = LearningsRepository(persist_dir=str(temp_dir))
+    repo = LearningsRepository(data_dir=str(temp_dir))
     yield repo
 
 
@@ -32,7 +32,7 @@ class TestLearningsRepository:
 
     def test_initialization(self, temp_dir):
         """Test store initialization."""
-        store = LearningsRepository(persist_dir=str(temp_dir))
+        store = LearningsRepository(data_dir=str(temp_dir))
         assert store is not None
         assert store.count() == 0
 
@@ -133,12 +133,12 @@ class TestLearningsRepository:
     def test_persistence(self, temp_dir):
         """Test that data persists across store instances."""
         # First store
-        store1 = LearningsRepository(persist_dir=str(temp_dir))
+        store1 = LearningsRepository(data_dir=str(temp_dir))
         learning = Learning.from_user_input("Test persistence", ["test"])
         store1.add(learning)
 
         # Second store (same directory)
-        store2 = LearningsRepository(persist_dir=str(temp_dir))
+        store2 = LearningsRepository(data_dir=str(temp_dir))
         assert store2.count() == 1
 
         results = store2.retrieve("persistence", limit=5)
@@ -216,7 +216,7 @@ class TestLearningsRepository:
 
     def test_lazy_model_loading(self, temp_dir):
         """Test that model loads lazily."""
-        store = LearningsRepository(persist_dir=str(temp_dir))
+        store = LearningsRepository(data_dir=str(temp_dir))
 
         # Model should not be loaded yet
         assert store._model is None

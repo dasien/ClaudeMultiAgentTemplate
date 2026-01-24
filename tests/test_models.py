@@ -84,6 +84,85 @@ class TestWorkflowStep:
         step = WorkflowStep.from_dict(data)
         assert step.model is None
 
+    def test_workflow_step_with_input_instruction(self):
+        """Test WorkflowStep with custom input_instruction."""
+        step = WorkflowStep(
+            agent="architect",
+            input="enhancements/{enhancement_name}/spec.md",
+            required_output="design.md",
+            input_instruction="Analyze the requirements in {input} and create a design",
+        )
+        assert step.agent == "architect"
+        assert step.input_instruction == "Analyze the requirements in {input} and create a design"
+
+    def test_workflow_step_without_input_instruction(self):
+        """Test WorkflowStep without input_instruction (defaults to None)."""
+        step = WorkflowStep(
+            agent="implementer",
+            input="input.md",
+            required_output="output.md",
+        )
+        assert step.input_instruction is None
+
+    def test_workflow_step_to_dict_with_input_instruction(self):
+        """Test serialization includes input_instruction field."""
+        step = WorkflowStep(
+            agent="architect",
+            input="input.md",
+            required_output="output.md",
+            input_instruction="Review {input} for compliance",
+        )
+        d = step.to_dict()
+        assert d["input_instruction"] == "Review {input} for compliance"
+
+    def test_workflow_step_to_dict_without_input_instruction(self):
+        """Test serialization omits input_instruction when None."""
+        step = WorkflowStep(
+            agent="architect",
+            input="input.md",
+            required_output="output.md",
+        )
+        d = step.to_dict()
+        assert "input_instruction" not in d
+
+    def test_workflow_step_from_dict_with_input_instruction(self):
+        """Test deserialization includes input_instruction field."""
+        data = {
+            "agent": "architect",
+            "input": "input.md",
+            "required_output": "output.md",
+            "input_instruction": "Process {input} thoroughly",
+            "on_status": {},
+        }
+        step = WorkflowStep.from_dict(data)
+        assert step.input_instruction == "Process {input} thoroughly"
+
+    def test_workflow_step_from_dict_without_input_instruction(self):
+        """Test deserialization when input_instruction not present (backward compatibility)."""
+        data = {
+            "agent": "implementer",
+            "input": "input.md",
+            "required_output": "output.md",
+            "on_status": {},
+        }
+        step = WorkflowStep.from_dict(data)
+        assert step.input_instruction is None
+
+    def test_workflow_step_serialization_roundtrip_with_input_instruction(self):
+        """Test that to_dict/from_dict roundtrip preserves input_instruction."""
+        step = WorkflowStep(
+            agent="tester",
+            input="code.py",
+            required_output="test_results.md",
+            input_instruction="Test all functions in {input}",
+            model="claude-sonnet-4-20250514",
+        )
+        d = step.to_dict()
+        restored = WorkflowStep.from_dict(d)
+        assert restored.input_instruction == step.input_instruction
+        assert restored.agent == step.agent
+        assert restored.model == step.model
+
 
 class TestTaskStatus:
     """Tests for TaskStatus enum."""

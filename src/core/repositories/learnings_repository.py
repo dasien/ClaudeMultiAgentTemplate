@@ -6,12 +6,14 @@ requiring Claude API calls.
 """
 
 import json
+import shutil
+from pathlib import Path
 
 import chromadb
 from sentence_transformers import SentenceTransformer
 
 from core.models.learning import Learning
-from core.utils.common import find_project_root
+from core.utils.common import find_project_root, log_operation, log_error
 
 
 class LearningsRepository:
@@ -34,38 +36,144 @@ class LearningsRepository:
     COLLECTION_NAME = "learnings"
     DEDUP_THRESHOLD = 0.9
 
-    def __init__(self, persist_dir: str | None = None):
+    def __init__(self, data_dir: str | None = None):
         """
         Initialize vector store with ChromaDB client.
 
         Args:
-            persist_dir: Directory for ChromaDB storage.
-                        Defaults to .claude/data/embeddings/
+            data_dir: Base data directory (e.g., .claude/data/).
+                     Embeddings will be stored in {data_dir}/embeddings/
 
         Note: Embedding model loads lazily on first use
         """
-        if persist_dir is None:
+        if data_dir is None:
             project_root = find_project_root()
             if project_root:
-                persist_dir = str(project_root / ".claude/data/embeddings")
+                embeddings_dir = str(project_root / ".claude/data/embeddings")
             else:
-                persist_dir = ".claude/data/embeddings"
+                embeddings_dir = ".claude/data/embeddings"
+        else:
+            # Always append /embeddings to the data directory
+            embeddings_dir = str(Path(data_dir) / "embeddings")
 
-        # Initialize ChromaDB client
-        try:
-            self._client = chromadb.PersistentClient(path=persist_dir)
-            self._collection = self._client.get_or_create_collection(
-                name=self.COLLECTION_NAME,
-                metadata={"hnsw:space": "cosine"},  # Use cosine similarity
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to initialize vector store: {e}\n"
-                f"Try deleting {persist_dir} to recreate."
-            ) from e
+        self._persist_dir = embeddings_dir
+
+        # Initialize ChromaDB client with recovery on corruption
+        self._client, self._collection = self._init_chromadb_with_recovery()
 
         # Model will be lazily loaded
         self._model: SentenceTransformer | None = None
+
+    def _init_chromadb_with_recovery(self) -> tuple:
+        """
+        Initialize ChromaDB with automatic recovery on database corruption.
+
+        If the database is corrupt or readonly (e.g., after incomplete shutdown
+        or reinstallation), this will delete and recreate it.
+
+        Returns:
+            Tuple of (client, collection)
+
+        Raises:
+            RuntimeError: If initialization fails even after recovery attempt
+        """
+        persist_path = Path(self._persist_dir)
+
+        def _create_client_and_collection():
+            """Create ChromaDB client and collection."""
+            client = chromadb.PersistentClient(path=self._persist_dir)
+            collection = client.get_or_create_collection(
+                name=self.COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"},
+            )
+            return client, collection
+
+        # First attempt
+        try:
+            client, collection = _create_client_and_collection()
+
+            # Verify database is writable by attempting a test write/delete
+            # count() is a read operation and won't catch "readonly database" errors
+            test_id = "__write_test__"
+            try:
+                # Try to add a test document
+                collection.add(
+                    ids=[test_id],
+                    embeddings=[[0.0] * self.EMBEDDING_DIM],
+                    documents=["write test"],
+                )
+                # Clean up test document
+                collection.delete(ids=[test_id])
+            except Exception as write_error:
+                # Re-raise with the write error - this will be caught below
+                raise write_error
+
+            return client, collection
+
+        except Exception as first_error:
+            error_str = str(first_error).lower()
+
+            # Check if this is a recoverable database error
+            is_db_error = any(
+                indicator in error_str
+                for indicator in [
+                    "readonly",
+                    "read-only",
+                    "database error",
+                    "sqlite",
+                    "corrupt",
+                    "locked",
+                    "wal",
+                    "disk i/o",
+                    "unable to open",
+                ]
+            )
+
+            if not is_db_error:
+                # Not a database error - can't recover
+                raise RuntimeError(
+                    f"Failed to initialize vector store: {first_error}\n"
+                    f"Try deleting {self._persist_dir} to recreate."
+                ) from first_error
+
+            # Attempt recovery by deleting and recreating the database
+            log_operation(
+                "VECTOR_DB_RECOVERY",
+                f"Database error detected, attempting recovery: {first_error}",
+            )
+
+            try:
+                # Delete the corrupted database directory if it exists
+                if persist_path.exists():
+                    shutil.rmtree(persist_path)
+                    log_operation("VECTOR_DB_RECOVERY", f"Deleted corrupted database at {persist_path}")
+
+                # Also check for and remove any stale lock files in parent directory
+                parent_dir = persist_path.parent
+                for lock_file in parent_dir.glob("*.lock"):
+                    try:
+                        lock_file.unlink()
+                        log_operation("VECTOR_DB_RECOVERY", f"Removed stale lock file: {lock_file}")
+                    except Exception:
+                        pass  # Ignore errors removing lock files
+
+                # Ensure parent directory exists
+                persist_path.mkdir(parents=True, exist_ok=True)
+
+                # Recreate with fresh database
+                client, collection = _create_client_and_collection()
+
+                log_operation("VECTOR_DB_RECOVERY", "Successfully recreated vector database")
+                return client, collection
+
+            except Exception as recovery_error:
+                log_error(f"Vector database recovery failed: {recovery_error}")
+                raise RuntimeError(
+                    f"Failed to initialize vector store even after recovery attempt.\n"
+                    f"Original error: {first_error}\n"
+                    f"Recovery error: {recovery_error}\n"
+                    f"Please manually delete {self._persist_dir} and try again."
+                ) from recovery_error
 
     @property
     def embedding_model(self) -> SentenceTransformer:
