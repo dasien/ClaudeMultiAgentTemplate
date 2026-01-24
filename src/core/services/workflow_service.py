@@ -688,12 +688,14 @@ class WorkflowService:
         expected_statuses = "(No workflow-defined statuses)"
         required_output = "output.md"
 
+        input_instruction = None
         if workflow_name and step_index is not None:
             step = self.get_step_at_index(workflow_name, int(step_index))
             if step:
                 # Build expected statuses string with completion/halt grouping
                 expected_statuses = self.format_statuses_for_prompt(step)
                 required_output = step.required_output or required_output
+                input_instruction = step.input_instruction
 
         # Execute task
         result = self._task_service.execute(
@@ -703,6 +705,7 @@ class WorkflowService:
             workflow_step=int(step_index) if step_index is not None else None,
             expected_statuses=expected_statuses,
             required_output_filename=required_output,
+            input_instruction=input_instruction,
         )
 
         # Store log file path in task metadata

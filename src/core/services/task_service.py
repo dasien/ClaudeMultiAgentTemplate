@@ -198,6 +198,7 @@ class TaskService:
         enhancement_dir: str = "enhancements/unknown",
         required_output_filename: str = "output.md",
         expected_statuses: str = "(No workflow-defined statuses)",
+        input_instruction: str | None = None,
     ) -> str | None:
         """
         Build a complete prompt from template and parameters.
@@ -212,6 +213,7 @@ class TaskService:
             enhancement_dir: Path to enhancement directory
             required_output_filename: Expected output filename
             expected_statuses: Workflow-expected status codes
+            input_instruction: Optional custom instruction (uses {input} placeholder)
 
         Returns None if template not found.
         """
@@ -223,8 +225,13 @@ class TaskService:
         # Build agent config path
         agent_config = f"{self.agents_dir}/{agent_name}.md"
 
-        # Build input instruction
-        input_instruction = self._build_input_instruction(source_file)
+        # Build input instruction (use custom if provided, otherwise auto-generate)
+        if input_instruction:
+            # Substitute {input} placeholder with resolved path
+            input_instruction_value = input_instruction.replace("{input}", source_file or "")
+        else:
+            # Fallback to auto-generated instruction
+            input_instruction_value = self._build_input_instruction(source_file)
 
         # Get skills section if service available
         skills_section = ""
@@ -243,7 +250,7 @@ class TaskService:
             "${task_id}": task_id,
             "${enhancement_name}": enhancement_name,
             "${enhancement_dir}": enhancement_dir,
-            "${input_instruction}": input_instruction,
+            "${input_instruction}": input_instruction_value,
             "${required_output_filename}": required_output_filename,
             "${expected_statuses}": expected_statuses,
         }
@@ -316,6 +323,7 @@ class TaskService:
         workflow_step: int | None = None,
         expected_statuses: str = "(No workflow-defined statuses)",
         required_output_filename: str = "output.md",
+        input_instruction: str | None = None,
     ) -> ExecutionResult:
         """
         Execute a task with an agent.
@@ -347,6 +355,7 @@ class TaskService:
             enhancement_dir=enhancement_dir,
             required_output_filename=required_output_filename,
             expected_statuses=expected_statuses,
+            input_instruction=input_instruction,
         )
 
         if not prompt:

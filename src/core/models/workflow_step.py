@@ -25,6 +25,7 @@ class WorkflowStep:
     required_output: str
     on_status: dict[str, StepTransition] = field(default_factory=dict)
     model: Optional[str] = None  # Claude model to use (e.g., "claude-sonnet-4-20250514")
+    input_instruction: Optional[str] = None  # Custom instruction for agent (uses {input} placeholder)
 
     def get_transition(self, status_name: str) -> StepTransition | None:
         """Get a transition by status name."""
@@ -79,6 +80,8 @@ class WorkflowStep:
         }
         if self.model:
             result["model"] = self.model
+        if self.input_instruction:
+            result["input_instruction"] = self.input_instruction
         return result
 
     @classmethod
@@ -94,6 +97,7 @@ class WorkflowStep:
             required_output=data["required_output"],
             on_status=on_status,
             model=data.get("model"),
+            input_instruction=data.get("input_instruction"),
         )
 
     def to_json(self) -> str:
