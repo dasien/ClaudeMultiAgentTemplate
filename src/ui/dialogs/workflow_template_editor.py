@@ -475,13 +475,14 @@ class WorkflowTemplateEditorDialog(BaseDialog):
                 'steps': []
             }
 
-            # Add all steps (including model field)
+            # Add all steps (including model and input_instruction fields)
             for step in self.steps:
                 step_data = {
                     'agent': step['agent'],
                     'input': step.get('input', ''),
                     'required_output': step.get('required_output', ''),
                     'model': step.get('model'),
+                    'input_instruction': step.get('input_instruction'),
                     'on_status': step.get('on_status', {})
                 }
                 workflow_data['steps'].append(step_data)

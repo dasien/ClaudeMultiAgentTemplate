@@ -2,7 +2,7 @@
 
 A workflow-based multi-agent development system with a graphical UI. CMAT provides specialized AI agents orchestrated by customizable workflow templates with automated validation, comprehensive skills, and intelligent learning.
 
-**Version**: 10.8.0
+**Version**: 10.10.0
 
 ![CMAT Main Window](assets/images/main-window-hero.png)
 
@@ -46,6 +46,7 @@ CMAT is a multi-agent system that breaks down software development into speciali
 - **Workflow Templates** - Define agent sequences, inputs, outputs, and transitions
 - **Output Validation** - Automatic validation of required outputs
 - **Automated Workflows** - Template-driven intelligent task chaining
+- **Live Agent Monitor** - Real-time streaming output from running agents (Ctrl+M)
 - **Task Queue System** - Organize and track work
 - **Skills System** - Domain expertise in reusable modules
 - **Multiple Theme Support** - Light and dark themes with live preview

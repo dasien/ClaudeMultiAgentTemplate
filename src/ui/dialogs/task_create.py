@@ -116,8 +116,11 @@ class CreateTaskDialog(BaseDialog):
 
         # Task Description
         ttk.Label(main_frame, text="Task Description: *").pack(anchor="w")
-        self.description_text = tk.Text(main_frame, height=8, wrap="word")
-        self.description_text.pack(fill="both", expand=True, pady=(0, 10))
+        # Wrap in tk.Frame for reliable border display across themes
+        desc_border = tk.Frame(main_frame, borderwidth=1, relief="sunken")
+        desc_border.pack(fill="both", expand=True, pady=(0, 10))
+        self.description_text = tk.Text(desc_border, height=8, wrap="word", borderwidth=0, highlightthickness=0)
+        self.description_text.pack(fill="both", expand=True)
 
         # Note about automation
         note_label = ttk.Label(

@@ -32,7 +32,7 @@ class WorkflowStepEditorDialog(BaseDialog):
         self.transitions = existing_step.get('on_status', {}).copy() if existing_step else {}
 
         mode_text = "Edit" if existing_step else "Add"
-        super().__init__(parent, f"{mode_text} Workflow Step", 650, 600)
+        super().__init__(parent, f"{mode_text} Workflow Step", 650, 700)
 
         self.build_ui()
         self.show()
@@ -142,6 +142,35 @@ class WorkflowStepEditorDialog(BaseDialog):
         self.input_var.trace_add('write', self.update_input_preview)
         self.update_input_preview()
 
+        # Custom Input Instruction (optional)
+        ttk.Label(main_frame, text="Custom Input Instruction (optional):", font=('Arial', 10, 'bold')).pack(anchor="w", pady=(15, 0))
+        ttk.Label(
+            main_frame,
+            text="Override the default instruction. Use {input} placeholder for the input path.",
+            font=('Arial', 8)
+        ).pack(anchor="w", pady=(0, 5))
+
+        # Multi-line text field for instruction
+        # Wrap in tk.Frame for reliable border display across themes
+        instruction_border = tk.Frame(main_frame, borderwidth=1, relief="sunken")
+        instruction_border.pack(fill="x", pady=(0, 15))
+
+        self.instruction_text = tk.Text(
+            instruction_border,
+            height=3,
+            width=50,
+            wrap="word",
+            borderwidth=0,
+            highlightthickness=0
+        )
+        self.instruction_text.pack(fill="both", expand=True)
+
+        # Load existing instruction if editing, otherwise show default text
+        if self.existing_step and self.existing_step.get('input_instruction'):
+            self.instruction_text.insert("1.0", self.existing_step['input_instruction'])
+        else:
+            self.instruction_text.insert("1.0", "Read and process this file: {input}")
+
         # Required output
         ttk.Label(main_frame, text="Required Output Filename: *", font=('Arial', 10, 'bold')).pack(anchor="w")
         ttk.Label(
@@ -193,6 +222,11 @@ class WorkflowStepEditorDialog(BaseDialog):
         """Insert placeholder at cursor position."""
         self.input_entry.insert(tk.INSERT, placeholder)
         self.input_entry.focus_set()
+
+    def insert_instruction_placeholder(self, placeholder: str):
+        """Insert placeholder at cursor position in instruction text field."""
+        self.instruction_text.insert(tk.INSERT, placeholder)
+        self.instruction_text.focus_set()
 
     def update_input_preview(self, *args):
         """Update input pattern preview with example."""
@@ -309,12 +343,18 @@ class WorkflowStepEditorDialog(BaseDialog):
         # Get selected model (None = use default)
         model = self.models_map.get(self.model_var.get())
 
+        # Get custom input instruction
+        input_instruction = self.instruction_text.get("1.0", "end-1c").strip()
+        if not input_instruction:
+            input_instruction = None  # Treat empty as None
+
         # Build result
         result = {
             'agent': agent_key,
             'input': self.input_var.get().strip(),
             'required_output': self.output_var.get().strip(),
             'model': model,  # Add model selection
+            'input_instruction': input_instruction,
             'on_status': self.transitions.copy()
         }
 

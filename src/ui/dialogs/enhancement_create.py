@@ -132,10 +132,14 @@ class CreateEnhancementDialog(BaseDialog, ClaudeGeneratorMixin):
 
         ttk.Label(desc_header, text="Description: *").pack(side="left")
 
-        desc_frame = ttk.Frame(main_frame)
-        desc_frame.pack(fill="both", expand=True, pady=(0, 5))
+        # Wrap in tk.Frame for reliable border display across themes
+        desc_border = tk.Frame(main_frame, borderwidth=1, relief="sunken")
+        desc_border.pack(fill="both", expand=True, pady=(0, 5))
 
-        self.description_text = tk.Text(desc_frame, height=5, wrap="word")
+        desc_frame = ttk.Frame(desc_border)
+        desc_frame.pack(fill="both", expand=True)
+
+        self.description_text = tk.Text(desc_frame, height=5, wrap="word", borderwidth=0, highlightthickness=0)
         desc_scroll = ttk.Scrollbar(desc_frame, orient="vertical", command=self.description_text.yview)
         self.description_text.configure(yscrollcommand=desc_scroll.set)
 

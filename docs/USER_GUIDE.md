@@ -16,7 +16,7 @@ Complete guide to using the CMAT graphical interface for managing multi-agent wo
 8. [Starting Workflows](#starting-workflows)
 9. [Skills System](#skills-system)
 10. [Workflows](#workflows)
-11. [Integration Dashboard](#integration-dashboard)
+11. [Live Agent Monitor](#live-agent-monitor)
 12. [Settings and Configuration](#settings-and-configuration)
     - [CLAUDE.md Management](#claudemd-management)
     - [Claude API Settings](#claude-api-settings)
@@ -710,12 +710,27 @@ Click **Add Step** to add a workflow step.
    - Example: `analysis_summary.md`
    - Auto-suggested based on agent name
 
-4. **Status Transitions**
+4. **Custom Input Instruction** (optional)
+   - Override the default instruction given to the agent about how to process the input
+   - Use `{input}` placeholder for the file/directory path
+   - Default text: `Read and process this file: {input}`
+   - Modify or append to customize agent behavior
+   - Leave empty to use auto-generated instruction (smart about files vs directories)
+
+   **Examples**:
+   - `Read and process this file: {input}` (default)
+   - `Analyze the security implications of: {input}`
+   - `Review this code for performance issues: {input}`
+   - `Generate tests based on the implementation in: {input}`
+
+   <img src="../assets/images/ug-workflow-step-edit.png" width="80%" alt="Workflow Step Editor">
+
+5. **Status Transitions**
    - Click **Manage Transitions...**
    - Opens transition editor dialog
    - Configure what happens for each status code
 
-5. Click **Save Step**
+6. Click **Save Step**
 
 #### Managing Status Transitions
 
@@ -1081,6 +1096,81 @@ You can track workflow progress through the main task queue view:
 
 ---
 
+## Live Agent Monitor
+
+### What is the Live Agent Monitor?
+
+The **Live Agent Monitor** provides real-time visibility into running Claude Code agents. It shows streaming output from active tasks, letting you watch agent progress as it happens.
+
+<img src="../assets/images/ug-live-monitor.png" width="80%" alt="Live Agent Monitor">
+
+### Opening the Live Agent Monitor
+
+**Menu**: Tasks > Live Agent Monitor...
+**Shortcut**: `Ctrl+M`
+
+### Monitor Features
+
+#### Agent List
+
+The left panel shows all currently running agents:
+
+| Column | Description |
+|--------|-------------|
+| **Task ID** | Task identifier |
+| **Agent** | Which agent is running |
+| **Enhancement** | Enhancement being processed |
+| **Started** | When the task started |
+
+Click an agent in the list to view its streaming output in the detail panel.
+
+#### Output Panel
+
+The right panel displays the selected agent's output in real-time:
+
+- **Streaming output** - Shows agent activity as it happens
+- **Auto-scroll** - Automatically scrolls to show latest output
+- **Verbose filtering** - Toggle to show/hide verbose output (tool calls, system messages)
+
+#### Controls
+
+**Verbose Checkbox**
+- When **checked**: Shows all output including tool calls, file operations, and system messages
+- When **unchecked**: Shows only essential output (agent responses, errors)
+- Use unchecked for cleaner view, checked for debugging
+
+**Auto-Refresh**
+- Monitor automatically refreshes every 2 seconds
+- Agent list updates to show new/completed tasks
+- Output panel updates with latest streaming content
+
+**Refresh Button**
+- Manually refresh the agent list and output
+- Use if you want immediate update
+
+#### Detail View
+
+**Double-click an agent** to open full task details in a separate dialog.
+
+### Use Cases
+
+**Monitoring Long-Running Tasks**
+- Watch architect designing complex systems
+- Monitor implementer writing code
+- Track tester running test suites
+
+**Debugging Workflow Issues**
+- See exactly what the agent is doing
+- Identify where problems occur
+- Check tool calls and file operations
+
+**Learning Agent Behavior**
+- Understand how agents approach problems
+- See which skills are being applied
+- Learn from agent decision-making
+
+---
+
 ## Skills System
 
 ### What are Skills?
@@ -1195,50 +1285,7 @@ Architect:
 
 ---
 
-## Integration Dashboard
-
-### What is Integration?
-
-**Integration** manages synchronization with external systems:
-- GitHub Issues
-- Jira Tickets
-- Confluence Pages
-
-Integration tasks are automatically created for completed workflow stages.
-
-### Opening Integration Dashboard
-
-**Menu**: Integration > Integration Dashboard...  
-**Shortcut**: `Ctrl+I`
-
-### Dashboard Components
-
-#### Statistics Bar
-
-Shows counts:
-- **Total** - All completed tasks
-- **Synced** - Tasks linked to external systems (green)
-- **Unsynced** - Tasks awaiting sync (orange)
-- **Failed** - Sync failures (red)
-
-#### Integration Table
-
-Columns:
-
-| Column | Description |
-|--------|-------------|
-| **Enhancement** | Enhancement name |
-| **Task ID** | Task identifier |
-| **Agent** | Which agent completed task |
-| **Status** | Task completion status |
-| **GitHub** | Issue number (#123) or — |
-| **Jira** | Ticket ID (PROJ-456) or — |
-| **Confluence** | Page status (✓) or — |
-| **Sync Status** | Complete, Partial, Not Synced, Failed |
-
----
-
-## Settings and Configuration
+### Settings and Configuration
 
 ### CLAUDE.md Management
 
@@ -1388,6 +1435,7 @@ Auto-refresh is always enabled when connected to a project:
 |----------|--------|
 | `Ctrl+E` | Generate enhancement |
 | `Ctrl+Shift+W` | Start workflow |
+| `Ctrl+M` | Live Agent Monitor |
 | `Ctrl+K` | Browse skills |
 | `Ctrl+I` | Integration dashboard |
 | `Ctrl+L` | View operations log |
