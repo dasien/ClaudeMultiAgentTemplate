@@ -51,6 +51,7 @@ class MainView:
         self.state.connection_state = ConnectionState.DISCONNECTED
         self.state.auto_refresh_interval = Config.AUTO_REFRESH_INTERVAL
         self.auto_refresh_timer = None
+        self._selected_task_id = None  # Preserved task selection across refreshes
 
         # Queue interface
         self.queue = None
@@ -557,7 +558,15 @@ class MainView:
         """Show CMAT installer dialog."""
         from .dialogs.install_cmat import InstallCMATDialog
 
-        dialog = InstallCMATDialog(self.root, self.settings)
+        # Pass current project and disconnect callback to avoid ChromaDB conflicts
+        current_project = str(self.state.project_root) if self.state.project_root else None
+
+        dialog = InstallCMATDialog(
+            self.root,
+            self.settings,
+            current_project=current_project,
+            disconnect_callback=self.disconnect
+        )
 
         # If installation succeeded and user wants to connect
         if dialog.result and dialog.result.get("success") and dialog.result.get("connect"):
@@ -590,6 +599,26 @@ class MainView:
             except Exception as e:
                 print(f"Auto-connect failed: {e}")
                 self.settings.clear_last_queue_manager()
+
+    def disconnect(self):
+        """Disconnect from current project and release resources.
+
+        This closes any ChromaDB connections to prevent "readonly database"
+        errors when reinstalling to the same directory.
+        """
+        if self.queue is not None:
+            # Release the CMATInterface which closes ChromaDB connections
+            self.queue = None
+
+        # Update state
+        self.state.connection_state = ConnectionState.DISCONNECTED
+        self.state.project_root = None
+        self.state.queue_file = None
+        self.state.logs_dir = None
+        self.state.error_message = None
+
+        # Update UI
+        self.update_ui_state()
 
     def connect_to_project(self, project_root: str, silent=False):
         """Connect to a project using Python CMAT v8.2+.
@@ -700,13 +729,12 @@ class MainView:
             return
 
         try:
-            # Preserve task selection
-            selected_task_id = None
+            # Preserve task selection (stored as member variable for use by event handlers)
             selection = self.task_tree.selection()
             if selection:
                 values = self.task_tree.item(selection[0], 'values')
                 if values and values[0]:
-                    selected_task_id = values[0]
+                    self._selected_task_id = values[0]
 
             # Get queue state
             queue_state = self.queue.get_queue_state()
@@ -740,7 +768,7 @@ class MainView:
                     break
 
             # Update task list for current status
-            self.update_task_list(selected_task_id)
+            self.update_task_list()
 
             # Update status bar
             self.status_label.config(
@@ -754,7 +782,7 @@ class MainView:
         except Exception as e:
             messagebox.showerror("Refresh Error", f"Failed to refresh: {e}")
 
-    def update_task_list(self, selected_task_id=None):
+    def update_task_list(self):
         """Update the task list for the currently selected status."""
         # Clear task tree
         for item in self.task_tree.get_children():
@@ -806,9 +834,9 @@ class MainView:
             )
             task_id_to_item[task.id] = item_id
 
-        # Restore selection if task still exists
-        if selected_task_id and selected_task_id in task_id_to_item:
-            self.task_tree.selection_set(task_id_to_item[selected_task_id])
+        # Restore selection if task still exists (using member variable)
+        if self._selected_task_id and self._selected_task_id in task_id_to_item:
+            self.task_tree.selection_set(task_id_to_item[self._selected_task_id])
 
         # Reapply current sort if user has selected one
         self._apply_current_sort()
@@ -896,11 +924,11 @@ class MainView:
                 menu.add_separator()
 
                 # Integration options
-                if task.status == TaskStatus.COMPLETED and task.metadata:
-                    if not task.metadata.github_issue:
-                        menu.add_command(label="Sync to External Systems", command=lambda: self.sync_task(task.id))
-
-                menu.add_separator()
+                # if task.status == TaskStatus.COMPLETED and task.metadata:
+                #     if not task.metadata.github_issue:
+                #         menu.add_command(label="Sync to External Systems", command=lambda: self.sync_task(task.id))
+                #
+                # menu.add_separator()
                 menu.add_command(label="Copy Task ID", command=self.copy_task_id)
             else:
                 # Parent row (status group header) - show generic menu

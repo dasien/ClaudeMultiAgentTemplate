@@ -291,4 +291,4 @@ class WorkflowTransitionEditorDialog(BaseDialog):
             self.auto_start_cb.config(state='normal')
         else:
             self.auto_start_cb.config(state='disabled')
-            self.auto_start_var.set(True)  # Reset to default when disabled
+            self.auto_start_var.set(False)  # Uncheck when disabled (auto-start requires auto-chain)

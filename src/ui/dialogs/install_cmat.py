@@ -31,15 +31,20 @@ class InstallCMATDialog(BaseDialog):
     STATE_COMPLETED = "completed"
     STATE_FAILED = "failed"
 
-    def __init__(self, parent, settings=None):
+    def __init__(self, parent, settings=None, current_project: str = None, disconnect_callback=None):
         """
         Initialize dialog.
 
         Args:
             parent: Parent window (MainWindow)
             settings: Settings object for persisting last directory
+            current_project: Path to currently connected project (if any)
+            disconnect_callback: Callback to disconnect from current project
+                                (called before installing to prevent ChromaDB conflicts)
         """
         self.settings = settings
+        self.current_project = current_project
+        self.disconnect_callback = disconnect_callback
         self.installer: Optional[CMATInstaller] = None
         self.installation_thread: Optional[threading.Thread] = None
         self.result_queue = queuemod.Queue()
@@ -258,10 +263,20 @@ class InstallCMATDialog(BaseDialog):
         if self.installer.check_existing_installation():
             if not self.confirm_action(
                 "Confirm Overwrite",
-                "A .claude folder already exists in this directory.\n\n"
-                "Do you want to overwrite it? (A backup will be created)"
+                "A .claude folder already exists in this directory.  Overwrite?\n\n"
+
             ):
                 return
+
+        # Disconnect from current project if installing to same directory
+        # This prevents ChromaDB "readonly database" errors from concurrent access
+        target_path = str(self.installer.target_directory)
+        if self.current_project and self.disconnect_callback:
+            # Normalize paths for comparison
+            current_normalized = str(Path(self.current_project).resolve())
+            target_normalized = str(Path(target_path).resolve())
+            if current_normalized == target_normalized:
+                self.disconnect_callback()
 
         # Save last directory
         if self.settings:
@@ -305,6 +320,19 @@ class InstallCMATDialog(BaseDialog):
 
             from ..utils.cmat_interface import CMATInterface
             project_root = str(self.installer.target_directory)
+
+            # Force delete any existing embeddings directory to ensure fresh database
+            # This prevents "readonly database" errors from stale ChromaDB connections
+            import shutil
+            import gc
+            embeddings_dir = Path(project_root) / ".claude" / "data" / "embeddings"
+            if embeddings_dir.exists():
+                # Force garbage collection to release any lingering file handles
+                gc.collect()
+                try:
+                    shutil.rmtree(embeddings_dir)
+                except Exception:
+                    pass  # Continue even if delete fails - recovery will handle it
 
             # This initializes ChromaDB, loads embedding model, runs migrations
             self._progress_callback("Setting up knowledge base...", 90)
