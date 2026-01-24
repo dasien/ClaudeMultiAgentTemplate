@@ -342,6 +342,23 @@
         "bug-triage"
       ],
       "agent-file": "tester"
+    },
+    {
+      "name": "work-validator",
+      "display-name": "Work Validator",
+      "role": "verification",
+      "description": "Use after any workflow step to validate that the previous agent's claimed work was actually completed",
+      "tools": [
+        "Read",
+        "Bash",
+        "Glob",
+        "Grep"
+      ],
+      "skills": [
+        "bug-triage",
+        "test-coverage"
+      ],
+      "agent-file": "work-validator"
     }
   ]
 }

@@ -26,7 +26,8 @@
         "refactoring-specialist.md",
         "requirements-analyst.md",
         "security-auditor.md",
-        "tester.md"
+        "tester.md",
+        "work-validator.md"
       ],
       "data": [
         "learnings.json",
